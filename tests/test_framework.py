@@ -164,9 +164,15 @@ class TestProviderLifecycle:
         _write_conns(tmp_path, {"connections": []})
         reg2 = build_registry(World(), Registry(), config_dir)
         m_after = reg2.manifest()["source_control"]
-        assert m_after["active_provider"] is None
+        # With the native baseline (source_control is Rule 2 native
+        # since this change), removal degrades to the native baseline
+        # instead of leaving the capability unconfigured.
+        assert m_after["active_provider"] == "native-git"
+        assert m_after["native_baseline"] is True
         assert m_after["capability"] == "source_control"  # concept remains
-        assert m_after["on_last_provider_removed"] == "not_configured"
+        assert m_after["on_last_provider_removed"] == (
+            "degrades to native baseline"
+        )
 
     def test_fake_provider_substitution_preserves_capability(self, tmp_path):
         """Framework E: provider A -> provider B without changing the

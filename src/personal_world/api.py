@@ -18,6 +18,11 @@ from .envelope import Result
 from .journal import AuditRenderer, Journal
 from .loop import daily
 from .providers.registry import Registry
+from .source_control import (
+    discover_repositories,
+    repository_history,
+    status_all,
+)
 from .world import World
 
 
@@ -184,6 +189,44 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             raise HTTPException(status_code=400, detail=str(e))
         save_world(world, world_path)
         return {"ok": True, "data": data}
+    # -- source_control: native git baseline (zero providers required) --
+    def _sc_paths() -> list[str]:
+        from .source_control import configured_search_paths
+        return configured_search_paths(config_dir)
+
+    @app.get("/api/source-control/status", dependencies=[Depends(require_auth)])
+    async def source_control_status() -> dict:
+        paths = _sc_paths()
+        if not paths:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["no source_control search paths configured"]}
+        repos = [
+            r for r in status_all(paths)
+            if r.get("error") is None or r.get("branch") is not None
+        ]
+        if not repos:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["no git repositories found in configured "
+                                 "search paths"]}
+        return {"ok": True, "status": "healthy", "data": {"repos": repos}}
+
+    @app.get("/api/source-control/history", dependencies=[Depends(require_auth)])
+    async def source_control_history(repo: str, limit: int = 20) -> dict:
+        paths = _sc_paths()
+        if not paths:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["no source_control search paths configured"]}
+        matches = [
+            e for e in discover_repositories(paths)
+            if e["is_repository"] and e["name"] == repo
+        ]
+        if not matches:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": [f"repository '{repo}' not found in "
+                                 "configured search paths"]}
+        commits = repository_history(matches[0]["path"], limit)
+        return {"ok": True, "status": "healthy",
+                "data": {"repo": repo, "commits": commits}}
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:

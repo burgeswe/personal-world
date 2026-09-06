@@ -1,0 +1,251 @@
+"""Native source_control baseline: read-only local git discovery,
+status, and history.
+
+Capabilities are core-owned (framework Rule 2): with zero providers
+connected, this module gives the capability useful local meaning from
+the local `git` binary alone. A provider (e.g. Gitea) may enrich the
+capability with remote-side richness, but the native canonical shape
+below is unchanged by enrichment.
+
+Safety contract:
+
+- subprocess with explicit argument lists only; never shell=True
+- every call is `git --no-pager -C <path> ...` and read-only
+- 10s timeout per call
+- every git failure becomes a structured state, never an exception
+"""
+
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+from .envelope import Result, fail, ok
+from .providers.registry import SourceControlContract
+
+GIT_TIMEOUT_SECONDS = 10
+
+
+def _git(path: Path, *args: str) -> tuple[int, str, str]:
+    """Run one read-only git command. Returns (returncode, stdout,
+    stderr); returncode is -1 when the git binary is missing or the
+    call times out. Never raises for git failures."""
+    try:
+        proc = subprocess.run(
+            ["git", "--no-pager", "-C", str(path), *args],
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return -1, "", f"git unavailable: {e}"
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def _is_repository(path: Path) -> bool:
+    rc, _out, _err = _git(path, "rev-parse", "--git-dir")
+    return rc == 0
+
+
+def _branch(path: Path) -> str | None:
+    rc, out, _err = _git(path, "rev-parse", "--abbrev-ref", "HEAD")
+    if rc == 0:
+        return out.strip()
+    # unborn branch (no commits yet): rev-parse fails, symbolic-ref works
+    rc, out, _err = _git(path, "symbolic-ref", "--short", "HEAD")
+    if rc == 0:
+        return out.strip()
+    return None
+
+
+def _remote_url(path: Path) -> str | None:
+    rc, out, _err = _git(path, "remote", "get-url", "origin")
+    if rc == 0:
+        return out.strip() or None
+    rc, out, _err = _git(path, "remote")
+    if rc == 0:
+        names = out.split()
+        if names:
+            rc, out, _err = _git(path, "remote", "get-url", names[0])
+            if rc == 0:
+                return out.strip() or None
+    return None
+
+
+def _upstream_counts(
+    path: Path, branch: str | None
+) -> tuple[int | None, int | None]:
+    """(ahead, behind) against the tracking upstream. None/None when no
+    remote tracking ref exists -- valid local-only state, not an error."""
+    specs = ["@{upstream}"]
+    if branch:
+        specs.append(f"origin/{branch}")
+    for spec in specs:
+        rc, out, _err = _git(
+            path, "rev-list", "--left-right", "--count", f"{spec}...HEAD"
+        )
+        if rc == 0:
+            parts = out.split()
+            if len(parts) == 2:
+                try:
+                    behind, ahead = int(parts[0]), int(parts[1])
+                except ValueError:
+                    return None, None
+                return ahead, behind
+    return None, None
+
+
+def discover_repositories(search_paths: list[str]) -> list[dict]:
+    """Check each configured path directly. Plain directories come back
+    with is_repository False (skipped by status workflows, never hidden
+    from the caller); missing or unreadable paths never raise."""
+    out: list[dict] = []
+    for raw in search_paths:
+        p = Path(raw).expanduser()
+        out.append({
+            "path": str(p),
+            "name": p.name,
+            "is_repository": _is_repository(p),
+        })
+    return out
+
+
+def repository_status(path: str) -> dict:
+    """Structured status of one repository. Git errors become structured
+    states (error field, component None), never exceptions."""
+    p = Path(path).expanduser()
+    state: dict = {
+        "path": str(p),
+        "name": p.name,
+        "branch": None,
+        "revision": None,
+        "dirty": None,
+        "ahead": None,
+        "behind": None,
+        "remote": None,
+        "last_commit_date": None,
+        "last_commit_subject": None,
+        "error": None,
+    }
+    if not _is_repository(p):
+        state["error"] = "not a git repository"
+        return state
+    rc, out, _err = _git(p, "rev-parse", "HEAD")
+    if rc == 0:
+        state["revision"] = out.strip()
+    state["branch"] = _branch(p)
+    rc, out, err = _git(p, "status", "--porcelain")
+    if rc == 0:
+        state["dirty"] = bool(out.strip())
+    else:
+        state["error"] = err.strip() or "git status failed"
+    # empty repo (no commits yet) is valid local-only state, not an error
+    rc, out, _err = _git(
+        p, "log", "-1",
+        "--pretty=format:%ad%x00%an%x00%s", "--date=iso-strict",
+    )
+    if rc == 0 and out:
+        parts = out.split("\x00")
+        if len(parts) == 3:
+            state["last_commit_date"] = parts[0] or None
+            state["last_commit_subject"] = parts[2] or None
+    state["remote"] = _remote_url(p)
+    state["ahead"], state["behind"] = _upstream_counts(p, state["branch"])
+    return state
+
+
+def repository_history(path: str, limit: int = 20) -> list[dict]:
+    """Newest-first commit history, up to limit entries. A non-repo path
+    or empty repo returns [] (structured, never raised)."""
+    p = Path(path).expanduser()
+    if not _is_repository(p):
+        return []
+    limit = max(1, int(limit))
+    rc, out, _err = _git(
+        p, "log", f"-n{limit}",
+        "--date=iso-strict",
+        "--pretty=format:%H%x00%ad%x00%an%x00%s",
+    )
+    if rc != 0:
+        return []
+    history: list[dict] = []
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\x00")
+        if len(parts) != 4:
+            continue
+        revision, date, author, subject = parts
+        history.append({
+            "revision": revision,
+            "date": date,
+            "author": author,
+            "subject": subject,
+        })
+    return history
+
+
+def status_all(search_paths: list[str]) -> list[dict]:
+    """Discovery plus status for every configured path that is a
+    repository; plain directories are skipped by design."""
+    return [
+        repository_status(entry["path"])
+        for entry in discover_repositories(search_paths)
+        if entry["is_repository"]
+    ]
+
+
+def configured_search_paths(config_dir: Path) -> list[str]:
+    """Read the native baseline's repo paths from
+    config/connections.json under a `source_control.search_paths` key,
+    alongside (not inside) the provider connections list. Malformed or
+    missing config yields [] -- the native baseline still boots."""
+    conn_path = Path(config_dir) / "connections.json"
+    if not conn_path.exists():
+        return []
+    try:
+        payload = json.loads(conn_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    section = payload.get("source_control")
+    if not isinstance(section, dict):
+        return []
+    paths = section.get("search_paths")
+    if not isinstance(paths, list):
+        return []
+    return [str(p) for p in paths if isinstance(p, str) and p]
+
+
+class NativeGit(SourceControlContract):
+    """Native baseline provider for source_control: the local git
+    binary, zero external services, zero secrets. Registered with
+    ProviderMode.NATIVE; enrichment providers never replace it."""
+
+    def __init__(self, search_paths: list[str]) -> None:
+        self.search_paths = list(search_paths)
+
+    def git_available(self) -> bool:
+        return shutil.which("git") is not None
+
+    def observe(self) -> Result:
+        if not self.git_available():
+            return fail(
+                "unavailable", warnings=["git binary not found"],
+            )
+        if not self.search_paths:
+            return fail(
+                "not_configured",
+                warnings=["no source_control search paths configured"],
+            )
+        repos = [
+            entry for entry in discover_repositories(self.search_paths)
+            if entry["is_repository"]
+        ]
+        if not repos:
+            return Result(
+                ok=False,
+                status="needs_attention",
+                warnings=["no git repositories found in configured "
+                          "search paths"],
+            )
+        return ok("healthy", data={"repositories": len(repos)})
