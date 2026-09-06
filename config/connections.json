@@ -15,11 +15,10 @@
       "expected": 200
     },
     {
-      "type": "http_status",
+      "type": "langgraph",
       "name": "langgraph",
       "capability": "memory",
-      "url": "http://192.0.2.10:18000/health",
-      "expected": 200
+      "base_url": "http://192.0.2.10:18000"
     },
     {
       "type": "http_status",

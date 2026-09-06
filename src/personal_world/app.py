@@ -19,7 +19,7 @@ from .model import (
     Policy,
     Provider,
 )
-from .providers.adapters import Gitea, HttpStatus
+from .providers.adapters import Gitea, HttpStatus, LangGraphMemory
 from .providers.registry import Contract, Registry, StatusContract
 from .world import World
 
@@ -117,6 +117,15 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                 registry.register(
                     capability, name, impl,
                     health_check=lambda: impl.observe().ok,
+                    writes="none",
+                )
+        elif ptype == "langgraph":
+            base = conn.get("base_url")
+            if base:
+                impl = LangGraphMemory(base, conn.get("api_key_env"))
+                registry.register(
+                    capability, name, impl,
+                    health_check=impl.health,
                     writes="none",
                 )
         # unknown types: skipped, not fatal -- standalone deployments

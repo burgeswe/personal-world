@@ -16,7 +16,7 @@ import urllib.request
 from pathlib import Path
 
 from ..envelope import Result, ok
-from .registry import SourceControlContract, StatusContract
+from .registry import MemoryContract, SourceControlContract, StatusContract
 
 
 class HttpStatus(StatusContract):
@@ -99,6 +99,64 @@ class FakeSourceControl(SourceControlContract):
 
     def observe(self) -> Result:
         return ok("healthy", data={"version": self.version, "provider": "fake"})
+
+
+class LangGraphMemory(MemoryContract):
+    """Real memory provider over the langgraph HTTP API (read-only).
+
+    Wraps the existing homelab memory service WITHOUT modifying it:
+    GET /health for liveness, POST /search for semantic recall across
+    KiloSession/RepoDoc/ObsidianNote collections. No writes.
+    """
+
+    def __init__(self, base_url: str, api_key_env: str | None = None) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.api_key_env = api_key_env
+
+    def _headers(self) -> dict:
+        h = {"Content-Type": "application/json"}
+        if self.api_key_env and os.environ.get(self.api_key_env):
+            h["Authorization"] = f"Bearer {os.environ[self.api_key_env]}"
+        return h
+
+    def health(self) -> bool:
+        try:
+            with urllib.request.urlopen(
+                f"{self.base_url}/health", timeout=5
+            ) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    def observe(self) -> Result:
+        if not self.health():
+            return Result(ok=False, status="unhealthy",
+                           warnings=["langgraph: /health unreachable"])
+        return ok("healthy", data={"url": self.base_url})
+
+    def search(self, query: str, top_k: int = 5) -> Result:
+        body = json.dumps({"query": query, "top_k": top_k}).encode()
+        req = urllib.request.Request(
+            f"{self.base_url}/search",
+            data=body,
+            headers=self._headers(),
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                payload = json.loads(resp.read().decode())
+        except Exception as e:
+            return Result(ok=False, status="unavailable",
+                          warnings=[f"langgraph search: {e}"])
+        hits = [
+            {
+                "text": r.get("text", ""),
+                "source": r.get("source"),
+                "path": r.get("path"),
+            }
+            for r in payload.get("results", [])
+        ]
+        return ok("healthy", data={"query": query, "results": hits})
 
 
 class SopsBroker:
