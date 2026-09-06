@@ -134,6 +134,38 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         world, _ = _state()
         return {"ok": True, "data": export.backup_payload(world, journal)}
 
+    @app.get("/api/updates", dependencies=[Depends(require_auth)])
+    async def updates_view() -> dict:
+        """Read-only check + status overview. API is check/status only:
+        apply/rollback are CLI-only, deliberately -- destructive actions
+        need the explicit-confirm CLI path with its visible exit codes."""
+        from .updates import UpdateManager, build_provider
+
+        provider = build_provider(
+            config_dir=config_dir,
+            project_dir=os.environ.get("PW_UPDATES_PROJECT_DIR") or None,
+        )
+        if provider is None:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["no update target configured"]}
+        manager = UpdateManager(
+            provider,
+            journal,
+            session_path=data_dir / "updates-session.json",
+        )
+        checks = manager.check()
+        return {
+            "ok": True,
+            "status": "healthy",
+            "data": {
+                "provider": provider.name,
+                "checks": {
+                    t: c.model_dump(mode="json") for t, c in checks.items()
+                },
+                "session": manager.status(live=False),
+            },
+        }
+
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
         # Dashboard shell: static HTML that fetches /api/* with the
