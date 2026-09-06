@@ -23,4 +23,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
         r=urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=4); \
         sys.exit(0 if r.status==200 else 1)"
 
-CMD ["uv", "run", "uvicorn", "personal_world.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+# Fail fast at runtime when auth is unconfigured: an empty PW_API_TOKEN
+# must never serve (core already 503s protected routes; this makes the
+# boot itself loud). Compose parses without the token; the container
+# does not.
+CMD ["sh", "-c", \
+     "test -n \"$PW_API_TOKEN\" || { echo 'FATAL: PW_API_TOKEN is empty or unset; refusing to boot (auth is fail-closed).' >&2; exit 1; }; \
+      exec uv run uvicorn personal_world.api:create_app --factory --host 0.0.0.0 --port 8000"]

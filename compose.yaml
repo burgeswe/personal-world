@@ -11,17 +11,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Auth boundary: fail-closed. Generate with:
+      # Auth boundary: fail-closed. Compose parses with no .env present
+      # (config-time interpolation defaults to empty); runtime still
+      # refuses to boot without a token -- see Dockerfile CMD guard and
+      # the healthcheck's auth_configured assertion. Generate with:
       #   python -c "import secrets; print(secrets.token_urlsafe(32))"
-      PW_API_TOKEN: ${PW_API_TOKEN:?set PW_API_TOKEN in .env or your shell}
+      PW_API_TOKEN: ${PW_API_TOKEN:-}
     volumes:
       - world-data:/data
       - ./config:/config:ro
     healthcheck:
+      # Unhealthy (restarts) when auth is not configured: an empty
+      # PW_API_TOKEN must never settle into a green container.
       test: ["CMD", "python", "-c",
-             "import urllib.request,sys; \
+             "import urllib.request,sys,json; \
               r=urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=4); \
-              sys.exit(0 if r.status==200 else 1)"]
+              d=json.load(r); \
+              sys.exit(0 if r.status==200 and d.get('auth_configured') is True else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
