@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "name": "Personal World Preference Schema",
+    "version": "1.0",
+    "description": "User comfort preferences. No value combination violates the accessibility floor."
+  },
+  "schema": {
+    "motion": {
+      "type": "enum",
+      "values": ["off", "reduced", "subtle"],
+      "default": "reduced",
+      "description": "off = no transitions. reduced = instant pose switches. subtle = max 300ms ease-out. OS prefers-reduced-motion overrides to off or reduced."
+    },
+    "contrast": {
+      "type": "enum",
+      "values": ["comfortable", "high"],
+      "default": "comfortable",
+      "description": "comfortable = low-glare WCAG AA. high = added borders, brighter accents. No value drops below AA."
+    },
+    "text_scale": {
+      "type": "number",
+      "default": 1.0,
+      "minimum": 1.0,
+      "maximum": 3.0,
+      "description": "Multiplier on base sizes. Minimum effective body size: 14px * text_scale. Never prevents browser zoom."
+    },
+    "density": {
+      "type": "enum",
+      "values": ["compact", "comfortable", "relaxed"],
+      "default": "comfortable",
+      "description": "compact tightens spacing but never reduces hit areas below 44px. relaxed increases spacing."
+    },
+    "targets": {
+      "type": "enum",
+      "values": ["standard", "large"],
+      "default": "standard",
+      "description": "standard = 44px minimum hit area. large = 56px minimum hit area."
+    }
+  },
+  "defaults": {
+    "motion": "reduced",
+    "contrast": "comfortable",
+    "text_scale": 1.0,
+    "density": "comfortable",
+    "targets": "standard"
+  },
+  "resolution_hierarchy": [
+    "Platform / assistive requirement (highest priority)",
+    "Personal World accessibility floor",
+    "User comfort preference",
+    "Decorative enhancement (lowest priority)"
+  ],
+  "constraints": [
+    "A lower layer may never violate a requirement above it.",
+    "OS prefers-reduced-motion overrides the motion preference.",
+    "Browser zoom is never disabled.",
+    "No combination of values violates WCAG 2.1 AA."
+  ]
+}
