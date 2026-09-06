@@ -15,7 +15,8 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from ..envelope import Result, ok
+from ..envelope import Result, fail, ok
+from ..status import Status
 from .registry import MemoryContract, SourceControlContract, StatusContract
 
 
@@ -157,6 +158,69 @@ class LangGraphMemory(MemoryContract):
             for r in payload.get("results", [])
         ]
         return ok("healthy", data={"query": query, "results": hits})
+
+
+class CandyDispenser(StatusContract):
+    """Discovery provider over the candy-dispenser HTTP API (read-only).
+
+    Wraps the existing candy-dispenser service WITHOUT modifying it:
+    GET /health for liveness and status. No writes.
+    """
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url.rstrip("/")
+
+    def health(self) -> Result:
+        try:
+            with urllib.request.urlopen(
+                f"{self.base_url}/health", timeout=5
+            ) as resp:
+                if resp.status != 200:
+                    return fail(
+                        Status.NEEDS_ATTENTION.value,
+                        warnings=[f"candy: HTTP {resp.status}"],
+                    )
+                payload = json.loads(resp.read().decode())
+                if payload.get("status") == "ok":
+                    return ok(Status.HEALTHY.value)
+                return fail(
+                    Status.NEEDS_ATTENTION.value,
+                    data={"service_status": payload.get("status")},
+                )
+        except Exception as e:
+            return fail(
+                Status.UNAVAILABLE.value,
+                warnings=[f"candy: {e}"],
+            )
+
+    def observe(self) -> Result:
+        try:
+            with urllib.request.urlopen(
+                f"{self.base_url}/health", timeout=5
+            ) as resp:
+                payload = json.loads(resp.read().decode())
+        except Exception:
+            return fail(
+                Status.UNAVAILABLE.value,
+                data={"reachable": False},
+                warnings=["candy: /health unreachable"],
+            )
+
+        service_status = payload.get("status")
+        data = {
+            "reachable": True,
+            "service_status": service_status,
+            "notifications_sent": payload.get("notifications_sent", 0),
+            "errors": payload.get("errors", 0),
+            "grabs_accepted": payload.get("grabs_accepted", 0),
+            "grabs_refused": payload.get("grabs_refused", 0),
+            "sources": payload.get("sources", []),
+            "seen_count": payload.get("seen_count", 0),
+        }
+
+        if service_status == "ok":
+            return ok(Status.HEALTHY.value, data=data)
+        return fail(Status.NEEDS_ATTENTION.value, data=data)
 
 
 class SopsBroker:

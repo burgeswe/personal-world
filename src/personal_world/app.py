@@ -19,7 +19,7 @@ from .model import (
     Policy,
     Provider,
 )
-from .providers.adapters import Gitea, HttpStatus, LangGraphMemory
+from .providers.adapters import CandyDispenser, Gitea, HttpStatus, LangGraphMemory
 from .providers.registry import Contract, Registry, StatusContract
 from .world import World
 
@@ -126,6 +126,15 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                 registry.register(
                     capability, name, impl,
                     health_check=impl.health,
+                    writes="none",
+                )
+        elif ptype == "candy":
+            base = conn.get("base_url")
+            if base:
+                impl = CandyDispenser(base)
+                registry.register(
+                    capability, name, impl,
+                    health_check=lambda: impl.health().ok,
                     writes="none",
                 )
         # unknown types: skipped, not fatal -- standalone deployments

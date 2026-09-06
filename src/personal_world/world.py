@@ -5,6 +5,7 @@ in store.py; this module holds the model container and the mutation gates
 that enforce the security rules regardless of caller).
 """
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from . import model
@@ -16,6 +17,7 @@ from .model import (
     Lore,
     LoreState,
     Mutability,
+    now,
     Override,
     Pack,
     Policy,
@@ -155,6 +157,28 @@ class World:
                 and p.mutability != Mutability.CEMENTED
             ):
                 del self.policies[pkey]
+
+    # -- staleness ---------------------------------------------------------
+    def stale_capabilities(self, max_age_seconds: int | None = None) -> list[str]:
+        """Capability keys whose latest observed status is older than
+        max_age_seconds. None disables staleness checking (fresh by
+        definition) -- observations must never be silently represented
+        as current without an explicit freshness contract."""
+        if max_age_seconds is None:
+            return []
+        cutoff = now() - timedelta(seconds=max_age_seconds)
+        stale: list[str] = []
+        for key, fact in self.facts.items():
+            if not key.startswith("capability."):
+                continue
+            if not key.endswith(".status"):
+                continue
+            observed = fact.provenance.observed_at
+            if observed.tzinfo is None:
+                observed = observed.replace(tzinfo=UTC)
+            if observed < cutoff:
+                stale.append(key)
+        return sorted(stale)
 
     # -- summary -----------------------------------------------------------
     def summary(self) -> dict:

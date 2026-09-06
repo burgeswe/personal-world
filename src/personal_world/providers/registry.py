@@ -9,8 +9,9 @@ never a silent lie.
 from collections.abc import Callable
 from typing import Any
 
-from ..envelope import Result
+from ..envelope import Result, fail, ok
 from ..model import Actor, Provider
+from ..status import Status
 
 
 class Contract:
@@ -82,9 +83,8 @@ class Registry:
         'unavailable', never raise."""
         p = self.provider_for(capability)
         if p is None:
-            return Result(
-                ok=False,
-                status="unavailable",
+            return fail(
+                Status.NOT_CONFIGURED.value,
                 warnings=[f"no provider for capability '{capability}'"],
             )
         impl = self._impls.get(p.name)
@@ -105,13 +105,13 @@ class Registry:
         """Staff-directory view of every registered provider."""
         out = []
         for p in self._providers.values():
-            status = "unknown"
+            status = Status.UNKNOWN.value
             check = self._health_checks.get(p.name)
             if check is not None:
                 try:
-                    status = "healthy" if check() else "unhealthy"
+                    status = Status.HEALTHY.value if check() else Status.NEEDS_ATTENTION.value
                 except Exception:
-                    status = "unhealthy"
+                    status = Status.NEEDS_ATTENTION.value
             out.append(
                 Actor(
                     name=p.name,

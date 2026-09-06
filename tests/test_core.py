@@ -232,7 +232,7 @@ class TestProviderSubstitution:
         reg = Registry()
         r = reg.observe("nothing")
         assert not r.ok
-        assert r.status == "unavailable"
+        assert r.status == "not_configured"
 
     def test_provider_exception_reports_unavailable(self):
         class Exploding:
