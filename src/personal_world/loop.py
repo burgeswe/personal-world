@@ -14,11 +14,15 @@ def daily(world: World, registry: Registry, journal: Journal) -> Result:
     actions: list[str] = []
     warnings: list[str] = []
 
-    # OBSERVE + VALIDATE: every capability through its provider
+    # OBSERVE + VALIDATE: every capability through its provider.
+    # not_configured is a known-optional state, not an attention
+    # item -- the digest lists what matters, not every vacancy.
     statuses = registry.status_map()
     for cap, s in statuses.items():
-        if not s["ok"]:
+        if not s["ok"] and s["status"] != "not_configured":
             warnings.append(f"{cap}: {s['status']}")
+        elif s["status"] == "not_configured":
+            continue
         journal.record(
             JournalKind.OBSERVATION,
             f"capability {cap}: {s['status']}",
