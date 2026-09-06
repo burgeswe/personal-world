@@ -1,0 +1,33 @@
+[project]
+name = "personal-world"
+version = "0.1.0"
+description = "A small personal control plane: stable truth, replaceable machinery."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.7,<3",
+  "pyyaml>=6.0,<7",
+  "fastapi>=0.111,<1",
+  "uvicorn>=0.30,<1",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8,<9",
+  "pytest-timeout>=2,<3",
+  "httpx>=0.27,<1",
+]
+
+[project.scripts]
+personal-world = "personal_world.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/personal_world"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

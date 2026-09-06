@@ -1,0 +1,171 @@
+"""CLI. Every command prints the stable JSON envelope with --json;
+human output otherwise. Reads never mutate; writes require --apply."""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from . import export
+from .app import build_registry, load_world, save_world
+from .envelope import EXIT_DENIED, EXIT_DRIFT, EXIT_ERROR, EXIT_OK, Result
+from .journal import Journal
+from .loop import daily
+from .providers.registry import Registry
+from .world import MutationDenied, UserAction, World, status
+
+
+def _paths(args) -> tuple[Path, Path]:
+    data_dir = Path(getattr(args, "data_dir", None) or "./data")
+    config_dir = Path(getattr(args, "config_dir", None) or "./config")
+    return data_dir, config_dir
+
+
+def _emit(result: Result, as_json: bool, exit_code: int | None = None) -> int:
+    if as_json:
+        print(result.model_dump_json(indent=2))
+    else:
+        head = f"{result.status}: {'ok' if result.ok else 'not ok'}"
+        print(head)
+        for w in result.warnings:
+            print(f"  ! {w}")
+        for a in result.actions:
+            print(f"  * {a}")
+        if result.data is not None:
+            print(json.dumps(result.data, indent=2, default=str))
+    if exit_code is not None:
+        return exit_code
+    return EXIT_OK if result.ok else EXIT_ERROR
+
+
+def cmd_status(world, registry, journal, args) -> int:
+    return _emit(status(world), args.json)
+
+
+def cmd_daily(world, registry, journal, args) -> int:
+    result = daily(world, registry, journal)
+    if getattr(args, "apply", False):
+        save_world(world, Path(args.data_dir) / "world.json")
+        result = result.model_copy(update={"changed": True})
+    return _emit(result, args.json)
+
+
+def cmd_journal(world, registry, journal, args) -> int:
+    events = journal.recent(getattr(args, "n", 20))
+    return _emit(
+        Result(ok=True, status="healthy",
+               data=[e.model_dump(mode="json") for e in events]),
+        args.json,
+    )
+
+
+def cmd_actors(world, registry, journal, args) -> int:
+    return _emit(
+        Result(ok=True, status="healthy",
+               data=[a.model_dump(mode="json") for a in registry.actors()]),
+        args.json,
+    )
+
+
+def cmd_settings_export(world, registry, journal, args) -> int:
+    return _emit(
+        Result(ok=True, status="healthy", data=export.settings_export(world)),
+        args.json,
+    )
+
+
+def cmd_world_export(world, registry, journal, args) -> int:
+    return _emit(
+        Result(ok=True, status="healthy", data=export.world_export(world)),
+        args.json,
+    )
+
+
+def cmd_story_export(world, registry, journal, args) -> int:
+    return _emit(
+        Result(ok=True, status="healthy",
+               data={"text": export.story_export(journal)}),
+        args.json,
+    )
+
+
+def cmd_backup(world, registry, journal, args) -> int:
+    payload = export.backup_payload(world, journal)
+    out = Path(args.data_dir) / "backup-payload.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not getattr(args, "apply", False):
+        return _emit(
+            Result(ok=True, status="dry-run",
+                   data={"would_write": str(out),
+                         "note": "payload is unencrypted; encrypt with your "
+                                 "SOPS/age mechanism before storage"}),
+            args.json,
+        )
+    out.write_text(json.dumps(payload, indent=2, default=str))
+    return _emit(
+        Result(ok=True, status="written", changed=True,
+               data={"path": str(out)}),
+        args.json,
+    )
+
+
+def cmd_cement(world, registry, journal, args) -> int:
+    try:
+        world.cement(args.key)
+        save_world(world, Path(args.data_dir) / "world.json")
+    except KeyError:
+        return _emit(Result(ok=False, status="unknown-policy",
+                            warnings=[f"no policy '{args.key}'"]),
+                     args.json, EXIT_ERROR)
+    return _emit(Result(ok=True, status="cemented", changed=True,
+                        data={"key": args.key}), args.json)
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(prog="personal-world")
+    p.add_argument("--data-dir", default="./data")
+    p.add_argument("--config-dir", default="./config")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    def add(name, fn, **kw):
+        sp = sub.add_parser(name, **kw)
+        sp.add_argument("--json", action="store_true")
+        sp.set_defaults(fn=fn)
+        return sp
+
+    add("status", cmd_status, help="world summary (read-only)")
+    add("daily", cmd_daily, help="run the daily loop")
+    sub.choice_map = None
+    d = sub.choices["daily"]
+    d.add_argument("--apply", action="store_true",
+                   help="persist observed facts (default: dry-run)")
+    add("journal", cmd_journal, help="recent journal events")
+    sub.choices["journal"].add_argument("-n", type=int, default=20)
+    add("actors", cmd_actors, help="staff-directory view of providers")
+    add("settings-export", cmd_settings_export,
+        help="shareable blueprint (no personal data)")
+    add("world-export", cmd_world_export,
+        help="portable personal configuration (no secrets)")
+    add("story-export", cmd_story_export,
+        help="human-readable journal rendering")
+    b = add("backup", cmd_backup, help="backup payload (encrypt before storing)")
+    b.add_argument("--apply", action="store_true")
+    add("cement", cmd_cement,
+        help="make a policy cemented (explicit user action)")
+
+    args = p.parse_args(argv)
+    data_dir = Path(args.data_dir)
+    config_dir = Path(args.config_dir)
+    world = load_world(data_dir / "world.json")
+    registry = build_registry(world, Registry(), config_dir)
+    journal = Journal(data_dir / "journal.ndjson")
+
+    try:
+        return args.fn(world, registry, journal, args)
+    except MutationDenied as e:
+        return _emit(Result(ok=False, status="denied", warnings=[str(e)]),
+                     args.json, EXIT_DENIED)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
