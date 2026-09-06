@@ -76,6 +76,42 @@ tests and show the registry serves the contract through either
 `healthy` / `unhealthy` / `unknown` / `unavailable` — neutral words,
 never traffic-light colors, in any rendered output.
 
+## source_control contract (native git baseline)
+
+`source_control` is a native-baseline capability: the core itself
+gives it useful local meaning with **zero providers connected**
+(framework Rule 2). The baseline is read-only local git:
+
+- Implementation: `src/personal_world/source_control.py`, registered
+  in `build_registry` as provider `native-git` with
+  `ProviderMode.NATIVE`. It always ships; it is never a boot
+  dependency and never required.
+- Canonical shape (enrichment may add richness, never alter it):
+  `discover_repositories(paths)` → `{path, name, is_repository}`;
+  `repository_status(path)` → `{path, name, branch, revision, dirty,
+  ahead, behind, remote, last_commit_date, last_commit_subject,
+  error}`; `repository_history(path, limit)` → `[{revision, date,
+  author, subject}]` newest-first.
+- No-remote repos are valid local-only state: `ahead`, `behind`, and
+  `remote` are `None` — that is not an error. Every git failure
+  becomes a structured state (`error` field, empty history); the
+  module never raises and never runs a shell (`git --no-pager -C
+  <path>` argv lists only, 10s timeout per call).
+- Configuration: repo paths live in the `source_control.search_paths`
+  key of `config/connections.json` (a sibling of `connections`, not a
+  provider entry). Absence or malformed config is the honest
+  `not_configured` state, never a crash.
+- Enrichment seam: a Gitea (or other forge) connection may enrich the
+  capability with remote-side data — issues, PRs, sync state beyond
+  the local clone. The seam stays; enrichment must not change the
+  native canonical shape above, and removing the provider degrades
+  the world back to this baseline (`on_last_provider_removed`:
+  degrades to native baseline).
+- Surfaces: `personal-world changes|history|sync-status` (--json for
+  the stable envelope) and `GET /api/source-control/status`,
+  `/api/source-control/history?repo=<name>` (same auth as every
+  protected route).
+
 ## Design implementation handoff (for DESIGN-HANDOFF.md)
 
 If you are writing design handoff documentation, keep it tool-neutral.

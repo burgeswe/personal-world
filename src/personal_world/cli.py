@@ -20,7 +20,21 @@ from .updates import (
     build_provider,
     UpdateManager,
 )
+from .source_control import (
+    discover_repositories,
+    repository_history,
+    repository_status,
+    status_all,
+)
 from .world import MutationDenied, UserAction, World, status
+
+
+def _search_paths(config_dir: Path) -> list[str]:
+    """Native-baseline repo paths from connections.json
+    (source_control.search_paths). The same helper the registry uses,
+    so CLI, API, and provider observe() read one config shape."""
+    from .source_control import configured_search_paths
+    return configured_search_paths(config_dir)
 
 
 def _paths(args) -> tuple[Path, Path]:
@@ -156,6 +170,111 @@ def cmd_cement(world, registry, journal, args) -> int:
 def cmd_init(world, registry, journal, args) -> int:
     from .init import init_world
     return _emit(init_world(Path(args.data_dir), Path(args.config_dir)),
+                 args.json)
+
+
+def cmd_changes(world, registry, journal, args) -> int:
+    """Native-baseline source control: discovery + per-repo status for
+    every configured path. Zero providers required."""
+    paths = _search_paths(Path(args.config_dir))
+    if not paths:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no source_control search paths configured "
+                             "(add source_control.search_paths to "
+                             "connections.json)"]),
+            args.json,
+        )
+    discovered = discover_repositories(paths)
+    repos = [e for e in discovered if e["is_repository"]]
+    data = {
+        "search_paths": len(paths),
+        "repositories": status_all(paths),
+        "skipped": [e["path"] for e in discovered if not e["is_repository"]],
+    }
+    if not repos:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no git repositories found in configured "
+                             "search paths"],
+                   data=data),
+            args.json,
+        )
+    dirty = sum(1 for r in data["repositories"] if r["dirty"])
+    return _emit(
+        Result(ok=True, status="healthy",
+               data=data,
+               actions=[f"{dirty} dirty of {len(repos)} repositories"]),
+        args.json,
+    )
+
+
+def cmd_history(world, registry, journal, args) -> int:
+    paths = _search_paths(Path(args.config_dir))
+    if not paths:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no source_control search paths configured "
+                             "(add source_control.search_paths to "
+                             "connections.json)"]),
+            args.json,
+        )
+    repos = [e for e in discover_repositories(paths) if e["is_repository"]]
+    if not repos:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no git repositories found in configured "
+                             "search paths"]),
+            args.json,
+        )
+    if len(repos) == 1:
+        return _emit(
+            Result(ok=True, status="healthy",
+                   data={"repo": repos[0]["name"],
+                         "commits": repository_history(
+                             repos[0]["path"], args.limit)}),
+            args.json,
+        )
+    return _emit(
+        Result(ok=True, status="healthy",
+               data={"history": {
+                   r["name"]: repository_history(r["path"], args.limit)
+                   for r in repos
+               }}),
+        args.json,
+    )
+
+
+def cmd_sync_status(world, registry, journal, args) -> int:
+    """Ahead/behind per repository. ahead/behind/remote are None for a
+    repo with no configured remote -- valid local-only state, never an
+    error."""
+    paths = _search_paths(Path(args.config_dir))
+    if not paths:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no source_control search paths configured "
+                             "(add source_control.search_paths to "
+                             "connections.json)"]),
+            args.json,
+        )
+    repos = [
+        r for r in status_all(paths)
+        if r.get("error") is None or r.get("branch") is not None
+    ]
+    if not repos:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no git repositories found in configured "
+                             "search paths"]),
+            args.json,
+        )
+    sync = [
+        {"name": r["name"], "branch": r["branch"],
+         "ahead": r["ahead"], "behind": r["behind"], "remote": r["remote"]}
+        for r in repos
+    ]
+    return _emit(Result(ok=True, status="healthy", data={"repos": sync}),
                  args.json)
 
 
@@ -369,6 +488,13 @@ def main(argv: list[str] | None = None) -> int:
     pset.add_argument("value")
     pset.add_argument("--json", action="store_true")
     pset.set_defaults(fn=cmd_prefs)
+    add("changes", cmd_changes,
+        help="native git status for configured repositories (read-only)")
+    h = add("history", cmd_history,
+            help="native git commit history, newest first (read-only)")
+    h.add_argument("--limit", type=int, default=20)
+    add("sync-status", cmd_sync_status,
+        help="native git ahead/behind per repository (read-only)")
     fw = sub.add_parser("framework", help="framework-level tooling")
     fw_sub = fw.add_subparsers(dest="framework_cmd", required=True)
     fw_v = fw_sub.add_parser("validate",
