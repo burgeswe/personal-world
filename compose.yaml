@@ -1,0 +1,31 @@
+# Personal World — supported standalone deployment.
+# One appliance: core/API + dashboard served by one process, plus a
+# persistent volume. No homelab, Gitea, Komodo, or any provider is
+# required to boot; optional providers are wired via config/connections.json.
+
+services:
+  core:
+    build: .
+    image: personal-world:0.1
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Auth boundary: fail-closed. Generate with:
+      #   python -c "import secrets; print(secrets.token_urlsafe(32))"
+      PW_API_TOKEN: ${PW_API_TOKEN:?set PW_API_TOKEN in .env or your shell}
+    volumes:
+      - world-data:/data
+      - ./config:/config:ro
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; \
+              r=urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=4); \
+              sys.exit(0 if r.status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  world-data:
