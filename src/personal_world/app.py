@@ -29,13 +29,14 @@ from .providers.adapters import (
     LangGraphMemory,
 )
 from .providers.registry import Contract, Registry, StatusContract
+from .source_control import NativeGit, configured_search_paths
 from .world import World
 
 
 # key, description, native_baseline (framework Rule 2: does the core
 # itself give this capability useful local meaning with zero providers?)
 STANDARD_CAPABILITIES: list[tuple[str, str, bool]] = [
-    ("source_control", "Read repositories, issues, pull requests", False),
+    ("source_control", "Read repositories, issues, pull requests", True),
     ("deployment", "Deploy or schedule services", False),
     ("secrets", "Broker secret material to consumers", False),
     ("calendar", "Observe calendar events", False),
@@ -118,14 +119,40 @@ def load_world(path: Path) -> World:
 
 def build_registry(world: World, registry: Registry, config_dir: Path) -> Registry:
     """Wire providers from config/connections.json. Unknown provider
-    types are skipped with a warning; the core still boots."""
+    types are skipped with a warning; the core still boots. The
+    source_control native baseline is registered when no provider for
+    the capability is configured (zero-provider boot); a configured
+    enrichment provider takes the active slot and removal degrades back
+    to this baseline on the next boot."""
     define_standard_capabilities(registry)
     registry.native_baselines = native_baseline_capabilities()
+
     conn_path = config_dir / "connections.json"
-    if not conn_path.exists():
-        return registry
-    conns = json.loads(conn_path.read_text())
-    for conn in conns.get("connections", []):
+    conns: dict[str, Any] = {}
+    if conn_path.exists():
+        try:
+            conns = json.loads(conn_path.read_text())
+        except json.JSONDecodeError:
+            conns = {}
+    connections = [
+        c for c in conns.get("connections", []) if isinstance(c, dict)
+    ]
+
+    # Native baseline (see comment above)
+    if not any(c.get("capability") == "source_control" for c in connections):
+        try:
+            git_impl = NativeGit(configured_search_paths(config_dir))
+            registry.register(
+                "source_control", "native-git", git_impl,
+                health_check=git_impl.git_available,
+                writes="none",
+                mode=ProviderMode.NATIVE,
+                required=False,
+            )
+        except Exception:  # native baseline must never block boot
+            registry.native_baselines.discard("source_control")
+
+    for conn in connections:
         ptype = conn.get("type")
         name = conn.get("name")
         capability = conn.get("capability")
@@ -155,6 +182,9 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     mode=mode,
                     required=required,
                 )
+                # Gitea is enrichment: it adds remote-side richness on
+                # top of the native git baseline; the native canonical
+                # shape (source_control.py) is unchanged by it.
         elif ptype == "langgraph":
             base = conn.get("base_url")
             if base:

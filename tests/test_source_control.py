@@ -1,0 +1,364 @@
+"""Native source_control baseline tests (framework Rule 2).
+
+Proves the native git-ish workflow with zero providers:
+
+- discovery includes repos, skips plain dirs, never raises on junk
+- clean / dirty / no-remote / bare-remote-with-sync status
+- history newest-first with limit; empty repo -> []
+- CLI changes / history / sync-status with --json envelopes
+- zero-provider boot (init_world) then useful status (acceptance)
+- fake enrichment leaves the native canonical shape unchanged
+- manifest lists source_control as a native baseline
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from personal_world.app import build_registry  # noqa: E402
+from personal_world.cli import main as cli_main  # noqa: E402
+from personal_world.init import init_world  # noqa: E402
+from personal_world.model import ProviderMode  # noqa: E402
+from personal_world.providers.registry import Registry  # noqa: E402
+from personal_world.source_control import (  # noqa: E402
+    NativeGit,
+    configured_search_paths,
+    discover_repositories,
+    repository_history,
+    repository_status,
+)
+
+GIT_ENV = {
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@t",
+    "HOME": str(Path.home()),
+}
+
+
+def git(cwd: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args], cwd=str(cwd), check=True, capture_output=True,
+        text=True, env={**GIT_ENV},
+    )
+
+
+def make_repo(path: Path, commits: int = 2) -> Path:
+    """A real temp git repo with `commits` commits touching file.txt."""
+    path.mkdir(parents=True, exist_ok=True)
+    git(path, "init", "-q")
+    git(path, "config", "user.email", "t@t")
+    git(path, "config", "user.name", "t")
+    for i in range(commits):
+        (path / "file.txt").write_text(f"content {i}\n")
+        git(path, "add", "file.txt")
+        git(path, "commit", "-q", "-m", f"commit {i}")
+    return path
+
+
+def write_config(tmp_path: Path, search_paths: list[str]) -> Path:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "connections.json").write_text(json.dumps({
+        "$schema": "personal-world/connections/1",
+        "connections": [],
+        "source_control": {"search_paths": search_paths},
+    }))
+    return config_dir
+
+
+class TestDiscovery:
+    def test_includes_repos_and_skips_plain_dirs(self, tmp_path):
+        repo = make_repo(tmp_path / "repo-one")
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        (plain / "note.txt").write_text("not a repo\n")
+        found = discover_repositories([str(repo), str(plain)])
+        assert len(found) == 2
+        by_path = {e["path"]: e for e in found}
+        assert by_path[str(repo)]["is_repository"] is True
+        assert by_path[str(repo)]["name"] == "repo-one"
+        assert by_path[str(plain)]["is_repository"] is False
+
+    def test_missing_path_never_raises(self, tmp_path):
+        ghost = tmp_path / "does-not-exist"
+        found = discover_repositories([str(ghost)])
+        assert found == [{
+            "path": str(ghost),
+            "name": "does-not-exist",
+            "is_repository": False,
+        }]
+
+
+class TestRepositoryStatus:
+    def test_clean_repo(self, tmp_path):
+        repo = make_repo(tmp_path / "clean")
+        s = repository_status(str(repo))
+        assert s["error"] is None
+        assert s["branch"] == "master" or s["branch"] == "main"
+        assert s["dirty"] is False
+        assert s["revision"] is not None
+        assert len(s["revision"]) == 40
+        assert s["last_commit_subject"] == "commit 1"
+        assert s["last_commit_date"] is not None
+
+    def test_dirty_repo_modified_tracked_file(self, tmp_path):
+        repo = make_repo(tmp_path / "dirty")
+        (repo / "file.txt").write_text("modified, uncommitted\n")
+        s = repository_status(str(repo))
+        assert s["dirty"] is True
+        assert s["error"] is None
+
+    def test_no_remote_is_valid_local_only_state(self, tmp_path):
+        repo = make_repo(tmp_path / "solo")
+        s = repository_status(str(repo))
+        assert s["error"] is None
+        assert s["remote"] is None
+        assert s["ahead"] is None
+        assert s["behind"] is None
+
+    def test_bare_remote_reports_ahead_behind(self, tmp_path):
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        git(origin, "init", "-q", "--bare")
+        repo = make_repo(tmp_path / "synced")
+        git(repo, "remote", "add", "origin", str(origin))
+        git(repo, "push", "-q", "-u", "origin", "HEAD")
+        s = repository_status(str(repo))
+        assert s["remote"] == str(origin)
+        assert (s["ahead"], s["behind"]) == (0, 0)
+
+        # local-only commit -> ahead 1, behind 0
+        (repo / "file.txt").write_text("local only\n")
+        git(repo, "add", "file.txt")
+        git(repo, "commit", "-q", "-m", "local only commit")
+        s = repository_status(str(repo))
+        assert (s["ahead"], s["behind"]) == (1, 0)
+
+    def test_non_repo_is_structured_never_raises(self, tmp_path):
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        s = repository_status(str(plain))
+        assert s["error"] == "not a git repository"
+        assert s["branch"] is None
+        assert s["revision"] is None
+        assert s["dirty"] is None
+
+    def test_git_errors_are_structured_states(self, tmp_path):
+        """A repo whose HEAD points at an unborn branch: git log fails,
+        but status stays structured (no exception, no fake data)."""
+        repo = tmp_path / "unborn"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        s = repository_status(str(repo))
+        assert s["error"] is None  # git status works on an unborn repo
+        assert s["revision"] is None  # no commits: honest None
+        assert s["branch"] in ("master", "main")
+        assert s["dirty"] is False  # pristine empty repo: nothing unclean
+
+
+class TestRepositoryHistory:
+    def test_newest_first(self, tmp_path):
+        repo = make_repo(tmp_path / "hist", commits=3)
+        h = repository_history(str(repo))
+        assert [e["subject"] for e in h] == ["commit 2", "commit 1", "commit 0"]
+        assert h[0]["author"] == "t"
+        assert len(h[0]["revision"]) == 40
+        assert h[0]["date"]
+
+    def test_limit(self, tmp_path):
+        repo = make_repo(tmp_path / "limited", commits=5)
+        assert len(repository_history(str(repo), limit=2)) == 2
+        assert [e["subject"] for e in repository_history(str(repo), limit=2)] == [
+            "commit 4", "commit 3",
+        ]
+
+    def test_empty_repo_history_is_empty_list(self, tmp_path):
+        repo = tmp_path / "empty"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        assert repository_history(str(repo)) == []
+
+    def test_non_repo_history_is_empty_list(self, tmp_path):
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        assert repository_history(str(plain)) == []
+
+
+class TestZeroProviderBoot:
+    """The acceptance proof: init a world, point it at a temp repo,
+    and the native baseline answers with zero providers configured."""
+
+    def test_init_then_cli_changes_json(self, tmp_path, capsys):
+        repo = make_repo(tmp_path / "proof")
+        init_world(tmp_path / "data", tmp_path / "config")
+        write_config(tmp_path, [str(repo)])
+        rc = cli_main(["--data-dir", str(tmp_path / "data"),
+                       "--config-dir", str(tmp_path / "config"),
+                       "changes", "--json"])
+        assert rc == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["ok"] is True
+        assert out["status"] == "healthy"
+        repos = out["data"]["repositories"]
+        assert len(repos) == 1
+        assert repos[0]["name"] == "proof"
+        assert repos[0]["dirty"] is False
+        assert repos[0]["last_commit_subject"] == "commit 1"
+
+    def test_init_then_cli_history_and_sync_status_json(self, tmp_path, capsys):
+        repo = make_repo(tmp_path / "proof")
+        write_config(tmp_path, [str(repo)])
+        for cmd in ("history", "sync-status"):
+            rc = cli_main(["--data-dir", str(tmp_path / "data"),
+                           "--config-dir", str(tmp_path / "config"),
+                           cmd, "--json"])
+            assert rc == 0
+            out = json.loads(capsys.readouterr().out)
+            assert out["ok"] is True, (cmd, out)
+        # history content checked separately below (single repo path)
+
+    def test_cli_history_json_newest_first(self, tmp_path, capsys):
+        repo = make_repo(tmp_path / "proof")
+        write_config(tmp_path, [str(repo)])
+        rc = cli_main(["--data-dir", str(tmp_path / "data"),
+                       "--config-dir", str(tmp_path / "config"),
+                       "history", "--json", "--limit", "1"])
+        assert rc == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["data"]["commits"] == [
+            {"revision": out["data"]["commits"][0]["revision"],
+             "date": out["data"]["commits"][0]["date"],
+             "author": "t", "subject": "commit 1"}
+        ]
+
+    def test_sync_status_no_remote_is_valid_local_only(self, tmp_path, capsys):
+        repo = make_repo(tmp_path / "solo")
+        write_config(tmp_path, [str(repo)])
+        rc = cli_main(["--data-dir", str(tmp_path / "data"),
+                       "--config-dir", str(tmp_path / "config"),
+                       "sync-status", "--json"])
+        assert rc == 0
+        out = json.loads(capsys.readouterr().out)
+        entry = out["data"]["repos"][0]
+        assert entry["ahead"] is None
+        assert entry["behind"] is None
+        assert entry["remote"] is None
+
+    def test_unconfigured_paths_is_not_configured(self, tmp_path, capsys):
+        init_world(tmp_path / "data", tmp_path / "config")
+        for cmd in ("changes", "history", "sync-status"):
+            rc = cli_main(["--data-dir", str(tmp_path / "data"),
+                           "--config-dir", str(tmp_path / "config"),
+                           cmd, "--json"])
+            assert rc == 1  # EXIT_ERROR per envelope convention
+            out = json.loads(capsys.readouterr().out)
+            assert out["ok"] is False
+            assert out["status"] == "not_configured"
+
+    def test_registry_boots_with_native_baseline_zero_providers(self, tmp_path):
+        repo = make_repo(tmp_path / "wired")
+        config_dir = write_config(tmp_path, [str(repo)])
+        reg = build_registry(__import__("personal_world.world",
+                                        fromlist=["World"]).World(),
+                             Registry(), config_dir)
+        m = reg.manifest()["source_control"]
+        assert m["native_baseline"] is True
+        names = {p["name"] for p in m["providers"]}
+        assert "native-git" in names
+        native = [p for p in m["providers"] if p["name"] == "native-git"][0]
+        assert native["mode"] == ProviderMode.NATIVE.value
+        assert native["replaceable"] is False
+        # the native provider itself answers observe()
+        r = reg.observe("source_control")
+        assert r.ok
+        assert r.data["repositories"] == 1
+
+
+class TestEnrichmentSeam:
+    def test_fake_enrichment_does_not_change_native_shape(self, tmp_path):
+        """Framework E applied to the native baseline: adding an
+        enrichment provider must not alter the native canonical
+        function shapes (discovery/status/history dict keys)."""
+        repo = make_repo(tmp_path / "shape")
+        config_dir = write_config(tmp_path, [str(repo)])
+        (config_dir / "connections.json").write_text(json.dumps({
+            "$schema": "personal-world/connections/1",
+            "connections": [
+                {"type": "fake_source_control", "name": "fake",
+                 "capability": "source_control", "mode": "enrichment"},
+            ],
+            "source_control": {"search_paths": [str(repo)]},
+        }))
+        reg = build_registry(__import__("personal_world.world",
+                                        fromlist=["World"]).World(),
+                             Registry(), config_dir)
+        m = reg.manifest()["source_control"]
+        # enrichment provider is configured, so it takes the active
+        # slot; the native baseline remains as the degradation target
+        assert m["active_provider"] == "fake"
+        assert m["native_baseline"] is True
+        assert m["on_last_provider_removed"] == "degrades to native baseline"
+
+        # degradation proof: remove the enrichment provider -> the
+        # native baseline takes over, capability concept unchanged
+        bare = build_registry(__import__("personal_world.world",
+                                         fromlist=["World"]).World(),
+                              Registry(), write_config(tmp_path, [str(repo)]))
+        m2 = bare.manifest()["source_control"]
+        assert m2["active_provider"] == "native-git"
+        assert m2["capability"] == m["capability"]
+        assert m2["contract"] == m["contract"]
+        # native canonical shapes are identical with/without a provider
+        base_keys = set(repository_status(str(repo)))
+        assert base_keys == {
+            "path", "name", "branch", "revision", "dirty",
+            "ahead", "behind", "remote",
+            "last_commit_date", "last_commit_subject", "error",
+        }
+        hist = repository_history(str(repo), limit=1)
+        assert set(hist[0]) == {"revision", "date", "author", "subject"}
+        disc = discover_repositories([str(repo)])[0]
+        assert set(disc) == {"path", "name", "is_repository"}
+
+
+class TestManifest:
+    def test_manifest_lists_source_control_as_native_baseline(self, tmp_path):
+        reg = build_registry(__import__("personal_world.world",
+                                        fromlist=["World"]).World(),
+                             Registry(), write_config(tmp_path, []))
+        m = reg.manifest()["source_control"]
+        assert m["native_baseline"] is True
+        assert m["on_last_provider_removed"] == "degrades to native baseline"
+
+    def test_configured_search_paths_reads_and_fails_soft(self, tmp_path):
+        assert configured_search_paths(tmp_path) == []  # no file
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "connections.json").write_text("{not json")
+        assert configured_search_paths(config_dir) == []  # malformed: soft
+        (config_dir / "connections.json").write_text(json.dumps({
+            "connections": [],
+            "source_control": {"search_paths": ["/a", "/b", 3, ""]},
+        }))
+        assert configured_search_paths(config_dir) == ["/a", "/b"]
+
+
+class TestNativeGitProvider:
+    def test_observe_states(self, tmp_path):
+        repo = make_repo(tmp_path / "obs")
+        p = NativeGit([str(repo)])
+        r = p.observe()
+        assert r.ok and r.status == "healthy"
+        empty = NativeGit([])
+        r = empty.observe()
+        assert not r.ok and r.status == "not_configured"
+        nothing = NativeGit([str(tmp_path / "void")])
+        r = nothing.observe()
+        assert not r.ok and r.status == "needs_attention"
