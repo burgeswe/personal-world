@@ -82,6 +82,24 @@ lab daily                                     # what matters today
 docker inspect personal-world --format '{{.State.Health.Status}}'
 ```
 
+## Framework conformance
+
+Architecture invariants (capabilities core-owned, providers
+optional/replaceable, no inline secrets, export portability,
+design-tool independence) are enforced, not aspirational:
+
+```bash
+uv run personal-world framework validate --json   # {"ok":true,"data":{"count":0}}
+uv run pytest                                      # includes test_framework.py
+```
+
+`GET /api/manifest` exposes the capability manifest: what each
+capability is, its contract, native baseline presence, active
+provider, provider mode/replaceability, and expected behavior when
+the last provider is removed. The dashboard and `lab` CLI should
+read capability state from the API/manifest rather than hard-coding
+provider assumptions. Normative doc: `docs/NATIVE-BASELINE-AND-ENRICHMENT.md`.
+
 ## Known limitations (V0.1)
 
 - Daily loop runs on request; no scheduler/cron yet.
