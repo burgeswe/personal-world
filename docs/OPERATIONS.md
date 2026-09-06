@@ -73,6 +73,53 @@ stopped, every other `lab` subcommand is unaffected, and status/daily
 degrade to a one-row explicit-unavailable matrix. `PW_URL`/`PW_TOKEN`
 env overrides exist for testing; defaults target the VM deployment.
 
+## Deploying updates to the VM (private-repo fetch)
+
+The production checkout is `/opt/personal-world-src` on the stack VM
+(`homelab-vm`, 192.0.2.10). The remote points at the LAN-direct
+Gitea URL — this is deliberate, not a workaround:
+
+```text
+origin  http://192.0.2.20:3000/rylee/personal-world.git
+```
+
+Authentication uses the `tea login helper` git credential helper
+(`tea logins list` on the VM shows the `homelab` login). Fetch and
+fast-forward are the whole deploy:
+
+```bash
+ssh homelab-vm 'git -C /opt/personal-world-src fetch origin main \
+  && git -C /opt/personal-world-src merge --ff-only origin/main'
+cd /opt/personal-world-src && docker compose up -d --build
+```
+
+`--ff-only` is the safety property: a diverged or dirty checkout
+fails loudly instead of clobbering local state. Do not bake
+credentials into images or add an embedded-token remote; the
+credential helper reads the existing `tea` login. No deploy script
+lives in this repo — deployment is two SSH commands, documented here.
+
+## LangGraph networking decision
+
+The memory provider reaches LangGraph at
+`http://192.0.2.10:18000` (`config/connections.json`, `base_url`)
+— a host-IP URL, not a compose service name. This is a considered
+decision, kept because the alternatives add fragility:
+
+- The seam is already env-free config, not hardcoded: point
+  `base_url` at any reachable URL and the adapter follows. No code
+  change is ever needed to re-target it.
+- A compose network alias would couple this standalone repo to the
+  homelab's docker network topology (`langgraph` runs in a different
+  compose project; joining their network from this repo violates the
+  standalone framework rule that providers never become boot
+  dependencies).
+- The URL is verified reachable from inside the container; host-IP
+  routing works on this LAN and needs no privileged DNS.
+
+If LangGraph ever moves hosts or ports, edit
+`config/connections.json` — one line, deploy, done.
+
 ## Verifying health
 
 ```bash
