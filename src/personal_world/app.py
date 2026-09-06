@@ -18,33 +18,55 @@ from .model import (
     Pack,
     Policy,
     Provider,
+    ProviderMode,
+    SCHEMA_VERSION,
 )
-from .providers.adapters import CandyDispenser, Gitea, HttpStatus, LangGraphMemory
+from .providers.adapters import (
+    CandyDispenser,
+    FakeSourceControl,
+    Gitea,
+    HttpStatus,
+    LangGraphMemory,
+)
 from .providers.registry import Contract, Registry, StatusContract
 from .world import World
 
 
+# key, description, native_baseline (framework Rule 2: does the core
+# itself give this capability useful local meaning with zero providers?)
+STANDARD_CAPABILITIES: list[tuple[str, str, bool]] = [
+    ("source_control", "Read repositories, issues, pull requests", False),
+    ("deployment", "Deploy or schedule services", False),
+    ("secrets", "Broker secret material to consumers", False),
+    ("calendar", "Observe calendar events", False),
+    ("discovery", "Discover content matching interests", False),
+    ("settings_validation", "Validate settings against intent", True),
+    ("service_validation", "Validate service health", False),
+    ("update_discovery", "Discover available updates", False),
+    ("memory", "Search long-term memory", False),
+    ("journal", "Read structured history", True),
+    ("reasoning", "Optional AI interpretation", False),
+    ("notifications", "Send notifications", False),
+    ("scheduler", "Run tasks on a schedule", False),
+]
+
+
 def define_standard_capabilities(registry: Registry) -> None:
-    for key, doc in [
-        ("source_control", "Read repositories, issues, pull requests"),
-        ("deployment", "Deploy or schedule services"),
-        ("secrets", "Broker secret material to consumers"),
-        ("calendar", "Observe calendar events"),
-        ("discovery", "Discover content matching interests"),
-        ("settings_validation", "Validate settings against intent"),
-        ("service_validation", "Validate service health"),
-        ("update_discovery", "Discover available updates"),
-        ("memory", "Search long-term memory"),
-        ("journal", "Read structured history"),
-        ("reasoning", "Optional AI interpretation"),
-        ("notifications", "Send notifications"),
-        ("scheduler", "Run tasks on a schedule"),
-    ]:
+    for key, doc, _native in STANDARD_CAPABILITIES:
         registry.define_capability(key, StatusContract)
+
+
+def native_baseline_capabilities() -> set[str]:
+    """Capability keys whose native baseline ships with the core
+    (framework Rule 2). The manifest reads this; the registry's
+    native_baseline answer is 'core provides meaning without any
+    provider', which is exactly this set."""
+    return {key for key, _doc, native in STANDARD_CAPABILITIES if native}
 
 
 def save_world(world: World, path: Path) -> None:
     payload = {
+        "schema_version": SCHEMA_VERSION,
         "facts": {k: f.model_dump(mode="json") for k, f in world.facts.items()},
         "intents": {k: i.model_dump(mode="json") for k, i in world.intents.items()},
         "policies": {k: p.model_dump(mode="json") for k, p in world.policies.items()},
@@ -68,6 +90,13 @@ def load_world(path: Path) -> World:
     if not path.exists():
         return world
     payload: dict[str, Any] = json.loads(path.read_text())
+    version = payload.get("schema_version")
+    if version is not None and version != SCHEMA_VERSION:
+        raise ValueError(
+            f"world.json schema_version {version!r} != {SCHEMA_VERSION!r}; "
+            "explicit migration required (see docs/NATIVE-BASELINE-AND-"
+            "ENRICHMENT.md, Initialization)"
+        )
     for k, v in payload.get("facts", {}).items():
         world.facts[k] = Fact.model_validate(v)
     for k, v in payload.get("intents", {}).items():
@@ -91,6 +120,7 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
     """Wire providers from config/connections.json. Unknown provider
     types are skipped with a warning; the core still boots."""
     define_standard_capabilities(registry)
+    registry.native_baselines = native_baseline_capabilities()
     conn_path = config_dir / "connections.json"
     if not conn_path.exists():
         return registry
@@ -101,6 +131,8 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
         capability = conn.get("capability")
         if not all([ptype, name, capability]):
             continue
+        mode = ProviderMode(conn.get("mode", ProviderMode.ENRICHMENT.value))
+        required = bool(conn.get("required", False))
         if ptype == "http_status":
             url = conn.get("url")
             if url:
@@ -109,6 +141,8 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     capability, name, impl,
                     health_check=impl.probe,
                     writes="none",
+                    mode=mode,
+                    required=required,
                 )
         elif ptype == "gitea":
             base = conn.get("base_url")
@@ -118,6 +152,8 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     capability, name, impl,
                     health_check=lambda: impl.observe().ok,
                     writes="none",
+                    mode=mode,
+                    required=required,
                 )
         elif ptype == "langgraph":
             base = conn.get("base_url")
@@ -127,7 +163,21 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     capability, name, impl,
                     health_check=impl.health,
                     writes="none",
+                    mode=mode,
+                    required=required,
                 )
+        elif ptype == "fake_source_control":
+            # Reference provider for substitution proofs (framework E):
+            # same SourceControlContract, deterministic, no external
+            # system. Never a production dependency.
+            impl = FakeSourceControl(conn.get("version", "fake-1.0"))
+            registry.register(
+                capability, name, impl,
+                health_check=lambda: True,
+                writes="none",
+                mode=mode,
+                required=required,
+            )
         elif ptype == "candy":
             base = conn.get("base_url")
             if base:
@@ -136,6 +186,8 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     capability, name, impl,
                     health_check=lambda: impl.health().ok,
                     writes="none",
+                    mode=mode,
+                    required=required,
                 )
         # unknown types: skipped, not fatal -- standalone deployments
         # boot with zero providers

@@ -3,6 +3,10 @@
 A provider maps one capability to one real system, without modifying
 that system. The core never requires any specific provider.
 
+Capabilities are core-owned; your provider implements or enriches one
+(see `docs/NATIVE-BASELINE-AND-ENRICHMENT.md` and
+`docs/adr/0001-capabilities-core-owned-providers-optional.md`).
+
 ## 1. Pick or define a capability
 
 Capabilities live in `src/personal_world/app.py::define_standard_capabilities`.
@@ -41,10 +45,22 @@ Add a branch in `src/personal_world/app.py::build_registry` keyed on a
 {
   "connections": [
     {"type": "mything", "name": "my-instance",
-     "capability": "service_validation", "base_url": "http://..."}
+     "capability": "service_validation", "base_url": "http://...",
+     "mode": "enrichment", "required": false}
   ]
 }
 ```
+
+Field rules (validated by `personal-world framework validate`):
+
+- `capability` must be a declared capability — providers never
+  introduce new capabilities through config.
+- `mode` is `native`, `enrichment` (default), or `replacement`.
+- `required: true` needs a `required_reason`; optional is the default.
+- `name` must be unique across all connections.
+- Never inline secret values: use env indirection (`token_env`,
+  `api_key_env`) or `secret_ref`. Keys named `token`, `password`,
+  `api_key` with literal values are rejected.
 
 Unknown types are skipped (not fatal): a standalone deployment boots
 with zero providers connected.
