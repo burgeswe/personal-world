@@ -75,3 +75,23 @@ tests and show the registry serves the contract through either
 
 `healthy` / `unhealthy` / `unknown` / `unavailable` — neutral words,
 never traffic-light colors, in any rendered output.
+
+## Design implementation handoff (for DESIGN-HANDOFF.md)
+
+If you are writing design handoff documentation, keep it tool-neutral.
+Suggested verbatim section:
+
+> Personal World design semantics are core-owned and live in the
+> repository: `design/tokens.json` (semantic tokens:
+> `surface.canvas`, `text.primary`, `status.healthy`, `focus.ring`,
+> `motion.reduced`), the `Accessibility` model (motion, contrast,
+> text_scale, density, targets), and the dashboard HTML/CSS as the
+> executable reference. Any design tool — Figma, Penpot, or
+> code-first — derives from these artifacts; none is the canonical
+> source. This document is a design implementation handoff: it must
+> remain usable to brief another design tool without reconstructing
+> the product from source code. Navigation and presentation are
+> organized around World concepts and user tasks (Today / World /
+> Journal / Settings), never third-party product names; provider
+> deep links are secondary navigation. A Figma-specific section may
+> exist within this handoff; Figma-as-architecture does not.

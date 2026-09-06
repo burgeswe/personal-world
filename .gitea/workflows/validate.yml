@@ -46,3 +46,19 @@ jobs:
         run: uv sync --extra test
       - name: Leakage + cemented-policy + read-safety gates
         run: uv run pytest tests/test_core.py -k "SettingsExportSafety or CementedPolicy or TestJournal or WorldExport" -v
+
+  framework-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Sync deps
+        run: uv sync --extra test
+      - name: Framework conformance (native baseline + optional enrichment)
+        run: uv run pytest tests/test_framework.py -v
+      - name: Repo config passes its own framework validator
+        run: uv run personal-world framework validate --json

@@ -445,6 +445,64 @@ class TestProviderClassificationGuard:
 
 
 # ---------------------------------------------------------------------------
+# Design tool independence (addendum): canonical tokens are repo-native
+# ---------------------------------------------------------------------------
+
+
+class TestDesignToolIndependence:
+    def test_canonical_tokens_exist_and_parse(self):
+        repo_root = Path(__file__).parent.parent
+        tokens = json.loads(
+            (repo_root / "design" / "tokens.json").read_text()
+        )
+        for required in (
+            "color", "status_vocabulary", "spacing", "targets",
+            "motion", "focus", "typography",
+        ):
+            assert required in tokens, f"tokens.json missing {required}"
+
+    def test_tokens_are_semantic_not_tool_internal(self):
+        """Token names are semantic concepts (surface.canvas,
+        status.healthy) — never design-application internal structure.
+        Comments may mention tools for context; names/values may not."""
+        repo_root = Path(__file__).parent.parent
+        tokens = json.loads(
+            (repo_root / "design" / "tokens.json").read_text()
+        )
+
+        def names_and_values(node):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    if k.startswith("_"):
+                        continue
+                    yield k
+                    yield from names_and_values(v)
+            elif isinstance(node, list):
+                for v in node:
+                    yield from names_and_values(v)
+
+        blob = " ".join(names_and_values(tokens)).lower()
+        for tool_marker in ("figma", "penpot", "sketch", "framer",
+                            "componentid", "nodeid", "filekey"):
+            assert tool_marker not in blob, f"tool marker {tool_marker} in tokens"
+
+    def test_accessibility_model_lives_in_core_not_design_files(self):
+        from personal_world.model import Accessibility
+        a = Accessibility()
+        assert a.motion == "reduced"  # core-owned default, tool-independent
+        assert Accessibility.model_fields["motion"] is not None
+
+    def test_dashboard_is_repo_native(self):
+        """The executable design reference is repo HTML/CSS, requiring
+        no design tool to understand or modify (addendum)."""
+        repo_root = Path(__file__).parent.parent
+        html = (repo_root / "src" / "personal_world" / "api.py").read_text()
+        assert "DASHBOARD_HTML" in html
+        assert ".fig" not in html
+        assert "figma.com" not in html
+
+
+# ---------------------------------------------------------------------------
 # Fake source control registration type (used by substitution test B/E)
 # ---------------------------------------------------------------------------
 
