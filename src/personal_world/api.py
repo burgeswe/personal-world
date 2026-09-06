@@ -108,6 +108,13 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             "data": [a.model_dump(mode="json") for a in registry.actors()],
         }
 
+    @app.get("/api/manifest", dependencies=[Depends(require_auth)])
+    async def manifest() -> dict:
+        """Machine-readable capability manifest (framework contract:
+        see docs/NATIVE-BASELINE-AND-ENRICHMENT.md)."""
+        _, registry = _state()
+        return {"ok": True, "data": registry.manifest()}
+
     @app.get("/api/exports/settings", dependencies=[Depends(require_auth)])
     async def settings_export() -> dict:
         world, _ = _state()

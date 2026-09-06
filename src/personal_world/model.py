@@ -105,13 +105,40 @@ class Capability(BaseModel):
 
     key: str
     description: str | None = None
+    native_baseline: bool = False
+    """True when the core itself gives the capability useful local
+    meaning with zero providers connected (framework Rule 2)."""
+
+
+class ProviderMode(str, Enum):
+    """How a provider relates to its capability (framework Rule 3).
+
+    native       -- core-owned baseline implementation; ships with the
+                    OSS product and works standalone.
+    enrichment   -- optional third-party richness; absence degrades
+                    fidelity, never validity (default).
+    replacement  -- swaps the native baseline for another system; still
+                    substitutable like any other provider.
+    """
+
+    NATIVE = "native"
+    ENRICHMENT = "enrichment"
+    REPLACEMENT = "replacement"
 
 
 class Provider(BaseModel):
-    """Mapping of a capability to a concrete system. Never hardcoded."""
+    """Mapping of a capability to a concrete system. Never hardcoded.
+
+    Optional is the default; ``required: true`` is an explicit, rare,
+    justified exception (framework Rule: providers cannot quietly
+    become required).
+    """
 
     capability: str
     name: str
+    mode: ProviderMode = ProviderMode.ENRICHMENT
+    required: bool = False
+    required_reason: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
     status: str = "unknown"
     requires_secrets: list[str] = Field(default_factory=list)
@@ -172,3 +199,9 @@ class Accessibility(BaseModel):
     text_scale: float = 1.0
     density: str = "normal"
     targets: str = "normal"
+
+
+SCHEMA_VERSION = "1"
+"""World persistence schema version. `personal-world init` stamps it;
+loaders treat a mismatch as an explicit migration need, never a silent
+reinterpretation."""

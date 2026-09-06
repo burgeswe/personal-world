@@ -167,3 +167,72 @@ class TestCoreBootsWithoutProviders:
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert out["ok"] is True
+
+class TestIntegrationLeakage:
+    """New V0.1 integrations must not leak auth or personal data
+    through exports or the API surface."""
+
+    def test_settings_export_has_no_auth_material(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        app = self._app(tmp_path, monkeypatch)
+        c = TestClient(app)
+        r = c.get("/api/exports/settings",
+                  headers={"Authorization": "Bearer secret-token-1"})
+        blob = r.text
+        for bad in ("secret-token-1", "Bearer", "Authorization",
+                    "Remote-User", "Remote-Groups", "session"):
+            assert bad not in blob, f"auth material in settings-export: {bad}"
+
+    def test_backup_has_no_auth_material(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        app = self._app(tmp_path, monkeypatch)
+        c = TestClient(app)
+        r = c.get("/api/backup",
+                  headers={"Authorization": "Bearer secret-token-1"})
+        assert "secret-token-1" not in r.text
+
+    def test_candy_observation_minimal_fields(self, monkeypatch):
+        import io
+        import urllib.request
+        from personal_world.providers.adapters import CandyDispenser
+        fake_health = {
+            "status": "ok", "notifications_sent": 3, "errors": 0,
+            "grabs_accepted": 1, "grabs_refused": 2,
+            "sources": ["mam_rss"], "seen_count": 100,
+            "mam_indexer_name": "PrivateIndexer",
+            "ebook_download_client_name": "PrivateClient",
+            "phase_c": {"bandcamp_tag": "personal-tag"},
+        }
+
+        class _Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, timeout=None):
+            return _Resp(json.dumps(fake_health).encode())
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        candy = CandyDispenser("http://candy.test:5126")
+        result = candy.observe()
+        blob = json.dumps(result.data)
+        for bad in ("PrivateIndexer", "PrivateClient", "personal-tag"):
+            assert bad not in blob, f"candy observation leaked: {bad}"
+        assert result.data["reachable"] is True
+        assert result.data["notifications_sent"] == 3
+
+    def test_forged_forwarded_identity_does_not_auth(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        app = self._app(tmp_path, monkeypatch)
+        c = TestClient(app)
+        r = c.get("/api/status",
+                  headers={"Remote-User": "rylee", "Remote-Groups": "users",
+                           "Authorization": "Bearer wrong"})
+        assert r.status_code == 401
+
+    def _app(self, tmp_path, monkeypatch):
+        from personal_world.api import create_app
+        monkeypatch.setenv("PW_API_TOKEN", "secret-token-1")
+        return create_app(data_dir=tmp_path, config_dir=tmp_path)

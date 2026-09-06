@@ -9,6 +9,8 @@ from pathlib import Path
 from . import export
 from .app import build_registry, load_world, save_world
 from .envelope import EXIT_DENIED, EXIT_DRIFT, EXIT_ERROR, EXIT_OK, Result
+from .framework import validate_connections, validate_compose_file, validate_settings_export
+from .init import init_world
 from .journal import Journal
 from .loop import daily
 from .providers.registry import Registry
@@ -116,9 +118,62 @@ def cmd_cement(world, registry, journal, args) -> int:
     except KeyError:
         return _emit(Result(ok=False, status="unknown-policy",
                             warnings=[f"no policy '{args.key}'"]),
-                     args.json, EXIT_ERROR)
+                      args.json, EXIT_ERROR)
     return _emit(Result(ok=True, status="cemented", changed=True,
                         data={"key": args.key}), args.json)
+
+
+def cmd_init(world, registry, journal, args) -> int:
+    from .init import init_world
+    return _emit(init_world(Path(args.data_dir), Path(args.config_dir)),
+                 args.json)
+
+
+def cmd_manifest(world, registry, journal, args) -> int:
+    return _emit(
+        Result(ok=True, status="healthy", data=registry.manifest()),
+        args.json,
+    )
+
+
+def cmd_framework_validate(world, registry, journal, args) -> int:
+    """Validate connections.json, compose, and settings-export against
+    the framework invariants (docs/NATIVE-BASELINE-AND-ENRICHMENT.md)."""
+    import json as _json
+    conn_path = Path(args.config_dir) / "connections.json"
+    if not conn_path.exists():
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no connections.json to validate"]),
+            args.json,
+        )
+    connections = _json.loads(conn_path.read_text())
+    known = set(registry._contracts.keys())
+    result = validate_connections(connections, known)
+    compose_path = Path(__file__).resolve().parents[2] / "compose.yaml"
+    if compose_path.exists():
+        provider_names = {
+            c.get("name") for c in connections.get("connections", [])
+        }
+        compose_result = validate_compose_file(compose_path, provider_names)
+        result.violations.extend(compose_result.violations)
+        result.ok = result.ok and compose_result.ok
+    if result.ok:
+        sx = export.settings_export(world)
+        sx_result = validate_settings_export(sx)
+        result.violations.extend(sx_result.violations)
+        result.ok = result.ok and sx_result.ok
+    payload = {
+        "violations": [str(v) for v in result.violations],
+        "count": len(result.violations),
+    }
+    if result.ok:
+        return _emit(Result(ok=True, status="healthy", data=payload), args.json)
+    return _emit(
+        Result(ok=False, status="unhealthy",
+               warnings=[str(v) for v in result.violations], data=payload),
+        args.json, EXIT_ERROR,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -152,6 +207,16 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--apply", action="store_true")
     add("cement", cmd_cement,
         help="make a policy cemented (explicit user action)")
+    add("init", cmd_init,
+        help="initialize local world state (idempotent, zero providers)")
+    add("manifest", cmd_manifest,
+        help="machine-readable capability/provider manifest")
+    fw = sub.add_parser("framework", help="framework-level tooling")
+    fw_sub = fw.add_subparsers(dest="framework_cmd", required=True)
+    fw_v = fw_sub.add_parser("validate",
+                             help="validate config against framework invariants")
+    fw_v.add_argument("--json", action="store_true")
+    fw_v.set_defaults(fn=cmd_framework_validate)
 
     args = p.parse_args(argv)
     data_dir = Path(args.data_dir)

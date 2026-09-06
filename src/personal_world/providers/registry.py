@@ -4,6 +4,10 @@ A provider is registered against a capability and implements whatever
 subset of the contract it supports. The registry fails closed: a missing
 or unhealthy provider yields 'unavailable', never an exception, and
 never a silent lie.
+
+Capabilities are core-owned (framework invariant): a provider may
+implement or enrich a capability, never define it. See
+docs/NATIVE-BASELINE-AND-ENRICHMENT.md.
 """
 
 from collections.abc import Callable
@@ -42,6 +46,8 @@ class Registry:
         self._contracts: dict[str, type[Contract]] = {}
         self._impls: dict[str, Contract] = {}
         self._health_checks: dict[str, Callable[[], bool]] = {}
+        #: capability keys whose native baseline ships with the core
+        self.native_baselines: set[str] = set()
 
     def define_capability(self, key: str, contract: type[Contract]) -> None:
         self._contracts[key] = contract
@@ -130,4 +136,52 @@ class Registry:
         for cap in self._contracts:
             r = self.observe(cap)
             out[cap] = {"ok": r.ok, "status": r.status, "warnings": r.warnings}
+        return out
+
+    def manifest(self) -> dict[str, Any]:
+        """Machine-readable capability manifest (framework contract).
+
+        Answers, per capability: does it exist, does the core provide a
+        native baseline, which providers can implement/enrich it, which
+        is currently active, and what happens if that provider
+        disappears. Provider entries carry mode and replaceability so
+        CLI, dashboard, settings-export, and future onboarding all read
+        the same truth instead of re-deriving it.
+        """
+        from ..model import ProviderMode
+
+        out: dict[str, Any] = {}
+        for cap, contract in self._contracts.items():
+            providers = [
+                p for p in self._providers.values() if p.capability == cap
+            ]
+            has_native_baseline = cap in self.native_baselines
+            active = self.provider_for(cap)
+            entry = {
+                "capability": cap,
+                "contract": contract.__name__,
+                "native_baseline": has_native_baseline,
+                "active_provider": active.name if active else None,
+                "providers": [
+                    {
+                        "name": p.name,
+                        "mode": p.mode.value,
+                        "replaceable": p.mode != ProviderMode.NATIVE,
+                        "required": p.required,
+                    }
+                    for p in providers
+                ],
+            }
+            if not providers and not has_native_baseline:
+                entry["on_last_provider_removed"] = "not_configured"
+            elif providers and not has_native_baseline:
+                entry["on_last_provider_removed"] = (
+                    "unavailable; capability concept remains, connect "
+                    "another provider or the native baseline"
+                )
+            else:
+                entry["on_last_provider_removed"] = (
+                    "degrades to native baseline"
+                )
+            out[cap] = entry
         return out
