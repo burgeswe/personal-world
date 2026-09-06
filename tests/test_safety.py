@@ -236,3 +236,61 @@ class TestIntegrationLeakage:
         from personal_world.api import create_app
         monkeypatch.setenv("PW_API_TOKEN", "secret-token-1")
         return create_app(data_dir=tmp_path, config_dir=tmp_path)
+
+
+class TestEntrypointTokenGuard:
+    """Papercut: compose must parse without PW_API_TOKEN present, so
+    the loud failure moved to runtime. The container entrypoint (sh -c
+    guard in Dockerfile CMD) must refuse to boot with an empty token,
+    and hand off to uvicorn otherwise. Tests parse the real Dockerfile
+    so the guard cannot drift from this test."""
+
+    @staticmethod
+    def _entrypoint_script() -> str:
+        import json
+        raw = (Path(__file__).parent.parent / "Dockerfile").read_text()
+        start = raw.index("\nCMD ") + 1
+        cmd_block = raw[start:]
+        # Join Dockerfile line continuations.
+        while True:
+            joined = cmd_block.replace("\\\n", " ", 1)
+            if joined == cmd_block:
+                break
+            cmd_block = joined
+        lines = cmd_block.split("\n")
+        kept = [lines[0].removeprefix("CMD ")]
+        for line in lines[1:]:
+            if not line.startswith(("    ", "\t")):
+                break
+            kept.append(line)
+        argv = json.loads(" ".join(k.strip() for k in kept))
+        assert argv[0] == "sh" and argv[1] == "-c", \
+            "entrypoint must be a sh -c guard"
+        return argv[2]
+
+    def test_entrypoint_refuses_empty_token(self):
+        import subprocess
+        script = self._entrypoint_script()
+        guard, _, tail = script.partition("exec ")
+        assert "uvicorn" in tail, "entrypoint must still exec uvicorn"
+        probe = guard + 'echo BOOTTED'
+        proc = subprocess.run(
+            ["sh", "-c", probe],
+            env={"PW_API_TOKEN": ""}, capture_output=True, text=True,
+        )
+        assert proc.returncode != 0, "empty token must fail the guard"
+        assert "PW_API_TOKEN" in proc.stderr
+        assert proc.stdout == "", "nothing may run after refusal"
+
+    def test_entrypoint_hands_off_with_token(self):
+        import subprocess
+        script = self._entrypoint_script()
+        guard, _, tail = script.partition("exec ")
+        assert tail, "entrypoint must exec the server, not run inline"
+        probe = guard + 'echo BOOTTED'
+        proc = subprocess.run(
+            ["sh", "-c", probe],
+            env={"PW_API_TOKEN": "t"}, capture_output=True, text=True,
+        )
+        assert proc.returncode == 0
+        assert proc.stdout.strip() == "BOOTTED"
