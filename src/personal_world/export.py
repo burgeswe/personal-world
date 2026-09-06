@@ -61,8 +61,10 @@ def settings_export(world: World) -> dict[str, Any]:
                 {
                     "capability": p.capability,
                     "name": p.name,
+                    "mode": p.mode.value,
+                    "replaceable": p.mode.value != "native",
                     "writes": p.writes,
-                    "requires_secrets": list(p.requires_secrets),
+                    "required": p.required,
                 }
             )
         if providers:

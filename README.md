@@ -34,5 +34,15 @@ cd personal-world
 docker compose up -d
 ```
 
+Or locally:
+
+```bash
+personal-world init        # create local state (idempotent, zero providers)
+personal-world daily       # the loop runs with no integrations connected
+```
+
 The core must boot and stay useful with zero optional providers
 connected, and must remain correct with no AI model attached.
+Capabilities are core-owned; providers (Gitea, Traefik, Komodo, ...)
+are optional enrichments — see
+`docs/NATIVE-BASELINE-AND-ENRICHMENT.md`.
