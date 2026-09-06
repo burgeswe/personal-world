@@ -14,6 +14,12 @@ from .init import init_world
 from .journal import Journal
 from .loop import daily
 from .providers.registry import Registry
+from .updates import (
+    UpdateRefused,
+    UpdateRollbackFailed,
+    build_provider,
+    UpdateManager,
+)
 from .world import MutationDenied, UserAction, World, status
 
 
@@ -176,6 +182,123 @@ def cmd_framework_validate(world, registry, journal, args) -> int:
     )
 
 
+def _updates_manager(world, registry, journal, args) -> tuple:
+    """Build the updates provider + manager, or None (not configured)."""
+    provider = build_provider(
+        config_dir=Path(args.config_dir),
+        provider=getattr(args, "provider", "compose"),
+        project_dir=getattr(args, "project_dir", None),
+    )
+    if provider is None:
+        return None, None
+    manager = UpdateManager(
+        provider,
+        journal,
+        session_path=Path(args.data_dir) / "updates-session.json",
+    )
+    return provider, manager
+
+
+def cmd_updates_check(world, registry, journal, args) -> int:
+    provider, mgr = _updates_manager(world, registry, journal, args)
+    if provider is None:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no update target configured; set "
+                             "PW_UPDATES_PROJECT_DIR or pass --project-dir"]),
+            args.json,
+        )
+    result = mgr.check(None if getattr(args, "all", False) else getattr(args, "target", None))
+    return _emit(Result(ok=True, status="healthy", data=result), args.json)
+
+
+def cmd_updates_preview(world, registry, journal, args) -> int:
+    provider, mgr = _updates_manager(world, registry, journal, args)
+    if provider is None:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no update target configured"]),
+            args.json,
+        )
+    try:
+        preview = mgr.preview(args.target)
+    except KeyError:
+        return _emit(
+            Result(ok=False, status="unknown-target",
+                   warnings=[f"unknown target '{args.target}' for provider "
+                             f"'{provider.name}'"]),
+            args.json,
+        )
+    return _emit(Result(ok=True, status="healthy", data=preview), args.json)
+
+
+def cmd_updates_apply(world, registry, journal, args) -> int:
+    provider, mgr = _updates_manager(world, registry, journal, args)
+    if provider is None:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no update target configured"]),
+            args.json,
+        )
+    try:
+        result = mgr.apply(args.target, confirm=bool(getattr(args, "yes", False)))
+    except UpdateRefused as e:
+        return _emit(Result(ok=False, status="refused", warnings=[str(e)]),
+                     args.json, EXIT_DENIED)
+    except UpdateRollbackFailed as e:
+        return _emit(
+            Result(ok=False, status="rollback-failed",
+                   warnings=[str(e)],
+                   data={"applied": True, "verified": False,
+                         "rolled_back": False}),
+            args.json, EXIT_ERROR,
+        )
+    if not result.verified and result.rolled_back:
+        return _emit(
+            Result(ok=False, status="rolled-back",
+                   warnings=[result.error or "verify failed; rolled back"],
+                   data=result),
+            args.json, EXIT_ERROR,
+        )
+    return _emit(
+        Result(ok=True, status="verified" if result.verified else "unverified",
+               changed=result.applied, data=result),
+        args.json,
+    )
+
+
+def cmd_updates_rollback(world, registry, journal, args) -> int:
+    provider, mgr = _updates_manager(world, registry, journal, args)
+    if provider is None:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no update target configured"]),
+            args.json,
+        )
+    try:
+        result = mgr.rollback(args.target)
+    except UpdateRefused as e:
+        return _emit(Result(ok=False, status="refused", warnings=[str(e)]),
+                     args.json, EXIT_DENIED)
+    return _emit(
+        Result(ok=True, status="rolled-back", changed=True, data=result),
+        args.json,
+    )
+
+
+def cmd_updates_status(world, registry, journal, args) -> int:
+    provider, mgr = _updates_manager(world, registry, journal, args)
+    if provider is None:
+        return _emit(
+            Result(ok=False, status="not_configured",
+                   warnings=["no update target configured"]),
+            args.json,
+        )
+    return _emit(Result(ok=True, status="healthy",
+                        data=mgr.status(live=bool(getattr(args, "live", False)))),
+                 args.json)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="personal-world")
     p.add_argument("--data-dir", default="./data")
@@ -217,6 +340,38 @@ def main(argv: list[str] | None = None) -> int:
                              help="validate config against framework invariants")
     fw_v.add_argument("--json", action="store_true")
     fw_v.set_defaults(fn=cmd_framework_validate)
+
+    up = sub.add_parser("updates",
+                        help="safe update flow: check/preview/apply/rollback")
+    up.add_argument("--provider", default="compose",
+                    help="update provider kind (compose|fake)")
+    up.add_argument("--project-dir", default=None,
+                    help="compose project directory (default: $PW_UPDATES_PROJECT_DIR)")
+    up_sub = up.add_subparsers(dest="updates_cmd", required=True)
+
+    def up_add(name, fn, help_):
+        sp = up_sub.add_parser(name, help=help_)
+        sp.add_argument("--json", action="store_true")
+        sp.set_defaults(fn=fn)
+        return sp
+
+    up_c = up_add("check", cmd_updates_check, "check for available updates (read-only)")
+    up_c.add_argument("target", nargs="?", default=None)
+    up_c.add_argument("--all", action="store_true", help="check every target")
+    up_add("preview", cmd_updates_preview,
+           "show exactly what an apply would change (read-only)")\
+        .add_argument("target")
+    up_a = up_add("apply", cmd_updates_apply,
+                  "apply the previewed update (requires --yes)")
+    up_a.add_argument("target")
+    up_a.add_argument("--yes", action="store_true",
+                      help="explicit confirmation; refused without it")
+    up_add("rollback", cmd_updates_rollback,
+           "roll back to the journaled known-good state")\
+        .add_argument("target")
+    up_s = up_add("status", cmd_updates_status, "updates session state")
+    up_s.add_argument("--live", action="store_true",
+                      help="include a read-only check per target")
 
     args = p.parse_args(argv)
     data_dir = Path(args.data_dir)
