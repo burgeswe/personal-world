@@ -256,8 +256,8 @@ DASHBOARD_HTML = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Today</title>
 <style>
-:root { color-scheme: dark; --bg:#0e0d12; --text:#d8d4cc; --border:#2a2731;
-        --panel:#16151b; --muted:#9a958c; }
+:root { color-scheme: dark; --bg:#0a0810; --text:#f0eaff; --border:#2a2538;
+        --panel:#12101a; --muted:#a397b8; }
 @media (prefers-color-scheme: light) {
   :root { color-scheme: light; --bg:#f4f2ed; --text:#26241f; --border:#d9d4c9;
           --panel:#ece9e1; --muted:#6b675f; }
