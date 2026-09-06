@@ -69,6 +69,7 @@ future AI/bot/VEFR clients consume identical endpoints:
 | GET /api/journal | recent events |
 | GET /api/journal/audit | audit-log rendering |
 | GET /api/actors | staff-directory view |
+| GET /api/memory/search | semantic recall via the memory provider |
 | GET /api/exports/settings | safe blueprint |
 | GET /api/exports/world | portable personal config |
 | GET /api/exports/story | human-readable journal |
@@ -95,6 +96,18 @@ the fake (`tests/test_core.py::TestProviderSubstitution`).
 | world-export | portable personal config | intents, policies, world-classified lore | secrets, private lore |
 | backup | DR payload (encrypt with your SOPS/age) | everything | (it IS everything — never share) |
 | story-export | human-readable journal | narrative events, disclosure-filtered | private events unless explicitly included |
+
+## Lore states and the existing epistemic vocabulary
+
+The lab already runs a de-facto epistemic taxonomy across three
+systems — rylee_lore claim states (`candidate/accepted/superseded/
+rejected/unknown`), rylee-context provenance triples (`source ×
+confidence × status`), and VEFR's propose-validate-apply Spark
+contract. Personal World's lore states (`confirmed/derived/suggested/
+ephemeral`) align with all of them, and the shared promotion rule is
+identical everywhere: **agents append evidence; only an explicit human
+action promotes to canon.** The core's `MutationDenied` gate enforces
+that rule structurally for every caller.
 
 ## Repository layout
 

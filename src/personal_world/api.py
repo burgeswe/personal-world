@@ -83,6 +83,23 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     async def journal_audit() -> dict:
         return {"ok": True, "data": {"text": AuditRenderer().render(journal)}}
 
+    @app.get("/api/memory/search", dependencies=[Depends(require_auth)])
+    async def memory_search(q: str, top_k: int = 5) -> dict:
+        """Semantic recall through the memory provider. Private data
+        class: results are personal context, never settings-exportable."""
+        from .model import Capability  # noqa: F401  (capability exists)
+        _, registry = _state()
+        provider = registry.provider_for("memory")
+        if provider is None:
+            return {"ok": False, "status": "unavailable",
+                    "warnings": ["no memory provider"]}
+        impl = registry.impl(provider.name)
+        if not hasattr(impl, "search"):
+            return {"ok": False, "status": "unavailable",
+                    "warnings": [f"provider '{provider.name}' cannot search"]}
+        result = impl.search(q, top_k=top_k)
+        return result.model_dump(mode="json")
+
     @app.get("/api/actors", dependencies=[Depends(require_auth)])
     async def actors() -> dict:
         _, registry = _state()
