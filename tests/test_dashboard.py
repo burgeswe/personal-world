@@ -59,8 +59,9 @@ class TestDashboardStructure:
         assert "prefers-color-scheme: light" in DASHBOARD_HTML
 
     def test_existing_dark_palette_preserved(self):
-        # No new hues introduced; only the documented dark palette
-        for hex_color in ("#0e0d12", "#d8d4cc", "#2a2731", "#16151b", "#9a958c"):
+        # Aubergine house palette (0.1 Figma export, Rylee 2026-09-06);
+        # no new hues introduced, only the documented dark palette
+        for hex_color in ("#0a0810", "#f0eaff", "#2a2538", "#12101a", "#a397b8"):
             assert hex_color in DASHBOARD_HTML
 
     def test_no_other_dashboard_html_constant(self):
