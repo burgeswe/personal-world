@@ -59,6 +59,47 @@ hierarchy, not the primary model. The existing homepage service
 launcher stays until Personal World proves itself through
 dogfooding; Personal World neither depends on it nor reproduces it.
 
+### A.2 Framework contract (normative for design)
+
+The architecture is enforced by a conformance validator
+(`personal-world framework validate`; `docs/NATIVE-BASELINE-AND-
+ENRICHMENT.md` is the normative doc). Implications the design MUST
+honor:
+
+- **Capabilities are core-owned; providers implement or enrich
+  them.** The UI presents capability concepts ("Source Control",
+  "Ingress", "Discovery"), never vendor identities as the IA.
+- **Native baseline, optional enrichment.** Every capability state
+  the UI shows must be honest about: native-only, enriched,
+  provider unavailable, provider not configured, or replacement
+  provider swapped in — WITHOUT redesigning the concept. The
+  manifest contract (`GET /api/manifest`) exposes exactly this:
+  capability → contract, native_baseline (true/false), active
+  provider, provider mode (native/enrichment/replacement),
+  replaceable, and expected behavior when the last provider is
+  removed. Design component states against the manifest vocabulary,
+  not against specific vendors.
+- **`native_baseline: false` with no provider is a VALID state**
+  (e.g. source_control before any provider is connected): the
+  capability concept exists; nothing is configured. Not a failure,
+  not an error — design an honest "not configured" presentation.
+- **Provider-neutral status vocabulary** (section D) is canonical;
+  no vendor-specific UI is needed to understand health.
+- **Modularity:** the design must make sense for a basic OSS
+  install (zero providers) and Rylee's highly integrated homelab
+  without becoming two products. Density/presence of enriched
+  sections adapts; structure does not.
+- **Accessibility semantics are core-owned** (world state), not
+  theme-owned or design-tool-owned. Any theme the design produces
+  CONSUMES the accessibility preference contract; it never replaces
+  it (section H).
+- **Tool neutrality:** this handoff (markdown + `design/tokens.json`
+  + the dashboard as executable reference) IS the canonical design
+  contract. Figma may be the immediate workflow, but nothing in the
+  product may depend on Figma IDs, variables, component keys, or
+  APIs. Design output should map back to the canonical tokens, not
+  become the source of truth.
+
 ---
 
 ## B. Actual information architecture (implemented today)
@@ -425,8 +466,14 @@ embedded here to keep this document shareable.
   structure; a future template engine is acceptable, a SPA rewrite
   is not required.
 - Styling: inline `<style>` in the template today; design tokens
-  should land as a CSS custom-properties file the template imports
-  (`design/tokens.json` exists as a starting point).
+  should land as a CSS custom-properties file derived from the
+  canonical `design/tokens.json` (repo-native, semantic,
+  tool-neutral — the single token source; any design-tool token
+  representation is derived from it, never the reverse).
+- Manifest-driven components: status/provider components should
+  render from `GET /api/manifest` + `/api/status` vocabulary rather
+  than hard-coded provider lists, so a replacement provider or a
+  native baseline never requires UI redesign.
 - What can change freely: layout, type, color (within a11y
   contract), component shapes, copy.
 - What must not change: status vocabulary words, the API contract,
