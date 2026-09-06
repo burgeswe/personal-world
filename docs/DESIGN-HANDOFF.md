@@ -18,6 +18,13 @@ control surface** — the front door to her lab, designed to answer
 *her* questions ("what matters today?") rather than to list
 installed services.
 
+More precisely, it is a **personal appliance**: one small
+understandable tool that helps her run and understand her world.
+The core experience is CLI + lightweight web interface + portable
+state + journal/history + capabilities + optional providers. The
+web interface is a friendly visual wrapper over the same core the
+CLI/API uses — not a separate application architecture.
+
 - **Serves:** exactly one person (the operator) plus her AI agents. Not
   multi-tenant, not a public product, but built on generic open-source
   core so the design must not hard-code the operator into it.
@@ -32,6 +39,85 @@ installed services.
   Traefik configurator) are **delegated** — linked out, never
   recreated. Rule: *native when the task is about the user's World;
   delegate when the task is about operating the provider itself.*
+- **Design target (the desired feeling):** a **calm, cute, highly
+  legible personal control desk** — not a homelab homepage, not an
+  enterprise admin console, not a collection of third-party
+  dashboards. It should help the person understand: what matters /
+  is everything okay / what changed / what did my world find / what
+  am I working on / what can I safely do / what happened before /
+  where is the specialist tool if really needed.
+
+### A.0 Workflows over products (binding for design)
+
+Personal World is not primarily an integration dashboard. It is a
+small personal toolkit built around **understandable workflows**.
+Design every surface by first asking *"what is the person trying to
+know or do?"* — provider identity is provenance, secondary.
+
+| Present this workflow | NOT this product UI |
+|---|---|
+| Git-ish workflow | Gitea UI |
+| Safe secrets | Vault UI |
+| Identity / access | Authelia UI |
+| Service availability | Traefik UI |
+| Deploy / update / rollback | Komodo UI |
+| Reasoning / assistance | OpenWebUI UI |
+
+External products may provide richer implementations of these
+workflows; they do not define how Personal World presents them.
+
+### A.0.1 CLI first; UI as another view
+
+Every important concept must make sense without the web UI:
+
+```text
+pw status / pw daily / pw connect / pw update / pw backup / pw rollback
+```
+
+(and their `lab` aliases) describe the same World the web interface
+renders. The UI may make workflows easier and more discoverable; it
+must never become the only way to understand or operate the system.
+
+### A.0.2 Simple before enterprise
+
+Do not visually imply enterprise-scale infrastructure is required.
+Auth, secrets, Git, AI, deployment, notifications present in the
+smallest human-understandable terms appropriate to their jobs.
+Advanced provider details belong in disclosure/detail surfaces or
+specialist external tools. Avoid language and metaphors that
+require understanding infrastructure products merely to use
+Personal World.
+
+### A.0.3 Local-first, external-capable
+
+All of these configurations are equally legitimate and NONE may
+look like the "real" one while others look incomplete:
+
+```text
+Personal World only / + local model / + cloud AI / + paid service /
++ self-hosted provider stack
+```
+
+An external provider ENRICHES a capability; it does not legitimize
+it.
+
+### A.0.4 Expansion without regression
+
+A major product objective: **adding something new must not
+destabilize what already works.** Make modularity visible. Connecting
+an enrichment provider should read like:
+
+```text
+Source Control
+  Basic
+  ✓ Local repository tracking
+  Connected enrichment
+  ✓ Gitea — adds reviews, PRs, remote repository status
+```
+
+NOT like the section transformed into a Gitea application. If the
+provider disappears, the concept remains and the UI honestly shows
+reduced capability.
 
 ### A.1 Product direction (binding for design)
 
@@ -315,7 +401,7 @@ for: desktop (primary), narrow desktop/tablet (secondary), mobile
 | Asset | Status | Reference |
 |---|---|---|
 | `design/rylee-lab/tokens.css` (homelab repo) | **canonical house palette** | aubergine near-black surfaces `#0a0810`/`#12101a`, warm-pale text `#f0eaff`/`#a397b8`, mermaid-teal accent `#72b1b1`, dusty-rose `#b57f8b`, mascot pastels |
-| Figma file `kRwOoUtrZsbmB4NfQzxXNR` + `/mnt/c/Users/ryleeb/projects/Figma/` | **canonical design authority** | both VEFR + LRW name it single source of truth |
+| Figma file `kRwOoUtrZsbmB4NfQzxXNR` + `/mnt/c/Users/ryleeb/projects/Figma/` | **high-value visual reference** for the operator's established design language | NOT canonical product truth. Canonical design truth is repo-owned: this document, `design/tokens.json`, accessibility semantics, status vocabulary, interaction contracts, implemented API behavior. Figma/Penpot/Sketch/Framer/code-first design all CONSUME those artifacts; any tool-specific output is derived work, never a required dependency |
 | `lrw-theme/` (homelab) | canonical artwork (robots/stickers), Outfit/Geist/Geist Mono type | warm charcoal + dusty pink `#b87788` |
 | `web/vefr-foundation.css` (vefr repo) | canonical a11y contract | 44px floor, motion-off, Atkinson Hyperlegible Next, contrast as band 8–10:1 (above 10:1 halates), 3 user contrast themes |
 | OpenDyslexic (homepage global), Atkinson Hyperlegible (VEFR body) | sanctioned type choices | pick from this set; justify additions |
@@ -403,6 +489,21 @@ preference exists in the schema.
     disclosure).
 11. Do not default to a Homarr/Homepage/Heimdall service grid —
     the person's World is the IA, machinery is supporting cast.
+12. Design workflows, not product UIs (A.0): a surface is
+    "Source Control" or "Safe secrets", never a Gitea/Vault panel.
+13. CLI parity: every concept must be understandable and operable
+    without the web UI; the UI is a view, never the source of truth.
+14. No configuration may look like the "real" one — Personal World
+    only, + local model, + cloud AI, + paid service, and
+    + self-hosted stack are all equally legitimate presentations.
+15. Expansion without regression: enrichment must present as an
+    add-on to a surviving concept (A.0.4), never as a takeover; if
+    a provider vanishes, the concept degrades honestly.
+16. No enterprise implication: smallest human-understandable terms;
+    infrastructure vocabulary stays inside disclosures.
+17. Cute sits ON TOP of the accessibility contract, never competes
+    with it — personality lives in decorative slots only and never
+    carries operational meaning.
 
 ---
 
