@@ -3,7 +3,7 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 RUN pip install --no-cache-dir uv \
     && uv sync --frozen --no-dev --extra test \
     && rm -rf ~/.cache

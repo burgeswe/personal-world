@@ -76,12 +76,18 @@ class Gitea(SourceControlContract):
             health = self._get("/healthz")
             version = health.get("version", "unknown")
             return ok("healthy", data={"version": version})
-        except Exception as e:
-            return Result(
-                ok=False,
-                status="unhealthy",
-                warnings=[f"gitea: {e}"],
-            )
+        except Exception:
+            # /healthz may not exist on all Gitea versions; fall back to
+            # the versioned endpoint
+            try:
+                self._get("/version")
+                return ok("healthy", data={"version": "unknown"})
+            except Exception as e:
+                return Result(
+                    ok=False,
+                    status="unhealthy",
+                    warnings=[f"gitea: {e}"],
+                )
 
 
 class FakeSourceControl(SourceControlContract):
