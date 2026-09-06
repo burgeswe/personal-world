@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import export
+from . import export, prefs
 from .app import build_registry, load_world, save_world
 from .envelope import EXIT_DENIED, EXIT_DRIFT, EXIT_ERROR, EXIT_OK, Result
 from .framework import validate_connections, validate_compose_file, validate_settings_export
@@ -111,6 +111,30 @@ def cmd_backup(world, registry, journal, args) -> int:
     )
 
 
+def cmd_prefs(world, registry, journal, args) -> int:
+    data_dir = Path(args.data_dir)
+    world_path = data_dir / "world.json"
+    if args.prefs_cmd == "show":
+        return _emit(
+            Result(ok=True, status="healthy", data=prefs.get_prefs(world)),
+            args.json,
+        )
+    try:
+        data = prefs.set_prefs(
+            world, {args.key: prefs.coerce_value(args.key, args.value)}
+        )
+    except prefs.PrefsValueError as e:
+        return _emit(
+            Result(ok=False, status="rejected", warnings=[str(e)]),
+            args.json, EXIT_ERROR,
+        )
+    save_world(world, world_path)
+    return _emit(
+        Result(ok=True, status="updated", changed=True, data=data),
+        args.json,
+    )
+
+
 def cmd_cement(world, registry, journal, args) -> int:
     try:
         world.cement(args.key)
@@ -211,6 +235,17 @@ def main(argv: list[str] | None = None) -> int:
         help="initialize local world state (idempotent, zero providers)")
     add("manifest", cmd_manifest,
         help="machine-readable capability/provider manifest")
+    prefs_p = add("prefs", cmd_prefs,
+                  help="presentation preferences (accessibility floor enforced)")
+    prefs_sub = prefs_p.add_subparsers(dest="prefs_cmd", required=True)
+    prefs_show = prefs_sub.add_parser("show", help="effective preferences")
+    prefs_show.add_argument("--json", action="store_true")
+    prefs_show.set_defaults(fn=cmd_prefs)
+    pset = prefs_sub.add_parser("set", help="set one preference value")
+    pset.add_argument("key")
+    pset.add_argument("value")
+    pset.add_argument("--json", action="store_true")
+    pset.set_defaults(fn=cmd_prefs)
     fw = sub.add_parser("framework", help="framework-level tooling")
     fw_sub = fw.add_subparsers(dest="framework_cmd", required=True)
     fw_v = fw_sub.add_parser("validate",

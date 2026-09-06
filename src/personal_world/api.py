@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 
-from . import export
+from . import export, prefs
 from .app import build_registry, load_world, save_world
 from .envelope import Result
 from .journal import AuditRenderer, Journal
@@ -134,12 +134,42 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         world, _ = _state()
         return {"ok": True, "data": export.backup_payload(world, journal)}
 
+    @app.get("/api/prefs", dependencies=[Depends(require_auth)])
+    async def prefs_get() -> dict:
+        world, _ = _state()
+        return {"ok": True, "data": prefs.get_prefs(world)}
+
+    @app.put("/api/prefs", dependencies=[Depends(require_auth)])
+    async def prefs_put(request: Request) -> dict:
+        world, _ = _state()
+        try:
+            updates = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        try:
+            data = prefs.set_prefs(world, updates)
+        except prefs.PrefsValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        save_world(world, world_path)
+        return {"ok": True, "data": data}
+
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
         # Dashboard shell: static HTML that fetches /api/* with the
         # session's token. Auth is enforced per API call; the shell
-        # itself is inert without a valid token.
-        return DASHBOARD_HTML
+        # itself is inert without a valid token. Presentation prefs are
+        # server-rendered (CSS custom properties + data-* attributes),
+        # so preference application works with JavaScript disabled.
+        world, _ = _state()
+        p = prefs.get_prefs(world)
+        attrs = " ".join(
+            f'{k}="{v}"' for k, v in prefs.prefs_to_data_attributes(p).items()
+        )
+        return HTMLResponse(
+            DASHBOARD_HTML
+            .replace("<html lang=\"en\">", f'<html lang="en" {attrs}>')
+            .replace("<style>", str(prefs.prefs_style_block(p)), 1)
+        )
 
     return app
 
@@ -159,7 +189,8 @@ DASHBOARD_HTML = """<!doctype html>
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
-       margin: 0; padding: 1.5rem; line-height: 1.6; max-width: 100%; }
+       margin: 0; padding: 1.5rem; line-height: 1.6; max-width: 100%;
+       font-size: calc(1rem * var(--pw-text-scale, 1)); }
 .wrap { max-width: 48rem; margin: 0 auto; }
 h1 { font-size: 1.3rem; margin: 0 0 1rem; }
 h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
@@ -180,7 +211,9 @@ header.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
                 margin-bottom: 1rem; }
 nav[aria-label="Main"] { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 nav[aria-label="Main"] a { display: inline-flex; align-items: center;
-                           padding: 0.55rem 0.9rem; min-width: 44px; min-height: 44px;
+                           padding: 0.55rem 0.9rem;
+                           min-width: var(--pw-target-size, 44px);
+                           min-height: var(--pw-target-size, 44px);
                            color: var(--text); text-decoration: none;
                            border: 1px solid var(--border); border-radius: 6px;
                            background: var(--panel); }
@@ -188,10 +221,12 @@ nav[aria-label="Main"] a[aria-current="page"] { border-color: var(--text); }
 #login { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
 input { background: var(--panel); color: var(--text); border: 1px solid var(--border);
         border-radius: 6px; padding: 0.55rem; font-size: 1rem;
-        min-width: 44px; min-height: 44px; }
+        min-width: var(--pw-target-size, 44px);
+        min-height: var(--pw-target-size, 44px); }
 button { background: var(--panel); color: var(--text); border: 1px solid var(--border);
          border-radius: 6px; padding: 0.55rem 1rem; font-size: 1rem;
-         min-width: 44px; min-height: 44px; cursor: pointer; }
+         min-width: var(--pw-target-size, 44px);
+         min-height: var(--pw-target-size, 44px); cursor: pointer; }
 .skip { position: absolute; left: -9999px; top: auto; }
 .skip:focus { left: 1rem; top: 1rem; background: var(--panel);
               padding: 0.5rem; border: 1px solid var(--text); z-index: 10; }
