@@ -1,7 +1,8 @@
 # Contributing and support
 
-Personal World is in active development. Start with the [README](README.md) and
-[architecture](docs/ARCHITECTURE.md); design work starts at the
+Personal World is in active development. Start with the [README](README.md)
+and [architecture](docs/ARCHITECTURE.md); the full map is the
+[documentation index](docs/INDEX.md), and design work starts at the
 [handoff index](design/handoff/README.md). Public issues are suitable for
 non-sensitive bugs, questions and ideas. Use [private reporting](SECURITY.md)
 for security concerns. There is no support response-time guarantee.
@@ -19,6 +20,13 @@ for security concerns. There is no support response-time guarantee.
    `uv run personal-world framework validate --json` from the repository root.
 5. Open a PR explaining the behavior, evidence, and remaining limitations.
    A passing local check is not evidence of a deployed runtime.
+
+## Where things live
+
+The [documentation index](docs/INDEX.md) maps every document and marks
+its status (canonical / normative / spec / archived). [AGENTS.md](AGENTS.md)
+records the working-tree rules and where design truth lives — read it
+before editing shared design material.
 
 ## Design and licensing
 
