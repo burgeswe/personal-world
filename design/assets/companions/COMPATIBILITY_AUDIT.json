@@ -1,0 +1,191 @@
+{
+  "status": "Source-level compatibility audit passed; native Figma/LottieFiles import remains unverified.",
+  "checks": [
+    {
+      "source": "design/assets/companions/mermaid/mermaid-source-rig.svg",
+      "sha256": "16bc0d62b882ba3de7cdd441edf270c9f71523ee1955b2cd610d7545b77d8f80",
+      "bytes": 9918,
+      "named_groups": 18,
+      "named_shapes": 38,
+      "all_groups_and_shapes_named": true,
+      "explicit_shape_paint": true,
+      "viewBox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "unique_ids": true,
+      "vector_only": true,
+      "external_dependencies": false,
+      "raster_images": false,
+      "fonts": false,
+      "filters_masks_clips_blend_modes": false,
+      "neutral_render_pixel_identical_to_before_normalization": true,
+      "visible_bounds_at_512": [
+        105,
+        52,
+        430,
+        455
+      ],
+      "rendered_sizes": [
+        32,
+        48,
+        64,
+        512
+      ]
+    },
+    {
+      "source": "design/assets/companions/personal-world/personal-world-source-rig.svg",
+      "sha256": "35680d39e14849695890046c982bde42d5008a5b8602f2458a4f943faba97fd0",
+      "bytes": 7152,
+      "named_groups": 18,
+      "named_shapes": 23,
+      "all_groups_and_shapes_named": true,
+      "explicit_shape_paint": true,
+      "viewBox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "unique_ids": true,
+      "vector_only": true,
+      "external_dependencies": false,
+      "raster_images": false,
+      "fonts": false,
+      "filters_masks_clips_blend_modes": false,
+      "neutral_render_pixel_identical_to_before_normalization": true,
+      "visible_bounds_at_512": [
+        60,
+        108,
+        452,
+        373
+      ],
+      "rendered_sizes": [
+        32,
+        48,
+        64,
+        512
+      ]
+    },
+    {
+      "source": "design/assets/companions/robot/robot-source-rig.svg",
+      "sha256": "4b251e2831bbbee4fa3e02ac82c7592c106e2d6bdf036f9a6d487e0dc695d08f",
+      "bytes": 6746,
+      "named_groups": 20,
+      "named_shapes": 28,
+      "all_groups_and_shapes_named": true,
+      "explicit_shape_paint": true,
+      "viewBox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "unique_ids": true,
+      "vector_only": true,
+      "external_dependencies": false,
+      "raster_images": false,
+      "fonts": false,
+      "filters_masks_clips_blend_modes": false,
+      "neutral_render_pixel_identical_to_before_normalization": true,
+      "visible_bounds_at_512": [
+        99,
+        82,
+        413,
+        389
+      ],
+      "rendered_sizes": [
+        32,
+        48,
+        64,
+        512
+      ]
+    },
+    {
+      "source": "design/assets/companions/world-tree-squirrel/world-tree-squirrel-source-rig.svg",
+      "sha256": "32fa83f11e9c2b8bc0233a9e60e915f63d349b90115a7a6100190dcae6238885",
+      "bytes": 35480,
+      "named_groups": 60,
+      "named_shapes": 145,
+      "all_groups_and_shapes_named": true,
+      "explicit_shape_paint": true,
+      "viewBox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "unique_ids": true,
+      "vector_only": true,
+      "external_dependencies": false,
+      "raster_images": false,
+      "fonts": false,
+      "filters_masks_clips_blend_modes": false,
+      "neutral_render_pixel_identical_to_before_normalization": true,
+      "visible_bounds_at_512": [
+        65,
+        57,
+        441,
+        433
+      ],
+      "rendered_sizes": [
+        32,
+        48,
+        64,
+        512
+      ]
+    },
+    {
+      "source": "design/assets/companions/taco-news-truck/taco-news-truck-source-rig.svg",
+      "sha256": "e2e2ed0547065ca05ca8ec562da56465416103fc9a71b761a057eb1f0fbec4c2",
+      "bytes": 8995,
+      "named_groups": 26,
+      "named_shapes": 36,
+      "all_groups_and_shapes_named": true,
+      "explicit_shape_paint": true,
+      "viewBox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "unique_ids": true,
+      "vector_only": true,
+      "external_dependencies": false,
+      "raster_images": false,
+      "fonts": false,
+      "filters_masks_clips_blend_modes": false,
+      "neutral_render_pixel_identical_to_before_normalization": true,
+      "visible_bounds_at_512": [
+        78,
+        102,
+        424,
+        396
+      ],
+      "rendered_sizes": [
+        32,
+        48,
+        64,
+        512
+      ]
+    }
+  ],
+  "ring_control": {
+    "matching_local_pivots": true,
+    "matching_default_transforms": true,
+    "correct_back_globe_front_painter_order": true,
+    "native_controller_linking_required": true
+  },
+  "native_import_tests": {
+    "figma": "not run",
+    "lottie_creator": "not run",
+    "final_app_playback": "not run"
+  },
+  "reference_docs": [
+    "https://help.figma.com/hc/en-us/articles/360040028034-Add-images-and-videos-to-designs",
+    "https://help.figma.com/hc/en-us/articles/13402894554519-Export-formats-and-settings-for-static-designs",
+    "https://docs.lottiefiles.com/en/creator/09_assets-and-importing/importing"
+  ]
+}

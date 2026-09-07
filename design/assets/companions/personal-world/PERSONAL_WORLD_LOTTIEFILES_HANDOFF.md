@@ -84,3 +84,7 @@ The **app owns state selection, interruption, transitions and the destination af
 - Check ring alignment, face clearance and viewport clipping at all animation extremes. Keep both ring halves synchronized.
 
 Confirm that the import preserves editable groups, then validate the final export in the actual app renderer. Return the master animation, segment/frame map, static state poses and any remaining limitations. This deliverable is a source asset, not a tested Lottie animation or an installed app change.
+
+## Import preparation
+
+See the collection’s `IMPORT_GUIDE.md` and `COMPATIBILITY_AUDIT.json`. Every source group and drawable shape has a stable unique ID; paint settings are explicit, and the neutral render is unchanged. Preserve nested layers and use editable vector import. Native Figma/Lottie Creator import and final app playback still require the checks described in the guide.
