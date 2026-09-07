@@ -90,7 +90,7 @@ Each rule cites its enforcement path.
   "mode": "enrichment",
   "required": false,
   "required_reason": null,
-  "base_url": "http://192.0.2.20:3000",
+  "base_url": "http://service.example.invalid:3000",
   "token_env": "GITEA_TOKEN"
 }
 ```
