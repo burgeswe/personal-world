@@ -23,6 +23,7 @@ open an issue.
 | [adr/0001](adr/0001-capabilities-core-owned-providers-optional.md) | Accepted | Why the capability-ownership rule became test-enforced. |
 | [PROVIDERS.md](PROVIDERS.md) | Canonical | How to add a provider, step by step. |
 | [OPERATIONS.md](OPERATIONS.md) | Canonical | Running it locally: CLI, web API, containers, health. |
+| [HUMAN_RELIABILITY_CONTRACT.md](HUMAN_RELIABILITY_CONTRACT.md) | Canonical | How the system stays safe and operable without demanding maximum operator attention. |
 | [DESIGN-HANDOFF.md](DESIGN-HANDOFF.md) | Canonical (V0.1) | The implemented product as designed for the Figma stage. |
 
 ## Design
