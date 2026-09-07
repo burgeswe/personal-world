@@ -64,8 +64,12 @@ def _fake_lab(monkeypatch, packet: dict | None, fail: bool = False):
     return calls
 
 
-def test_default_matches_canonical_deployment():
-    assert DEFAULT_LAB == "/opt/homelab/scripts/lab"
+def test_default_matches_real_checkouts():
+    """VM 145 serves the homelab repo at /opt/scripts; the fallback
+    list covers a homelab-nested layout."""
+    from personal_world.providers.lab_state import LAB_CANDIDATES
+    assert DEFAULT_LAB == "/opt/scripts/lab"
+    assert LAB_CANDIDATES == ("/opt/scripts/lab", "/opt/homelab/scripts/lab")
     assert FRESHNESS == timedelta(minutes=30)
 
 
