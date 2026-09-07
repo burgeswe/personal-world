@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — eyes-closed import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="face-head">
+        <g id="face-details">
+          <g id="eyes-closed">
+            <g id="eye-closed" clip-path="url(#clip0_0_1)">
+              <path id="Vector_6" d="M215.712 144.229L215.1 143.285M204.694 141.324C205.329 141.919 206.482 142.434 207.998 142.798C209.514 143.161 211.319 143.356 213.169 143.356C215.019 143.356 216.824 143.161 218.34 142.798C219.856 142.434 221.01 141.919 221.644 141.324M219.949 143.357L218.486 142.762M206.389 143.357L207.852 142.762M210.627 144.229L211.238 143.285" stroke="#5A2D35" stroke-width="3" stroke-linecap="round" />
+            </g>
+            <g id="eye-closed_2" clip-path="url(#clip1_0_1)">
+              <path id="Vector_7" d="M258.929 144.229L258.318 143.285M247.912 141.324C248.546 141.919 249.7 142.434 251.215 142.798C252.731 143.161 254.537 143.356 256.387 143.356C258.237 143.356 260.042 143.161 261.558 142.798C263.074 142.434 264.227 141.919 264.861 141.324M263.167 143.357L261.704 142.762M249.607 143.357L251.07 142.762M253.844 144.229L254.456 143.285" stroke="#5A2D35" stroke-width="3" stroke-linecap="round" />
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <defs>
+    <clipPath id="clip0_0_1">
+      <rect width="20.3376" height="6.97171" fill="white" transform="translate(203 139)" />
+    </clipPath>
+    <clipPath id="clip1_0_1">
+      <rect width="20.3376" height="6.97171" fill="white" transform="translate(246.218 139)" />
+    </clipPath>
+  </defs>
+</svg>

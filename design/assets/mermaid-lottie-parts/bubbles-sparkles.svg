@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — bubbles-sparkles import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="bubbles-sparkles">
+        <path id="bubble-large" d="M354 189C358.971 189 363 184.971 363 180C363 175.029 358.971 171 354 171C349.029 171 345 175.029 345 180C345 184.971 349.029 189 354 189Z" stroke="#72B1B1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="bubble-small" d="M369 160C371.209 160 373 158.209 373 156C373 153.791 371.209 152 369 152C366.791 152 365 153.791 365 156C365 158.209 366.791 160 369 160Z" stroke="#72B1B1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="sparkle" d="M117 303C117 309.667 113.667 313.333 107 314C113.667 314.667 117 318.333 117 325C117.667 318.333 121.333 314.667 128 314C121.333 313.333 117.667 309.667 117 303Z" fill="#F6F0BA" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — eyes-open import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="face-head">
+        <g id="face-details">
+          <g id="eyes-open">
+            <path id="Vector_2" d="M207 145C209.651 145 211.8 142.314 211.8 139C211.8 135.686 209.651 133 207 133C204.349 133 202.2 135.686 202.2 139C202.2 142.314 204.349 145 207 145Z" fill="#5A2D35" />
+            <path id="Vector_3" d="M263 145C265.651 145 267.8 142.314 267.8 139C267.8 135.686 265.651 133 263 133C260.349 133 258.2 135.686 258.2 139C258.2 142.314 260.349 145 263 145Z" fill="#5A2D35" />
+            <path id="Vector_4" d="M205.5 138.5C206.328 138.5 207 137.828 207 137C207 136.172 206.328 135.5 205.5 135.5C204.672 135.5 204 136.172 204 137C204 137.828 204.672 138.5 205.5 138.5Z" fill="white" />
+            <path id="Vector_5" d="M261.5 138.5C262.328 138.5 263 137.828 263 137C263 136.172 262.328 135.5 261.5 135.5C260.672 135.5 260 136.172 260 137C260 137.828 260.672 138.5 261.5 138.5Z" fill="white" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

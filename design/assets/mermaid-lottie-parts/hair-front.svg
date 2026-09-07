@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — hair-front import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="hair-front">
+        <path id="fringe-pink" d="M160.001 123C151.001 95 174.001 62 211.001 59C248.001 52 280.001 67 296.001 95C274.001 113 242.001 110 224.001 88C214.001 113 187.001 126 160.001 123Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="fringe-sweep" d="M224 88C242 63 278 75 295 94C311 111 310 130 300 143C293 115 255 126 224 88Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="side-lock-mint" d="M164 111C184 117 179 146 164 166C152 182 151 197 154 209C132 198 133 169 143 149C149 136 146 119 164 111Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="hair-strand-detail" d="M181 99C191 97.6667 199 92.3333 205 83M255 88C269 87.3333 279.667 92.3333 287 103" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>
