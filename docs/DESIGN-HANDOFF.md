@@ -401,7 +401,7 @@ for: desktop (primary), narrow desktop/tablet (secondary), mobile
 | Asset | Status | Reference |
 |---|---|---|
 | `design/rylee-lab/tokens.css` (homelab repo) | **canonical house palette** | aubergine near-black surfaces `#0a0810`/`#12101a`, warm-pale text `#f0eaff`/`#a397b8`, mermaid-teal accent `#72b1b1`, dusty-rose `#b57f8b`, mascot pastels |
-| Figma file `kRwOoUtrZsbmB4NfQzxXNR` + `/mnt/c/Users/ryleeb/projects/Figma/` | **high-value visual reference** for Rylee's established design language | NOT canonical product truth. Canonical design truth is repo-owned: this document, `design/tokens.json`, accessibility semantics, status vocabulary, interaction contracts, implemented API behavior. Figma/Penpot/Sketch/Framer/code-first design all CONSUME those artifacts; any tool-specific output is derived work, never a required dependency |
+| Public [design handoff](../design/handoff/README.md) and [asset collection](../design/assets/README.md) | **high-value visual reference** for Rylee's established design language | NOT canonical product truth. Canonical design truth is repo-owned: this document, `design/tokens.json`, accessibility semantics, status vocabulary, interaction contracts, implemented API behavior. Figma/Penpot/Sketch/Framer/code-first design all CONSUME those artifacts; any tool-specific output is derived work, never a required dependency |
 | `lrw-theme/` (homelab) | canonical artwork (robots/stickers), Outfit/Geist/Geist Mono type | warm charcoal + dusty pink `#b87788` |
 | `web/vefr-foundation.css` (vefr repo) | canonical a11y contract | 44px floor, motion-off, Atkinson Hyperlegible Next, contrast as band 8–10:1 (above 10:1 halates), 3 user contrast themes |
 | OpenDyslexic (homepage global), Atkinson Hyperlegible (VEFR body) | sanctioned type choices | pick from this set; justify additions |
@@ -511,9 +511,9 @@ preference exists in the schema.
 
 ```bash
 git clone <personal-world repo> && cd personal-world
-export PW_API_TOKEN=dev-token
+export PW_API_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 docker compose up -d          # standalone, no lab needed
-open http://localhost:8000/    # token: dev-token
+open http://localhost:8000/    # use your private token
 ```
 
 States to capture for reference: first-run empty world (fresh
@@ -581,5 +581,5 @@ embedded here to keep this document shareable.
   classification semantics, auth flow shape, keyboard/focus
   behavior.
 
-*Sanitized for external design tooling. Contains no secrets, no
-tokens, no personal data — synthetic examples only.*
+*Sanitized for external design tooling. Intended for public design collaboration. Personal theme names and product
+references are intentional; review all additions for sensitive data.*
