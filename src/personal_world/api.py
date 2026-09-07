@@ -401,6 +401,10 @@ nav[aria-label="Main"] a { display: inline-flex; align-items: center;
                            background: var(--panel); }
 nav[aria-label="Main"] a[aria-current="page"] { border-color: var(--text); }
 #login { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+/* The load flow sets [hidden] after a successful token check; without
+   this rule display:flex would override the UA's [hidden] and the
+   login form would never leave the screen. */
+#login[hidden] { display: none; }
 input, textarea, select { background: var(--panel); color: var(--text);
         border: 1px solid var(--border); border-radius: 6px;
         padding: 0.55rem; font-size: 1rem; font-family: inherit;

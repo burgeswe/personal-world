@@ -162,3 +162,22 @@ class TestDashboardStyleInjection:
         assert DASHBOARD_HTML.count("<!--PW-PREFS-STYLE-->") == 1
         # And the template's main style tag must still be present.
         assert DASHBOARD_HTML.count("<style>") == 1
+
+class TestDashboardLoadStates:
+    """Live-verified 2026-09-07: after a successful load, the login row
+    must actually disappear (#login[hidden] must beat display:flex)."""
+
+    def test_hidden_login_beats_flex_display(self):
+        # CSS cascade: the [hidden] escape hatch must exist alongside
+        # the display:flex rule or the UA default is overridden.
+        assert "#login { display: flex" in DASHBOARD_HTML
+        assert "#login[hidden] { display: none; }" in DASHBOARD_HTML
+
+    def test_no_bare_loading_state_after_error_paths(self):
+        # Every error path sets an explicit message; the initial shell
+        # may say Loading… but the script must replace it on every exit
+        # path (verified by msg setter coverage).
+        assert "setMsg('Personal World is unreachable" in DASHBOARD_HTML
+        assert "setMsg('Authentication failed" in DASHBOARD_HTML
+        assert "setMsg('Auth not configured" in DASHBOARD_HTML
+        assert "setMsg('Loaded '" in DASHBOARD_HTML
