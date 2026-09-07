@@ -32,3 +32,19 @@ data/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Local provider configuration, credentials and diagnostic output
+config.local/
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.log
+*.dump
+*.sql
+*.db-*
+*.sqlite-*
+*.sqlite3-*
+.pytest_tmp/
+# Design PNG/SVG/ZIP/dotLottie deliverables are intentional source assets.

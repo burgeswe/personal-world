@@ -114,7 +114,7 @@ class TestProviderLifecycle:
     def test_provider_added_capability_richer_concept_unchanged(self, tmp_path):
         conns = {"connections": [
             {"type": "gitea", "name": "gitea", "capability": "source_control",
-             "base_url": "http://192.168.2.216:3000"},
+             "base_url": "http://service.example.invalid:3000"},
         ]}
         config_dir = _write_conns(tmp_path, conns)
         reg = build_registry(World(), Registry(), config_dir)
@@ -152,7 +152,7 @@ class TestProviderLifecycle:
         consistent world; capability concept remains."""
         conns = {"connections": [
             {"type": "gitea", "name": "gitea", "capability": "source_control",
-             "base_url": "http://192.168.2.216:3000"},
+             "base_url": "http://service.example.invalid:3000"},
         ]}
         config_dir = _write_conns(tmp_path, conns)
         w = World()
@@ -259,7 +259,7 @@ class TestInit:
         init_world(tmp_path, tmp_path)
         conns = {"connections": [
             {"type": "gitea", "name": "gitea", "capability": "source_control",
-             "base_url": "http://192.168.2.216:3000"},
+             "base_url": "http://service.example.invalid:3000"},
         ]}
         _write_conns(tmp_path, conns)
         w = load_world(tmp_path / "world.json")
