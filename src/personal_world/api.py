@@ -294,7 +294,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         return HTMLResponse(
             DASHBOARD_HTML
             .replace("<html lang=\"en\">", f'<html lang="en" {attrs}>')
-            .replace("<style>", str(prefs.prefs_style_block(p)), 1)
+            .replace(PREFS_STYLE_MARKER, str(prefs.prefs_style_block(p)), 1)
         )
 
     companion_dir = Path(__file__).parent / "static" / "companions"
@@ -322,12 +322,18 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     return app
 
 
+# Replaced server-side with prefs.prefs_style_block() at render time.
+# A marker, not "<style>", so injection can never consume the main
+# stylesheet's opening tag (that bug orphaned the whole dashboard CSS
+# as visible body text — see the dashboard regression tests).
+PREFS_STYLE_MARKER = "<!--PW-PREFS-STYLE-->"
 DASHBOARD_HTML = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Today</title>
+<!--PW-PREFS-STYLE-->
 <style>
 :root {
   color-scheme: dark;

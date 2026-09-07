@@ -112,3 +112,53 @@ class TestDashboardEndpoint:
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
         assert "Personal World — Today" in r.text
+
+
+class TestDashboardStyleInjection:
+    """Regression: CSS-as-visible-text. The server-side prefs injection
+    used to consume the main stylesheet's opening <style> tag, orphaning
+    the whole dashboard CSS as literal page text (observed live
+    2026-09-07). These tests fail if that class of bug returns."""
+
+    def _rendered(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        from personal_world.api import create_app
+        monkeypatch.setenv("PW_API_TOKEN", "t")
+        monkeypatch.setenv("PW_DATA_DIR", str(tmp_path))
+        c = TestClient(create_app(tmp_path, tmp_path))
+        return c.get("/").text
+
+    def test_main_stylesheet_open_tag_survives_render(self, tmp_path, monkeypatch):
+        # The head must retain TWO style elements after prefs injection.
+        html = self._rendered(tmp_path, monkeypatch)
+        head = html.split("</head>")[0]
+        assert head.count("<style") == 2, (
+            "main stylesheet lost its opening tag; CSS would render as text"
+        )
+
+    def test_no_css_leaks_outside_style_elements(self, tmp_path, monkeypatch):
+        # Strip every <style>...</style> block; the remainder must not
+        # contain CSS selector/property syntax as bare text.
+        import re as _re
+        html = self._rendered(tmp_path, monkeypatch)
+        outside = _re.sub(r"<style\b.*?</style>", "", html, flags=_re.S)
+        for token in ("--bg:", "--panel:", "box-sizing:", "display: none",
+                      "background: var(", "max-width:"):
+            assert token not in outside, (
+                f"CSS leaked as visible text: {token!r}"
+            )
+
+    def test_prefs_block_rendered_with_id(self, tmp_path, monkeypatch):
+        html = self._rendered(tmp_path, monkeypatch)
+        assert '<style id="pw-prefs">' in html
+
+    def test_marker_fully_replaced_no_comment_left(self, tmp_path, monkeypatch):
+        from personal_world.api import PREFS_STYLE_MARKER
+        html = self._rendered(tmp_path, monkeypatch)
+        assert PREFS_STYLE_MARKER not in html
+
+    def test_marker_present_in_template_source(self):
+        # The injection anchor must exist exactly once in the template.
+        assert DASHBOARD_HTML.count("<!--PW-PREFS-STYLE-->") == 1
+        # And the template's main style tag must still be present.
+        assert DASHBOARD_HTML.count("<style>") == 1
