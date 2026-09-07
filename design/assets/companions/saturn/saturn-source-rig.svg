@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Personal World — Saturn pet source rig</title>
+<desc id="desc">A friendly round buttercream planet with pastel peach cloud bands, rosy cheeks and a tilted lavender ring with a mint stripe. Separate back and front ring layers create clear Saturn depth. Transparent background.</desc>
+<g id="saturn-pet" stroke="#603D49" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+ <g id="ring-back">
+  <path id="ring-back-base" fill="#C8B8E1" stroke="none" d="M63.89 342.42 C52.28 306.70 128.89 249.80 234.99 215.33 C341.09 180.85 436.51 181.86 448.11 217.58L401.51 232.72 C395.71 214.86 325.86 221.55 245.49 247.66 C165.13 273.78 104.69 309.42 110.49 327.28 Z"/>
+  <path id="ring-back-stripe" fill="none" stroke="#A8DCCC" stroke-width="9" d="M83.86 335.93 C74.98 308.62 144.86 261.44 239.93 230.55 C335.00 199.65 419.27 196.75 428.14 224.07"/>
+  <path id="ring-back-outline" fill="none" d="M63.89 342.42 C52.28 306.70 128.89 249.80 234.99 215.33 C341.09 180.85 436.51 181.86 448.11 217.58 M110.49 327.28 C104.69 309.42 165.13 273.78 245.49 247.66 C325.86 221.55 395.71 214.86 401.51 232.72"/>
+ </g>
+ <g id="globe">
+  <g id="planet-body"><circle id="planet-disc" cx="256" cy="242" r="115" fill="#FAE8BC" stroke="none"/></g>
+  <g id="cloud-bands" stroke="none">
+   <path id="cloud-band-upper" fill="#F2CDBB" d="M162 176 C218 190 294 192 355 184 A115 115 0 0 0 344 168 C283 176 218 174 174 163 A115 115 0 0 0 162 176 Z"/>
+   <path id="cloud-band-lower" fill="#F2CDBB" d="M145 273 C218 292 298 288 367 272 A115 115 0 0 1 357 297 C286 312 214 310 156 299 A115 115 0 0 1 145 273 Z"/>
+   <path id="cloud-band-bottom" fill="#EDC1B4" d="M177 326 C226 337 279 338 330 330 A115 115 0 0 1 177 326 Z"/>
+  </g>
+  <g id="planet-highlight" fill="none" stroke="#FFF6DF" stroke-width="8"><path d="M180 183 Q201 153 235 150"/></g>
+  <g id="outline-details" fill="none"><circle id="planet-outline" cx="256" cy="242" r="115"/></g>
+  <g id="face">
+   <g id="cheek-left" fill="#ECAFC1" stroke="none"><ellipse cx="210" cy="247" rx="14" ry="9"/></g>
+   <g id="cheek-right" fill="#ECAFC1" stroke="none"><ellipse cx="301" cy="247" rx="14" ry="9"/></g>
+   <g id="eye-left" fill="#603D49" stroke="none"><ellipse cx="223" cy="224" rx="6" ry="8"/><circle cx="221" cy="221" r="2" fill="#FFF9EE"/></g>
+   <g id="eye-right" fill="#603D49" stroke="none"><ellipse cx="287" cy="224" rx="6" ry="8"/><circle cx="285" cy="221" r="2" fill="#FFF9EE"/></g>
+   <g id="mouth" fill="none" stroke-width="4"><path id="smile" d="M245 248 Q255 260 266 248"/></g>
+  </g>
+ </g>
+ <g id="ring-front">
+  <path id="ring-front-base" fill="#DDCEF0" stroke="none" d="M448.11 217.58 C459.72 253.30 383.11 310.20 277.01 344.67 C170.91 379.15 75.49 378.14 63.89 342.42L110.49 327.28 C116.29 345.14 186.14 338.45 266.51 312.34 C346.87 286.22 407.31 250.58 401.51 232.72 Z"/>
+  <path id="ring-front-stripe" fill="none" stroke="#B8E4D5" stroke-width="9" d="M428.14 224.07 C437.02 251.38 367.14 298.56 272.07 329.45 C177.00 360.35 92.73 363.25 83.86 335.93"/>
+  <path id="ring-front-outline" fill="none" d="M448.11 217.58 C459.72 253.30 383.11 310.20 277.01 344.67 C170.91 379.15 75.49 378.14 63.89 342.42 M401.51 232.72 C407.31 250.58 346.87 286.22 266.51 312.34 C186.14 338.45 116.29 345.14 110.49 327.28"/>
+  <path id="ring-front-highlight" fill="none" stroke="#F6EDF9" stroke-width="3" d="M94 333 Q113 346 146 345"/>
+ </g>
+</g>
+<g id="sparkles" stroke="#603D49" stroke-width="3" stroke-linejoin="round">
+ <g id="sparkle-left"><path fill="#F6D99D" d="M104 144 Q104 158 90 160 Q104 162 104 176 Q106 162 120 160 Q106 158 104 144 Z"/></g>
+ <g id="sparkle-right"><path fill="#DCCCF0" d="M395 346 Q395 356 385 358 Q395 360 395 370 Q397 360 407 358 Q397 356 395 346 Z"/></g>
+ <g id="orbit-dot" fill="#B8E4D5"><circle cx="362" cy="115" r="5"/></g>
+</g>
+</svg>
