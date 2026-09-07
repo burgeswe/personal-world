@@ -15,3 +15,9 @@ reconciled to that palette in the same integration.
 
 Do not edit files here to change design truth — update `../tokens.json` and
 `docs/DESIGN-HANDOFF.md`, then re-derive.
+2026-09-07: the four canonical accessibility documents that once lived
+here (ACCESSIBILITY_CONTRACT.md, SCREEN_READER_WALKTHROUGH.md,
+RESPONSIVE_RULES.md, PREFERENCES_SCHEMA.json) moved to
+`docs/accessibility/` so the canonical authority no longer sits inside
+an archived directory. This directory is now purely the historical 0.1
+spec package.

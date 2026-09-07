@@ -55,7 +55,7 @@ Pixel-align horizontal and vertical strokes after scaling.
 
 ## Design contract
 
-The governing sources are `design/tokens.json` and `design/handoff/ACCESSIBILITY_CONTRACT.md`. Generated hex labels from concept imagery are not design tokens. Preview boards use canonical aubergine surfaces; production interface SVGs contain no fixed interface color.
+The governing sources are `design/tokens.json` and `docs/accessibility/ACCESSIBILITY_CONTRACT.md`. Generated hex labels from concept imagery are not design tokens. Preview boards use canonical aubergine surfaces; production interface SVGs contain no fixed interface color.
 
 Companion marks derive from:
 

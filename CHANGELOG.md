@@ -9,6 +9,21 @@ development line on `main`.
 
 ### Added
 
+- **Accessibility contract discoverability + current-state entry point
+  (2026-09-07).** The four canonical accessibility documents
+  (`ACCESSIBILITY_CONTRACT.md`, `SCREEN_READER_WALKTHROUGH.md`,
+  `RESPONSIVE_RULES.md`, `PREFERENCES_SCHEMA.json`) moved from
+  `design/handoff/` (an Archived directory) to `docs/accessibility/`
+  so the non-negotiable contract no longer sits inside a do-not-edit
+  area. `AGENTS.md` now routes UI work to the contract directly. A new
+  root-level `STATUS.md` is the current-state entry point: it answers
+  "where do I look to know what is happening right now?" by deferring
+  to the homelab repo's `docs/agent/CHECKOFF.md` instead of
+  duplicating epoch state. Four new tests in `tests/test_docs.py`
+  guard the canonical location, the AGENTS.md pointer, the STATUS.md
+  pointer (and its no-duplicated-status rule), and block the archived
+  copies from coming back. Repo truth stays single-sourced; the
+  archived `design/handoff/` directory is now purely historical.
 - **Chat surface with local-AI integration (2026-09-07).** Chat is a
   first-class dashboard destination backed by `POST /api/chat` and a
   provider-neutral `ChatContract`. Two adapters ship: `ollama`

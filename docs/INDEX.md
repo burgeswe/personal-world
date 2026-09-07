@@ -38,16 +38,16 @@ open an issue.
 | [Companion collection](../design/assets/companions/README.md) | Canonical | Source rigs and per-companion animation handoffs. |
 | [Screen library](../design/screens/) | Canonical | Today/Journal/Settings/Chat screens, both themes, narrow + desktop. |
 | [Exports (0.1)](../design/exports/0.1/) | Canonical visual source | The Figma export set the palette reconciliation targeted. |
-| [handoff/](../design/handoff/README.md) | Archived | The original 0.1 spec package, preserved verbatim. |
+| [handoff/](../design/handoff/README.md) | Archived | The original 0.1 spec package, preserved verbatim. Canonical accessibility docs now live under [docs/accessibility/](accessibility/ACCESSIBILITY_CONTRACT.md). |
 
 ## Accessibility
 
 | Doc | Status | What it is |
 |---|---|---|
-| [ACCESSIBILITY_CONTRACT.md](../design/handoff/ACCESSIBILITY_CONTRACT.md) | Canonical (all 9 sections) | The non-negotiable accessibility contract. |
-| [SCREEN_READER_WALKTHROUGH.md](../design/handoff/SCREEN_READER_WALKTHROUGH.md) | Canonical | Announced experience, screen by screen. |
-| [RESPONSIVE_RULES.md](../design/handoff/RESPONSIVE_RULES.md) | Canonical | Breakpoints and adaptation rules. |
-| [PREFERENCES_SCHEMA.json](../design/handoff/PREFERENCES_SCHEMA.json) | Canonical | The preference schema with its accessibility floor. |
+| [ACCESSIBILITY_CONTRACT.md](accessibility/ACCESSIBILITY_CONTRACT.md) | Canonical (all 9 sections) | The non-negotiable accessibility contract. |
+| [SCREEN_READER_WALKTHROUGH.md](accessibility/SCREEN_READER_WALKTHROUGH.md) | Canonical | Announced experience, screen by screen. |
+| [RESPONSIVE_RULES.md](accessibility/RESPONSIVE_RULES.md) | Canonical | Breakpoints and adaptation rules. |
+| [PREFERENCES_SCHEMA.json](accessibility/PREFERENCES_SCHEMA.json) | Canonical | The preference schema with its accessibility floor. |
 
 ## Development
 
