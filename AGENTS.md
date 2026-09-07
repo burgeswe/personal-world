@@ -1,3 +1,9 @@
+## Mandatory agent preflight
+
+Before doing substantive work, read [`AGENT_POLICY.md`](./AGENT_POLICY.md) and follow the canonical contract/index system it references.
+
+**Repository truth outranks inference. Unknown is a valid state. Make honesty cheaper than fabrication.**
+
 # AGENTS.md
 
 Shared-working-tree rules for every agent and human working in this
