@@ -1,31 +1,4 @@
 {
   "$schema": "personal-world/connections/1",
-  "connections": [
-    {
-      "type": "gitea",
-      "name": "gitea",
-      "capability": "source_control",
-      "base_url": "http://192.0.2.20:3000"
-    },
-    {
-      "type": "http_status",
-      "name": "gitea-healthz",
-      "capability": "service_validation",
-      "url": "http://192.0.2.20:3000/api/healthz",
-      "expected": 200
-    },
-    {
-      "type": "langgraph",
-      "name": "langgraph",
-      "capability": "memory",
-      "base_url": "http://192.0.2.10:18000"
-    },
-    {
-      "type": "http_status",
-      "name": "gatus",
-      "capability": "service_validation",
-      "url": "http://192.0.2.10:18085",
-      "expected": 200
-    }
-  ]
+  "connections": []
 }
