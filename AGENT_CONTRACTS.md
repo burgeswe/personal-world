@@ -34,14 +34,14 @@ Contracts are operating constraints, not background reading.
   requirements, not polish. Governs visual experience, screen-reader
   experience, responsive behavior, and the preference accessibility
   floor.
-- **Contract:** [`design/handoff/ACCESSIBILITY_CONTRACT.md`](design/handoff/ACCESSIBILITY_CONTRACT.md)
+- **Contract:** [`docs/accessibility/ACCESSIBILITY_CONTRACT.md`](docs/accessibility/ACCESSIBILITY_CONTRACT.md)
   — canonical, all 9 sections.
 
 Companion canonical sources, governed by the same contract:
 
-- [`design/handoff/SCREEN_READER_WALKTHROUGH.md`](design/handoff/SCREEN_READER_WALKTHROUGH.md) — announced experience, screen by screen.
-- [`design/handoff/RESPONSIVE_RULES.md`](design/handoff/RESPONSIVE_RULES.md) — breakpoints and adaptation rules.
-- [`design/handoff/PREFERENCES_SCHEMA.json`](design/handoff/PREFERENCES_SCHEMA.json) — preference schema with its accessibility floor.
+- [`docs/accessibility/SCREEN_READER_WALKTHROUGH.md`](docs/accessibility/SCREEN_READER_WALKTHROUGH.md) — announced experience, screen by screen.
+- [`docs/accessibility/RESPONSIVE_RULES.md`](docs/accessibility/RESPONSIVE_RULES.md) — breakpoints and adaptation rules.
+- [`docs/accessibility/PREFERENCES_SCHEMA.json`](docs/accessibility/PREFERENCES_SCHEMA.json) — preference schema with its accessibility floor.
 
 Load the canonical contract in full before designing or implementing
 anything a person perceives or interacts with.

@@ -18,7 +18,7 @@ the human to continuously hold that complexity in working memory.
 
 This contract complements, rather than replaces:
 
-- the Accessibility contract (`design/handoff/ACCESSIBILITY_CONTRACT.md`);
+- the Accessibility contract (`docs/accessibility/ACCESSIBILITY_CONTRACT.md`);
 - the Public Repository Boundary contract (`SECURITY.md`);
 - the Provider-Neutral Baseline (`docs/NATIVE-BASELINE-AND-ENRICHMENT.md`).
 
