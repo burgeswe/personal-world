@@ -23,9 +23,15 @@ from ..envelope import Result, fail, ok
 from .registry import StatusContract
 
 #: The lab CLI entry point on the stack VM. Overridable for tests and
-#: for alternate checkouts via config; default matches the canonical
-#: deployment at /opt on VM 145.
-DEFAULT_LAB = "/opt/homelab/scripts/lab"
+#: for alternate checkouts via config; the list mirrors the real
+#: checkouts (VM 145 serves the homelab repo at /opt/scripts; a
+#: homelab-nested layout would use /opt/homelab/scripts).
+LAB_CANDIDATES = (
+    "/opt/scripts/lab",
+    "/opt/homelab/scripts/lab",
+)
+
+DEFAULT_LAB = LAB_CANDIDATES[0]
 
 #: Evidence older than this renders as 'stale' even when present.
 FRESHNESS = timedelta(minutes=30)
@@ -41,6 +47,15 @@ KNOWN_ROWS = (
 )
 
 
+def _first_available_lab() -> str:
+    """First lab CLI that exists on this host. Honest unknown if none:
+    the caller renders 'unavailable' and the packet stays absent."""
+    for candidate in LAB_CANDIDATES:
+        if Path(candidate).exists():
+            return candidate
+    return DEFAULT_LAB
+
+
 def _parse_ts(value: str) -> datetime | None:
     try:
         ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -52,8 +67,8 @@ def _parse_ts(value: str) -> datetime | None:
 class LabState(StatusContract):
     """Read-only operator packet over the homelab Lab CLI."""
 
-    def __init__(self, lab_path: str = DEFAULT_LAB, freshness: timedelta = FRESHNESS):
-        self.lab_path = str(Path(lab_path))
+    def __init__(self, lab_path: str | None = None, freshness: timedelta = FRESHNESS):
+        self.lab_path = lab_path or _first_available_lab()
         self.freshness = freshness
 
     def observe(self) -> Result:
