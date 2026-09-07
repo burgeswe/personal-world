@@ -1,0 +1,58 @@
+{
+  "schema": "personal-world-source-rig/v1",
+  "character_name": "Personal World",
+  "source": "personal-world-source-rig.svg",
+  "viewBox": [
+    0,
+    0,
+    512,
+    512
+  ],
+  "status": "Source rig mapping only; importer must create and connect animation controls. Not a Lottie state machine.",
+  "controllers": {
+    "rings": {
+      "type": "shared_2d_transform",
+      "targets": [
+        "ring-back",
+        "ring-front"
+      ],
+      "anchor_local": [
+        0,
+        0
+      ],
+      "position": [
+        256,
+        280
+      ],
+      "rotation_delta_degrees": 0,
+      "scale": [
+        1,
+        1
+      ],
+      "baked_art_tilt_degrees": -18,
+      "suggested_pose_rotation_delta_degrees": [
+        -4,
+        4
+      ],
+      "suggested_idle_rotation_delta_degrees": [
+        -1.4,
+        1.4
+      ],
+      "transform_template": "translate(x y) rotate(deltaDegrees) scale(scaleX scaleY)",
+      "requirement": "Apply the SAME position, rotation and scale to both target layers on every frame. Keep their painter order around globe."
+    }
+  },
+  "painter_order": [
+    "ring-back",
+    "globe",
+    "ring-front"
+  ],
+  "motion_safety": {
+    "continuous_rotation": false,
+    "reduced_motion": "static only",
+    "transition_max_ms": 300,
+    "idle_visible_excursion_max_px_at_48": 2,
+    "note": "Measure combined motion after rendering; suggested angles are starting values, not a blanket safety guarantee."
+  },
+  "verification": "Neutral render compared; synchronous -4, 0 and +4 degree ring poses rendered. Actual Lottie import and animation not tested."
+}
