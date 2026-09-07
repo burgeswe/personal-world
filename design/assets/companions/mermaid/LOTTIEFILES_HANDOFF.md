@@ -58,3 +58,7 @@ Match loop endpoints without a visible jump. The **app owns state selection, int
 - Meaning must remain available through app text/accessible labels; motion and color are supplementary. The app should hide decorative artwork from assistive technology when a separate label already conveys the state.
 
 Use simple paths, solid fills and ordinary strokes. The SVG has no raster embeds, filters, masks, fonts, external resources or animation. Confirm editable group preservation during import, then validate the exported animation in the actual app renderer. Return the master animation, segment/frame map and static state poses with any import or playback limitations documented.
+
+## Import preparation
+
+See the collection’s `IMPORT_GUIDE.md` and `COMPATIBILITY_AUDIT.json`. Every source group and drawable shape has a stable unique ID; paint settings are explicit, and the neutral render is unchanged. Preserve nested layers and use editable vector import. Native Figma/Lottie Creator import and final app playback still require the checks described in the guide.

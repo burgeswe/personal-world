@@ -55,3 +55,7 @@ Loops must match at endpoints without jumps. **The app owns transitions, interru
 - App text and accessible state labels carry meaning; motion/color are supplementary. Hide redundant decorative artwork from assistive technology when the app label already conveys its state.
 
 Confirm that import preserves editable groups. Return the master animation, segment/frame map, static state poses and documented limitations after testing in the app renderer. These files do not install or replace the live pet.
+
+## Import preparation
+
+See the collection’s `IMPORT_GUIDE.md` and `COMPATIBILITY_AUDIT.json`. Every source group and drawable shape has a stable unique ID; paint settings are explicit, and the neutral render is unchanged. Preserve nested layers and use editable vector import. Native Figma/Lottie Creator import and final app playback still require the checks described in the guide.

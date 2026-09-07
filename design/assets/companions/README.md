@@ -14,6 +14,10 @@ The planet is named **Personal World**; the former `saturn/` source package has 
 
 The book-tree revision removes the downward center root, makes the squirrel about 16% smaller than its first Norse revision, and adds 24 individually layered open-book leaves. It retains the cloak, cap, brooch and satchel. Fine book-page details are intended for larger sizes and should simplify for compact display.
 
+## Figma and LottieFiles
+
+Start with the [import guide](IMPORT_GUIDE.md) and [source compatibility audit](COMPATIBILITY_AUDIT.json). Every SVG group and drawable shape has a stable unique ID, and shape paint settings are explicit. The cleanup preserves rendered appearance exactly. Native imports and final app playback remain unverified.
+
 ## Animation contract
 
 One master with named `idle`, `listening`, `thinking`, `sleep` loops and `hello`, `celebrate` one-shots. App-owned transitions; no embedded state machine. Reduced motion means static poses only. No flashing or continuous spinning, maximum 300 ms transitions, and at most 2 px idle excursion at actual 48 px display size. See each handoff for rig-specific notes.

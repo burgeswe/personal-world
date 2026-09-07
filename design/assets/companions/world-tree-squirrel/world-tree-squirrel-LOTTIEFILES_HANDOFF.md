@@ -72,3 +72,7 @@ Confirm that import preserves editable groups. Return the master animation, segm
 - [World-Tree Project: the world-tree in literature](https://www.worldtreeproject.org/exhibits/show/yggdrasill/the-world-tree-in-literature): Yggdrasil and the messenger squirrel Ratatoskr.
 - [Yggdrasil, Encyclopaedia Britannica 1911 transcription](https://en.wikisource.org/wiki/1911_Encyclop%C3%A6dia_Britannica/Yggdrasil): three roots and broad world-tree branches.
 - [National Museum of Denmark: clothes and jewellery](https://en.natmus.dk/historical-knowledge/denmark/prehistoric-period-until-1050-ad/the-viking-age/the-people/clothes-and-jewellery/): cloak and brooch inspiration.
+
+## Import preparation
+
+See the collection’s `IMPORT_GUIDE.md` and `COMPATIBILITY_AUDIT.json`. Every source group and drawable shape has a stable unique ID; paint settings are explicit, and the neutral render is unchanged. Preserve nested layers and use editable vector import. Native Figma/Lottie Creator import and final app playback still require the checks described in the guide.
