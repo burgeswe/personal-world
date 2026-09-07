@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — arm-right import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="arm-right">
+        <path id="arm-right-skin" d="M271 219C281 217 284 228 289 239C293 248 301 249 307 244L316 237C321 234 326 240 323 246C315 262 299 270 287 261C275 252 268 241 265 231C263.666 225.667 265.666 221.667 271 219Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="hand-right-detail" d="M313 243L317 247" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>

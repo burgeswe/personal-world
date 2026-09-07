@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — hair-back import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="hair-back">
+        <path id="hair-back-base" d="M169 100C173 57 227 43 271 65C313 83 324 122 315 161C308 199 330 232 320 272C316 289 306 300 292 303C302 266 277 241 278 207C250 219 207 219 182 204C183 242 163 260 167 287C140 280 127 262 133 235C140 201 128 177 143 140L169 100Z" fill="#E3D5F7" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="hair-back-blue" d="M156 167C169 197 161 224 154 242C149 258 153 271 167 287C138 278 125 254 136 225C144 203 138 185 156 167Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="hair-back-mint" d="M294 117C322 143 304 180 309 209C312 229 325 246 318 270C291 250 284 222 290 192C295 165 283 144 294 117Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>

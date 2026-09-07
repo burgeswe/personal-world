@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — shell-top import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="shell-top">
+        <path id="shell-left" d="M232 239C221 223 207 222 201 231C197 240 208 251 220 251C226 251 230 249 232 245V239Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <path id="shell-right" d="M233 239C244 223 258 222 264 231C268 240 257 251 245 251C239 251 235 249 233 245V239Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <g id="shell-ridges">
+          <path id="Vector" d="M224 245L211 232M220 247L206 240M242 245L255 232M246 247L260 240" stroke="#5A2D35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+        <path id="shell-center" d="M233 237C237.667 240.333 237.667 244 233 248C228.333 244 228.333 240.333 233 237Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>

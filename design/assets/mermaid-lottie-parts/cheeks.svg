@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — cheeks import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="face-head">
+        <g id="face-details">
+          <g id="cheeks">
+            <path id="Vector_8" d="M195 165C201.627 165 207 161.418 207 157C207 152.582 201.627 149 195 149C188.373 149 183 152.582 183 157C183 161.418 188.373 165 195 165Z" fill="#F8C5E8" />
+            <path id="Vector_9" d="M274 165C280.627 165 286 161.418 286 157C286 152.582 280.627 149 274 149C267.373 149 262 152.582 262 157C262 161.418 267.373 165 274 165Z" fill="#F8C5E8" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

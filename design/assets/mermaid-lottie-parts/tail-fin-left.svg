@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — tail-fin-left import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="tail-assembly">
+        <g id="tail-fin-left">
+          <path id="fin-left-shape" d="M348 400C325 378 330 346 375 334C370 353 379 379 359 398C355.667 401.333 352 402 348 400Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <path id="fin-left-detail" d="M352 391C351.333 375 356 361 366 349" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

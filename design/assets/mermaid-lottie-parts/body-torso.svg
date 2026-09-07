@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — body-torso import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="body-torso">
+        <path id="torso-skin" d="M220 190V207C211 211 195 214 190 225C185 239 201 253 204 267L202 289C222 300.333 242.333 300.333 263 289L262 269C265 253 280 235 273 223C268 214 253 211 245 207V190H220Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+</svg>

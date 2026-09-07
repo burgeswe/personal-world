@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — tail import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="tail-assembly">
+        <g id="tail">
+          <path id="tail-shape" d="M203 279C221.667 285 241.667 285 263 279C274 301 272 326 257 347C242 368 237 386 254 402C281 428 325 409 347 392C353.667 390.667 357.667 393.333 359 400C337 433 295 465 251 448C204 431 188 397 195 365C199 344 211 330 209 313C208 299 198 289 203 279Z" fill="#72B1B1" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <path id="tail-highlight" d="M218 302C238 331 209 355 211 384C214 420 249 443 282 436C244 435 225 409 228 384C231 356 250 334 243 308L218 302Z" fill="#9DD4D4" />
+          <g id="outline-details">
+            <path id="waist-detail" d="M207 290C223.667 296 241.667 296 261 290" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="scales-upper" d="M220 317C224 322.333 228 322.333 232 317C236 322.333 240 322.333 244 317" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="scales-lower" d="M212 339C216 344.333 220 344.333 224 339C228 344.333 232 344.333 236 339" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="tail-curve-detail" d="M243 418C256.333 431.333 272.667 434.667 292 428" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — face-head import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="face-head">
+        <path id="head-skin" d="M173 121C173 81 208 72 239 78C278 80 295 108 294 141C293 173 266 200 235 201C200 203 172 176 173 143V121Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <g id="face-details">
+          <path id="nose" d="M234 151L237 152" stroke="#BD9994" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

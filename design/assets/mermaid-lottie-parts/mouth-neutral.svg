@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Approved mermaid v2 — mouth-neutral import adapter</title>
+  <desc id="desc">Uncropped 512 by 512 component extracted from approved commit 10ff4d91ff953a584281705aa2c0899b8772e774. Original artwork and coordinates preserved.</desc>
+  <g id="mermaid-source-rig">
+    <g id="mermaid">
+      <g id="face-head">
+        <g id="face-details">
+          <line id="mouth-neutral" x1="231.5" y1="165.5" x2="238.5" y2="165.5" stroke="#5A2D35" stroke-width="3" stroke-linecap="round" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
