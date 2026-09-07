@@ -21,6 +21,7 @@ from .model import (
     ProviderMode,
     SCHEMA_VERSION,
 )
+from .chat import build_chat_provider
 from .providers.adapters import (
     CandyDispenser,
     FakeSourceControl,
@@ -196,6 +197,19 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     mode=mode,
                     required=required,
                 )
+        elif ptype in ("ollama", "openai_compat"):
+            # Chat/reasoning providers use the same fail-closed registry:
+            # an unreachable local model is 'unavailable', never a crash.
+            built = build_chat_provider(conn)
+            if built is not None:
+                cname, impl = built
+                registry.register(
+                    capability or "reasoning", cname, impl,
+                    health_check=lambda i=impl: i.observe().ok,
+                    writes="none",
+                    mode=mode,
+                    required=required,
+                )
         elif ptype == "fake_source_control":
             # Reference provider for substitution proofs (framework E):
             # same SourceControlContract, deterministic, no external
@@ -221,6 +235,13 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                 )
         # unknown types: skipped, not fatal -- standalone deployments
         # boot with zero providers
+    # Chat/reasoning native baseline: absent a configured provider the
+    # capability is honestly not_configured (zero-AI boot is supported).
+    if not any(
+        c.get("capability") == "reasoning" for c in connections
+    ):
+        registry.define_capability("reasoning", StatusContract)
+
     for cap in world.capabilities.values():
         if cap.key not in registry._contracts:
             registry.define_capability(cap.key, StatusContract)

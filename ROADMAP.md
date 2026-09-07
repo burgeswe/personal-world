@@ -13,19 +13,20 @@ the code, or explicit spec documents — not invention.
 
 Work that completes or hardens what 0.1 already promises:
 
-- **Accessibility-preference → dashboard wiring.** The preference
-  schema and accessibility floor exist and are enforced in tests; the
-  dashboard currently renders the defaults. Wire user preferences into
-  the rendered surface.
-- **Theme Pack implementation.** The Theme Pack Framework
-  (`design/THEME_PACK_FRAMEWORK.md`) and the personal Mermaid pack
-  (`design/RYLEE_THEME_PACK.md`) are written as specs; the runtime does
-  not yet load packs. Implement pack loading with the invariants the
-  framework already fixes (accessibility contract untouched).
-- **Chat surface.** The Companion System & Chat architecture
-  (`design/COMPANION_INTEGRATION.md`) defines Chat as a first-class
-  surface; the screens exist in `design/screens/`, the code does not.
-  Implement the chat surface against the existing API.
+- **Accessibility-preference → dashboard wiring.** DONE (2026-09-07):
+  preferences render server-side and apply live in the dashboard
+  (text scale, density, targets, companion, accent); the floor stays
+  test-enforced. Remaining polish: more granular reading preferences.
+- **Chat surface.** DONE (2026-09-07): Chat is a first-class surface
+  with a provider-neutral adapter (`ollama` or `openai_compat`
+  connections), a trimmed read-only world-context injection, honest
+  not_configured/unavailable states, and conversation history.
+  Remaining: streaming responses, richer per-surface context.
+- **Theme Pack implementation.** Partially done (2026-09-07):
+  companion selection and accent palettes are wired through the
+  preference system with approved art served from the package. Still
+  open: loading full pack files (state poses, per-pack icon families)
+  from `design/THEME_PACK_FRAMEWORK.md`'s manifest format.
 
 ## Next
 
@@ -33,8 +34,9 @@ Strongly relevant, clearly scoped, not started:
 
 - **Scheduler/reminder engine.** The schema exists; no runner.
 - **Source-control enrichment.** The Gitea adapter is health-only
-  today; concept rollups ("3 repositories changed today") need read
-  adapters.
+  today; the native git baseline now feeds dashboard + chat context.
+  Concept rollups ("3 repositories changed today") can deepen with
+  commit-activity reads.
 - **Ingress rollups.** "14 routes healthy / 1 cert needs attention"
   needs a Traefik capability provider; the semantic seam is recorded
   in the design handoff.

@@ -10,10 +10,12 @@ import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 
 from . import export, prefs
 from .app import build_registry, load_world, save_world
+from .chat import chat_once, build_chat_messages
+from .chat_context import build_world_context
 from .envelope import Result
 from .journal import AuditRenderer, Journal
 from .loop import daily
@@ -103,6 +105,55 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             return {"ok": False, "status": "unavailable",
                     "warnings": [f"provider '{provider.name}' cannot search"]}
         result = impl.search(q, top_k=top_k)
+        return result.model_dump(mode="json")
+
+    @app.post("/api/chat", dependencies=[Depends(require_auth)])
+    async def chat(request: Request) -> dict:
+        """Conversational interface to Personal World.
+
+        Read-only: the model observes a rendered world snapshot and
+        returns text. No tool execution, no mutations. With no chat
+        provider configured the endpoint answers 'not_configured' so
+        the dashboard can degrade honestly."""
+        body: dict
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        message = (body.get("message") or "").strip() if isinstance(body, dict) else ""
+        if not message:
+            raise HTTPException(status_code=400, detail="message is required")
+        history = body.get("history") if isinstance(body, dict) else None
+        if not isinstance(history, list):
+            history = []
+        history = [
+            {"role": m.get("role"), "content": m.get("content")}
+            for m in history[-6:]
+            if isinstance(m, dict) and m.get("content")
+        ]
+        world, registry = _state()
+        provider = registry.provider_for("reasoning")
+        if provider is None:
+            return {
+                "ok": False,
+                "status": "not_configured",
+                "warnings": [
+                    "no chat provider configured — add an ollama or "
+                    "openai_compat connection to config"
+                ],
+            }
+        impl = registry.impl(provider.name)
+        context = build_world_context(world, registry, journal,
+                                      config_dir=config_dir)
+        messages = build_chat_messages(message, context, history)
+        result = chat_once(impl, messages)
+        if not result.ok:
+            return result.model_dump(mode="json")
+        journal.record(
+            "recommendation",
+            f"chat exchange with {provider.name} ({len(message)} chars in)",
+            source="chat",
+        )
         return result.model_dump(mode="json")
 
     @app.get("/api/actors", dependencies=[Depends(require_auth)])
@@ -246,6 +297,28 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             .replace("<style>", str(prefs.prefs_style_block(p)), 1)
         )
 
+    companion_dir = Path(__file__).parent / "static" / "companions"
+    _COMPANION_FILES = {
+        "personal-world": "personal-world.svg",
+        "mermaid": "mermaid.svg",
+        "robot": "robot.svg",
+        "world-tree-squirrel": "world-tree-squirrel.svg",
+        "taco-news-truck": "taco-news-truck.svg",
+    }
+
+    @app.get("/companions/{name}.svg")
+    async def companion_svg(name: str) -> Response:
+        # Approved companion source rigs, byte-identical copies of the
+        # design-owned artwork (see design/assets/companions/). Public:
+        # decorative identity, carries no world state.
+        filename = _COMPANION_FILES.get(name)
+        if filename is None or not companion_dir.exists():
+            raise HTTPException(status_code=404, detail="unknown companion")
+        path = companion_dir / filename
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="companion art missing")
+        return FileResponse(path, media_type="image/svg+xml")
+
     return app
 
 
@@ -256,34 +329,62 @@ DASHBOARD_HTML = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Today</title>
 <style>
-:root { color-scheme: dark; --bg:#0a0810; --text:#f0eaff; --border:#2a2538;
-        --panel:#12101a; --muted:#a397b8; }
+:root {
+  color-scheme: dark;
+  /* Canonical design tokens (design/tokens.json, aubergine palette) */
+  --surface-canvas: #0a0810;
+  --surface-panel: #12101a;
+  --surface-elevated: #1a1724;
+  --border-subtle: #2a2538;
+  --text-primary: #f0eaff;
+  --text-secondary: #a397b8;
+  --text-muted: #6b5f82;
+  --accent-primary: #72b1b1;
+  --accent-secondary: #b57f8b;
+  --bg: var(--surface-canvas); --text: var(--text-primary);
+  --border: var(--border-subtle); --panel: var(--surface-panel);
+  --muted: var(--text-secondary);
+}
 @media (prefers-color-scheme: light) {
-  :root { color-scheme: light; --bg:#f4f2ed; --text:#26241f; --border:#d9d4c9;
-          --panel:#ece9e1; --muted:#6b675f; }
+  :root {
+    color-scheme: light;
+    --bg: #f4f2ed; --panel: #ece9e1; --border: #d9d4c9;
+    --text: #26241f; --muted: #6b675f;
+  }
+}
+[data-pw-accent="rylee"] {
+  --accent-secondary: #f8c5e8;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
-       margin: 0; padding: 1.5rem; line-height: 1.6; max-width: 100%;
+body { background: var(--bg); color: var(--text);
+       font-family: system-ui, sans-serif; margin: 0; padding: 1.5rem;
+       line-height: 1.6; max-width: 100%;
        font-size: calc(1rem * var(--pw-text-scale, 1)); }
-.wrap { max-width: 48rem; margin: 0 auto; }
-h1 { font-size: 1.3rem; margin: 0 0 1rem; }
+.wrap { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.3rem; margin: 0; }
 h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+h3 { font-size: 0.95rem; margin: 1rem 0 0.25rem; color: var(--muted);
+     font-weight: 500; }
 section { margin-bottom: 1.5rem; }
 p { margin: 0.5rem 0; }
 ul { margin: 0.5rem 0; padding-left: 1.25rem; }
 li { margin: 0.25rem 0; }
 table { border-collapse: collapse; width: 100%; margin: 0.5rem 0;
         font-size: 0.95rem; }
-th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
-         overflow-wrap: anywhere; }
+th, td { text-align: left; padding: 0.5rem 0.75rem;
+         border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 th { color: var(--muted); font-weight: 500; }
 .scroll { overflow-x: auto; }
 code { background: var(--panel); padding: 0.1rem 0.3rem; border-radius: 4px;
        overflow-wrap: anywhere; }
-header.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
-                padding-bottom: 1rem; border-bottom: 1px solid var(--border);
-                margin-bottom: 1rem; }
+header.banner { display: flex; flex-wrap: wrap; align-items: center;
+                gap: 1rem; padding-bottom: 1rem;
+                border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.brand-lockup { display: flex; align-items: center; gap: 0.75rem; }
+.brand-companion { width: 32px; height: 32px; flex: 0 0 32px;
+                   border-radius: 50%; }
+.brand-companion img { width: 100%; height: 100%; display: block;
+                       border-radius: 50%; }
 nav[aria-label="Main"] { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 nav[aria-label="Main"] a { display: inline-flex; align-items: center;
                            padding: 0.55rem 0.9rem;
@@ -294,14 +395,19 @@ nav[aria-label="Main"] a { display: inline-flex; align-items: center;
                            background: var(--panel); }
 nav[aria-label="Main"] a[aria-current="page"] { border-color: var(--text); }
 #login { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
-input { background: var(--panel); color: var(--text); border: 1px solid var(--border);
-        border-radius: 6px; padding: 0.55rem; font-size: 1rem;
+input, textarea, select { background: var(--panel); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 0.55rem; font-size: 1rem; font-family: inherit;
         min-width: var(--pw-target-size, 44px);
         min-height: var(--pw-target-size, 44px); }
-button { background: var(--panel); color: var(--text); border: 1px solid var(--border);
-         border-radius: 6px; padding: 0.55rem 1rem; font-size: 1rem;
+textarea { width: 100%; resize: vertical; }
+button { background: var(--panel); color: var(--text);
+         border: 1px solid var(--border); border-radius: 6px;
+         padding: 0.55rem 1rem; font-size: 1rem;
          min-width: var(--pw-target-size, 44px);
          min-height: var(--pw-target-size, 44px); cursor: pointer; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button[aria-pressed="true"] { border-color: var(--text); }
 .skip { position: absolute; left: -9999px; top: auto; }
 .skip:focus { left: 1rem; top: 1rem; background: var(--panel);
               padding: 0.5rem; border: 1px solid var(--text); z-index: 10; }
@@ -310,6 +416,44 @@ button { background: var(--panel); color: var(--text); border: 1px solid var(--b
 #msg { color: var(--muted); }
 .view { display: none; }
 .view.active { display: block; }
+/* Status chips: luminance + text word, never color-only */
+.chip { display: inline-block; padding: 0.05rem 0.5rem;
+        border: 1px solid var(--border); border-radius: 999px;
+        font-size: 0.85rem; background: var(--panel); }
+.chip-healthy { border-color: var(--accent-primary); }
+.chip-unhealthy, .chip-needs_attention { border-color: var(--accent-secondary); }
+.chip-unavailable, .chip-not_configured { border-style: dashed; }
+/* Cards */
+.cards { display: grid; gap: 0.75rem; }
+.card { background: var(--panel); border: 1px solid var(--border);
+        border-radius: 8px; padding: 0.75rem 1rem; }
+.card h3 { margin-top: 0; }
+/* Chat surface */
+#chat-log { display: flex; flex-direction: column; gap: 0.75rem;
+            min-height: 8rem; }
+.chat-msg { border-radius: 8px; padding: 0.6rem 0.9rem; max-width: 90%; }
+.chat-msg.user { align-self: flex-end; background: var(--surface-elevated);
+                 border: 1px solid var(--border); }
+.chat-msg.assistant { align-self: flex-start; background: var(--panel);
+                      border: 1px solid var(--border); white-space: pre-wrap; }
+.chat-msg.error { align-self: stretch; background: var(--panel);
+                  border: 1px dashed var(--accent-secondary); }
+.chat-form { display: flex; gap: 0.5rem; margin-top: 0.75rem;
+             align-items: flex-start; }
+.chat-form textarea { flex: 1; min-height: 44px; }
+.chat-companion { display: flex; align-items: flex-end; gap: 0.5rem; }
+.chat-companion img { width: 48px; height: 48px; }
+.prefs-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+             margin: 0.5rem 0; }
+.prefs-row label { min-width: 10rem; }
+details.provenance { margin: 0.25rem 0; }
+details.provenance summary { cursor: pointer; color: var(--muted); }
+.journal-filters { display: flex; flex-wrap: wrap; gap: 0.25rem;
+                   margin-bottom: 0.5rem; }
+@media (max-width: 640px) {
+  body { padding: 1rem 0.75rem; }
+  .chat-msg { max-width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
@@ -319,9 +463,14 @@ button { background: var(--panel); color: var(--text); border: 1px solid var(--b
 <a class="skip" href="#main-content">Skip to main content</a>
 <div class="wrap">
 <header class="banner">
+<div class="brand-lockup">
+<span class="brand-companion" data-pw-companion-slot="brand"><img
+ src="/companions/personal-world.svg" alt="" width="32" height="32"></span>
 <h1 id="brand">Personal World</h1>
+</div>
 <nav aria-label="Main">
 <a href="#today" data-route="today">Today</a>
+<a href="#chat" data-route="chat">Chat</a>
 <a href="#world" data-route="world">World</a>
 <a href="#journal" data-route="journal">Journal</a>
 <a href="#settings" data-route="settings">Settings</a>
@@ -337,12 +486,16 @@ button { background: var(--panel); color: var(--text); border: 1px solid var(--b
 <section id="view-today" class="view active" aria-labelledby="today-h1">
 <h2 id="today-h1">Today</h2>
 <section aria-labelledby="today-health-h2">
-<h2 id="today-health-h2">Overall health</h2>
+<h2 id="today-health-h2">World health</h2>
 <div id="today-health" class="muted">Loading…</div>
 </section>
 <section aria-labelledby="today-attention-h2">
 <h2 id="today-attention-h2">Needs attention</h2>
 <ul id="today-attention"><li class="muted">Loading…</li></ul>
+</section>
+<section aria-labelledby="today-changes-h2">
+<h2 id="today-changes-h2">Recent changes</h2>
+<div id="today-changes" class="muted">Loading…</div>
 </section>
 <section aria-labelledby="today-caps-h2">
 <h2 id="today-caps-h2">Capabilities</h2>
@@ -357,10 +510,29 @@ button { background: var(--panel); color: var(--text); border: 1px solid var(--b
 <p><a href="#journal">View all</a></p>
 </section>
 </section>
+<section id="view-chat" class="view" aria-labelledby="chat-h1">
+<h2 id="chat-h1">Chat</h2>
+<section aria-labelledby="chat-surface-h2">
+<h2 id="chat-surface-h2">Talk with your world</h2>
+<div class="chat-companion">
+<span data-pw-companion-slot="chat"><img src="/companions/personal-world.svg"
+ alt="Companion illustration" width="48" height="48"></span>
+<div id="chat-log" aria-live="polite" aria-label="Conversation">
+<p class="muted" id="chat-empty">Ask about your world — status, changes, capabilities, or history. Answers come from your local model using a read-only snapshot of Personal World.</p>
+</div>
+</div>
+<form class="chat-form" id="chat-form">
+<label for="chat-input" class="muted" style="display:none">Message</label>
+<textarea id="chat-input" rows="2" placeholder="Ask your world…"></textarea>
+<button id="chat-send" type="submit">Send</button>
+</form>
+<p class="muted" id="chat-status"></p>
+</section>
+</section>
 <section id="view-world" class="view" aria-labelledby="world-h1">
 <h2 id="world-h1">World</h2>
 <section aria-labelledby="world-facts-h2">
-<h2 id="world-facts-h2">Facts &amp; intent</h2>
+<h2 id="world-facts-h2">Intent &amp; policies</h2>
 <div id="world-facts" class="muted">Loading…</div>
 </section>
 <section aria-labelledby="world-lore-h2">
@@ -370,19 +542,43 @@ button { background: var(--panel); color: var(--text); border: 1px solid var(--b
 <section aria-labelledby="world-actors-h2">
 <h2 id="world-actors-h2">Actors</h2>
 <div class="scroll" role="region" aria-label="Actors table" tabindex="0">
-<table id="world-actors"><thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead>
-<tbody><tr><td colspan="3" class="muted">Loading…</td></tr></tbody></table>
+<table id="world-actors"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Writes</th></tr></thead>
+<tbody><tr><td colspan="4" class="muted">Loading…</td></tr></tbody></table>
 </div>
+</section>
+<section aria-labelledby="world-src-h2">
+<h2 id="world-src-h2">Source repositories</h2>
+<div id="world-src" class="muted">Loading…</div>
+</section>
+<section aria-labelledby="world-updates-h2">
+<h2 id="world-updates-h2">Updates</h2>
+<div id="world-updates" class="muted">Loading…</div>
 </section>
 </section>
 <section id="view-journal" class="view" aria-labelledby="journal-h1">
 <h2 id="journal-h1">Journal</h2>
+<div class="journal-filters" role="group" aria-label="Filter by kind">
+<button type="button" class="jfilter" data-kind="" aria-pressed="true">All</button>
+<button type="button" class="jfilter" data-kind="observation" aria-pressed="false">Observations</button>
+<button type="button" class="jfilter" data-kind="drift" aria-pressed="false">Drift</button>
+<button type="button" class="jfilter" data-kind="failure" aria-pressed="false">Failures</button>
+<button type="button" class="jfilter" data-kind="settings_change" aria-pressed="false">Settings</button>
+</div>
 <ul id="journal-list"><li class="muted">Loading…</li></ul>
+<p><button id="journal-more" type="button">Load more</button></p>
 </section>
 <section id="view-settings" class="view" aria-labelledby="settings-h1">
 <h2 id="settings-h1">Settings</h2>
+<section aria-labelledby="settings-appearance-h2">
+<h2 id="settings-appearance-h2">Reading &amp; interaction</h2>
+<p class="muted">Preferences apply immediately and are saved to your world. The accessibility floor (44px targets, reduced motion, high contrast) can never be lowered.</p>
+<div id="settings-prefs" class="muted">Loading…</div>
+</section>
+<section aria-labelledby="settings-export-h2">
+<h2 id="settings-export-h2">Capability &amp; pack settings</h2>
 <p class="muted">Settings export is whitelist-based; private and secret material never appears here.</p>
 <div id="settings-body" class="muted">Loading…</div>
+</section>
 </section>
 </main>
 </div>
@@ -409,64 +605,95 @@ function statusWord(s) {
   if (t === 'healthy' || t === 'ok') return 'healthy';
   if (t === 'unhealthy') return 'unhealthy';
   if (t === 'unavailable') return 'unavailable';
-  if (t === 'unknown') return 'unknown';
+  if (t === 'needs_attention') return 'needs attention';
   if (t === 'not_configured') return 'not configured';
   return t;
 }
-async function api(token, path) {
-  const r = await fetch(path, {headers: {'Authorization': 'Bearer ' + token}});
+function chip(status) {
+  const raw = String(status == null ? 'unknown' : status).toLowerCase();
+  const word = statusWord(raw);
+  const span = el('span', word);
+  span.className = 'chip chip-' + raw;
+  return span;
+}
+async function api(token, path, opts) {
+  const headers = {'Authorization': 'Bearer ' + token};
+  if (opts && opts.body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(path, Object.assign({}, opts, {headers}));
   if (r.status === 401) return {error: 'unauthorized'};
   if (r.status === 503) return {error: 'no_auth'};
+  if (r.status === 400) { const j = await r.json().catch(() => ({}));
+    return {error: j.detail || 'bad_request'}; }
   if (!r.ok) return {error: 'http_' + r.status};
   return {data: await r.json()};
 }
 function rankStatus(s) {
-  const order = {'unavailable': 3, 'unhealthy': 2, 'not configured': 2,
-                 'unknown': 1, 'healthy': 0};
+  const order = {'unavailable': 3, 'unhealthy': 2, 'needs attention': 2,
+                 'not configured': 2, 'unknown': 1, 'healthy': 0};
   return order[String(s).toLowerCase()] != null
     ? order[String(s).toLowerCase()] : 0;
 }
-async function load() {
-  const token = $('token').value;
-  setMsg('Loading…');
-  let status, journal, daily, world, actors, settings;
-  try {
-    ({status, journal, daily, world, actors, settings} = await Promise.all({
-      status: api(token, '/api/status'),
-      journal: api(token, '/api/journal?n=20'),
-      daily: api(token, '/api/daily'),
-      world: api(token, '/api/exports/world'),
-      actors: api(token, '/api/actors'),
-      settings: api(token, '/api/exports/settings'),
-    }).then(o => ({
-      status: o.status, journal: o.journal, daily: o.daily,
-      world: o.world, actors: o.actors, settings: o.settings,
-    })));
-  } catch (e) {
-    setMsg('Personal World is unreachable — the core may be down.');
-    return;
+/* ---- prefs: immediate apply + persistence ---- */
+const PREF_SPEC = [
+  {key: 'text_scale', label: 'Text size', type: 'select',
+   options: [['1.0', 'Normal'], ['1.25', 'Large'], ['1.5', 'Largest']]},
+  {key: 'density', label: 'Density', type: 'select',
+   options: [['comfortable', 'Comfortable'], ['compact', 'Compact']]},
+  {key: 'target_size', label: 'Touch targets', type: 'select',
+   options: [['44', 'Standard (44px)'], ['56', 'Large (56px)']]},
+  {key: 'companion', label: 'Companion', type: 'select',
+   options: [['personal-world', 'Personal World'], ['mermaid', 'Mermaid'],
+             ['robot', 'Little Helper Robot'],
+             ['world-tree-squirrel', 'World-tree Squirrel'],
+             ['taco-news-truck', 'Tacos & the Morning Paper']]},
+  {key: 'accent', label: 'Accent palette', type: 'select',
+   options: [['world-keeper', 'World Keeper'], ['rylee', 'Rylee (pastel pink)']]},
+];
+function applyCompanion(key) {
+  const slots = document.querySelectorAll('[data-pw-companion-slot]');
+  const url = '/companions/' + encodeURIComponent(key) + '.svg';
+  for (const s of slots) {
+    const img = s.querySelector('img');
+    if (img) { img.src = url; }
   }
-  for (const [k, v] of [['status',status],['journal',journal],['daily',daily],
-       ['world',world],['actors',actors],['settings',settings]]) {
-    if (v && v.error === 'unauthorized') {
-      setMsg('Authentication failed — check the token.'); return; }
-    if (v && v.error === 'no_auth') {
-      setMsg('Auth not configured on the server.'); return; }
-    if (v && v.error) { setMsg('Personal World is unreachable — the core may be down.'); return; }
+}
+function buildSettingsPrefs(saved) {
+  const host = $('settings-prefs'); clear(host);
+  for (const spec of PREF_SPEC) {
+    const row = el('div'); row.className = 'prefs-row';
+    const label = el('label', spec.label, {});
+    label.setAttribute('for', 'pref-' + spec.key);
+    const sel = el('select');
+    sel.id = 'pref-' + spec.key;
+    for (const [v, name] of spec.options) {
+      const opt = el('option', name); opt.value = v;
+      if (String(saved[spec.key]) === v) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', async () => {
+      const upd = {};
+      upd[spec.key] = spec.key === 'target_size'
+        ? parseInt(sel.value, 10) : sel.value;
+      const res = await api(state.token, '/api/prefs', {
+        method: 'PUT', body: JSON.stringify(upd)});
+      if (res.error) { setMsg('Preference rejected: ' + res.error); return; }
+      document.documentElement.setAttribute('data-pw-' +
+        spec.key.replace('_', '-'), String(sel.value).replace('_', '-'));
+      if (spec.key === 'text_scale')
+        document.documentElement.style.setProperty('--pw-text-scale', sel.value);
+      if (spec.key === 'target_size')
+        document.documentElement.style.setProperty('--pw-target-size', sel.value + 'px');
+      if (spec.key === 'companion') applyCompanion(sel.value);
+      if (spec.key === 'accent')
+        document.documentElement.setAttribute('data-pw-accent', sel.value);
+      setMsg('Saved ' + spec.label.toLowerCase() + ' — ' + nowHHMM());
+    });
+    row.appendChild(label); row.appendChild(sel); host.appendChild(row);
   }
-  state.status = status.data;
-  state.journal = journal.data;
-  state.daily = daily.data;
-  state.world = world.data;
-  state.actors = actors.data;
-  state.settings = settings.data;
-  setMsg('Loaded ' + nowHHMM());
-  $('login').setAttribute('hidden', '');
-  renderAll();
+  const note = el('p', 'Motion stays reduced and contrast stays high by design; the accessibility floor is not user-lowerable.', 'muted');
+  host.appendChild(note);
 }
-function renderAll() {
-  renderToday(); renderWorld(); renderJournal(); renderSettings(); syncRoute();
-}
+/* ---- Today ---- */
 function renderToday() {
   const caps = (state.status && state.status.data && state.status.data.capabilities) || {};
   const capKeys = Object.keys(caps);
@@ -474,15 +701,9 @@ function renderToday() {
   const total = capKeys.length;
   const worst = capKeys.map(k => statusWord(caps[k].status))
     .sort((a, b) => rankStatus(b) - rankStatus(a))[0] || 'unknown';
-  const healthDiv = $('today-health');
-  clear(healthDiv);
-  if (total === 0 || healthy === total) {
-    healthDiv.appendChild(el('p', 'Worst capability status: ' + worst + '. ' +
-      healthy + ' healthy of ' + total + '.'));
-  } else {
-    healthDiv.appendChild(el('p', 'Worst capability status: ' + worst + '. ' +
-      healthy + ' healthy of ' + total + '.'));
-  }
+  const healthDiv = $('today-health'); clear(healthDiv);
+  healthDiv.appendChild(el('p', 'Worst capability status: ' + worst + '. ' +
+    healthy + ' healthy of ' + total + ' declared.'));
   const att = $('today-attention'); clear(att);
   const items = (state.daily && state.daily.data && state.daily.data.attention) || [];
   if (items.length === 0) {
@@ -490,16 +711,28 @@ function renderToday() {
   } else {
     for (const a of items) att.appendChild(el('li', a));
   }
+  const ch = $('today-changes'); clear(ch);
+  const changed = (state.daily && state.daily.data && state.daily.data.actions) || [];
+  if (changed.length === 0) {
+    ch.appendChild(el('p', 'No recorded changes in the latest daily pass.'));
+  } else {
+    const ul = el('ul');
+    for (const c of changed.slice(0, 8)) ul.appendChild(el('li', c));
+    ch.appendChild(ul);
+  }
   const tbody = $('today-caps').querySelector('tbody'); clear(tbody);
   if (capKeys.length === 0) {
-    const tr = el('tr'); const td = el('td', 'No providers connected yet.');
+    const tr = el('tr'); const td = el('td', 'No capabilities defined.');
     td.setAttribute('colspan', '2'); tr.appendChild(td); tbody.appendChild(tr);
   } else {
     for (const k of capKeys) {
       const tr = el('tr');
       tr.appendChild(el('td', k));
-      tr.appendChild(el('td', statusWord(caps[k].status)));
-      tbody.appendChild(tr);
+      const td = el('td'); td.appendChild(chip(caps[k].status));
+      if (caps[k].warnings && caps[k].warnings.length) {
+        td.appendChild(document.createTextNode(' — ' + caps[k].warnings[0]));
+      }
+      tr.appendChild(td); tbody.appendChild(tr);
     }
   }
   const jl = $('today-journal'); clear(jl);
@@ -517,33 +750,38 @@ function renderToday() {
     }
   }
 }
+/* ---- World ---- */
 function renderWorld() {
   const wf = $('world-facts'); clear(wf);
   const w = state.world && state.world.data || {};
   const intents = w.intents || {};
-  const facts = w.policies || {};
-  const pairs = [];
-  for (const k in intents) pairs.push([k, intents[k], 'intent']);
-  const keys = Object.keys(pairs);
-  if (keys.length === 0 && Object.keys(w.lore || {}).length === 0 && keys.length === 0) {
-    wf.appendChild(el('p', 'World is empty — no facts or intents recorded yet.'));
-  } else if (keys.length === 0) {
-    wf.appendChild(el('p', 'World is empty — no facts or intents recorded yet.'));
+  const ikeys = Object.keys(intents);
+  const policies = state.policyList || [];
+  if (ikeys.length === 0 && policies.length === 0) {
+    wf.appendChild(el('p', 'No intents or policies recorded yet.'));
   } else {
     const scroll = el('div'); scroll.className = 'scroll';
     scroll.setAttribute('role', 'region'); scroll.setAttribute('aria-label',
-      'Facts and intents table'); scroll.setAttribute('tabindex', '0');
+      'Intents and policies table'); scroll.setAttribute('tabindex', '0');
     const tbl = el('table');
     const thead = el('thead'); const trh = el('tr');
     trh.appendChild(el('th', 'Key')); trh.appendChild(el('th', 'Value'));
-    trh.appendChild(el('th', 'Class')); thead.appendChild(trh); tbl.appendChild(thead);
+    trh.appendChild(el('th', 'Type')); thead.appendChild(trh); tbl.appendChild(thead);
     const tbody = el('tbody');
-    for (const [k, v, cls] of pairs) {
+    for (const k of ikeys) {
       const tr = el('tr');
       tr.appendChild(el('td', k));
+      const v = intents[k];
       const valStr = (typeof v === 'object') ? JSON.stringify(v) : String(v);
       tr.appendChild(el('td', valStr));
-      tr.appendChild(el('td', cls));
+      tr.appendChild(el('td', 'intent'));
+      tbody.appendChild(tr);
+    }
+    for (const p of policies) {
+      const tr = el('tr');
+      tr.appendChild(el('td', p.key));
+      tr.appendChild(el('td', p.effect + (p.mutability === 'cemented' ? ' (cemented)' : '')));
+      tr.appendChild(el('td', 'policy'));
       tbody.appendChild(tr);
     }
     tbl.appendChild(tbody); scroll.appendChild(tbl); wf.appendChild(scroll);
@@ -556,37 +794,110 @@ function renderWorld() {
     const l = lore[k];
     const li = el('li');
     li.appendChild(document.createTextNode(k + ': ' + statusWord(l.state)));
+    if (l.provenance && l.provenance.source) {
+      const d = el('details', null, {class: 'provenance'});
+      d.appendChild(el('summary', 'provenance'));
+      d.appendChild(el('p', 'source: ' + l.provenance.source +
+        ' — ' + (l.provenance.observed_at || '').toString().slice(0, 16)));
+      li.appendChild(d);
+    }
     wl.appendChild(li);
   }
   const tbodyA = $('world-actors').querySelector('tbody'); clear(tbodyA);
   const acts = (state.actors && state.actors.data) || [];
   if (acts.length === 0) {
-    const tr = el('tr'); const td = el('td', 'No actors registered.');
-    td.setAttribute('colspan', '3'); tr.appendChild(td); tbodyA.appendChild(tr);
+    const tr = el('tr'); const td = el('td', 'No providers connected — zero-provider boot is healthy by design.');
+    td.setAttribute('colspan', '4'); tr.appendChild(td); tbodyA.appendChild(tr);
   } else {
     for (const a of acts) {
       const tr = el('tr');
       tr.appendChild(el('td', a.name || ''));
       tr.appendChild(el('td', a.role || ''));
-      tr.appendChild(el('td', statusWord(a.status)));
+      const td = el('td'); td.appendChild(chip(a.status)); tr.appendChild(td);
+      tr.appendChild(el('td', a.writes || 'none'));
       tbodyA.appendChild(tr);
     }
   }
+  const src = $('world-src'); clear(src);
+  const sc = state.sourceControl;
+  if (!sc || sc.ok === false) {
+    const why = (sc && sc.warnings && sc.warnings[0]) || 'not configured';
+    src.appendChild(el('p', 'Source control: ' + statusWord(sc && sc.status) + ' — ' + why));
+  } else {
+    const repos = (sc.data && sc.data.repos) || [];
+    const ahead = repos.filter(r => (r.ahead || 0) > 0).length;
+    const dirty = repos.filter(r => r.dirty).length;
+    const behind = repos.filter(r => (r.behind || 0) > 0).length;
+    src.appendChild(el('p', repos.length + ' repositories watched — ' +
+      ahead + ' ahead of remote, ' + behind + ' behind, ' + dirty + ' with uncommitted changes.'));
+    const tbl = el('table'); const thead = el('thead'); const trh = el('tr');
+    for (const h of ['Repo', 'Branch', 'State', 'Last commit']) {
+      trh.appendChild(el('th', h));
+    }
+    thead.appendChild(trh); tbl.appendChild(thead);
+    const tbody = el('tbody');
+    for (const r of repos) {
+      const tr = el('tr');
+      tr.appendChild(el('td', r.name));
+      tr.appendChild(el('td', r.branch || '—'));
+      const bits = [];
+      if ((r.ahead || 0) > 0) bits.push('ahead ' + r.ahead);
+      if ((r.behind || 0) > 0) bits.push('behind ' + r.behind);
+      if (r.dirty) bits.push('uncommitted changes');
+      if (!bits.length) bits.push('clean');
+      tr.appendChild(el('td', bits.join(', ')));
+      tr.appendChild(el('td', (r.last_commit_subject || '—') +
+        ((r.last_commit_date || '').toString().slice(0, 10))));
+      tbody.appendChild(tr);
+    }
+    tbl.appendChild(tbody);
+    const sc2 = el('div'); sc2.className = 'scroll'; sc2.setAttribute('role', 'region');
+    sc2.setAttribute('aria-label', 'Repositories table'); sc2.setAttribute('tabindex', '0');
+    sc2.appendChild(tbl); src.appendChild(sc2);
+  }
+  const up = $('world-updates'); clear(up);
+  const upd = state.updates;
+  if (!upd || upd.ok === false) {
+    const why = (upd && upd.warnings && upd.warnings[0]) || 'not configured';
+    up.appendChild(el('p', 'Updates: ' + statusWord(upd && upd.status) + ' — ' + why));
+  } else {
+    const d = upd.data || {};
+    const checks = d.checks || {};
+    const keys = Object.keys(checks);
+    if (!keys.length) {
+      up.appendChild(el('p', 'Update check ran; no tracked targets reported.'));
+    } else {
+      for (const k of keys) {
+        const c = checks[k] || {};
+        const line = k + ': ' + (c.current || 'unknown') +
+          (c.available ? ' — update available: ' + c.available : ' — up to date');
+        up.appendChild(el('p', line));
+      }
+    }
+  }
 }
+/* ---- Journal ---- */
 function renderJournal() {
   const ul = $('journal-list'); clear(ul);
   const events = (state.journal && state.journal.data) || [];
-  if (events.length === 0) {
-    ul.appendChild(el('li', 'No journal entries yet.')); return;
+  const kind = state.journalFilter || '';
+  const filtered = kind ? events.filter(e => e.kind === kind) : events;
+  if (filtered.length === 0) {
+    const msg = events.length === 0
+      ? 'No journal entries yet. Entries appear as capabilities observe the world.'
+      : 'No entries of this kind yet.';
+    ul.appendChild(el('li', msg)); return;
   }
-  for (const e of events.slice().reverse()) {
+  for (const e of filtered.slice().reverse()) {
     const li = el('li');
     const t = el('time', (e.ts || '').toString().slice(0, 16).replace('T', ' '));
     li.appendChild(t); li.appendChild(document.createTextNode(' — '));
-    li.appendChild(document.createTextNode(e.kind + ': ' + e.summary));
+    li.appendChild(el('strong', e.kind));
+    li.appendChild(document.createTextNode(': ' + e.summary));
     ul.appendChild(li);
   }
 }
+/* ---- Settings ---- */
 function renderSettings() {
   const body = $('settings-body'); clear(body);
   const s = state.settings && state.settings.data;
@@ -618,10 +929,106 @@ function renderSettings() {
   }
   tbl.appendChild(tbody); scroll.appendChild(tbl); body.appendChild(scroll);
 }
+/* ---- Chat ---- */
+async function sendChat() {
+  const input = $('chat-input');
+  const text = (input.value || '').trim();
+  if (!text) return;
+  if (!state.token) { setChatStatus('Enter your token first.', true); return; }
+  const log = $('chat-log');
+  const empty = $('chat-empty');
+  if (empty) empty.remove();
+  log.appendChild(el('div', text, {class: 'chat-msg user'}));
+  input.value = '';
+  $('chat-send').disabled = true;
+  setChatStatus('Thinking… (local model — this can take a while on first reply)');
+  const thinking = el('div', 'Checking your world…', {class: 'chat-msg assistant'});
+  log.appendChild(thinking); log.scrollTop = log.scrollHeight;
+  const res = await api(state.token, '/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({message: text, history: state.chatHistory || []}),
+  });
+  $('chat-send').disabled = false;
+  if (res.error) { thinking.remove(); setChatStatus('Chat failed: ' + res.error, true); return; }
+  if (res.data && res.data.ok === false) {
+    thinking.remove();
+    const why = (res.data.warnings || []).join(' ');
+    const err = el('div', 'AI is ' + statusWord(res.data.status) + '. ' + why +
+      ' Everything else keeps working without it.', {class: 'chat-msg error'});
+    log.appendChild(err);
+    setChatStatus('AI unavailable — Personal World itself is unaffected.');
+    return;
+  }
+  const reply = (res.data && res.data.data && res.data.data.reply) || '';
+  thinking.remove();
+  log.appendChild(el('div', reply, {class: 'chat-msg assistant'}));
+  state.chatHistory = (state.chatHistory || []).concat(
+    [{role: 'user', content: text}, {role: 'assistant', content: reply}]).slice(-6);
+  setChatStatus('Replied ' + nowHHMM() + ' — from your local model with a read-only world snapshot.');
+  log.scrollTop = log.scrollHeight;
+}
+function setChatStatus(t, isErr) {
+  const s = $('chat-status');
+  s.textContent = t;
+  s.className = isErr ? '' : 'muted';
+}
+function renderAll() {
+  renderToday(); renderWorld(); renderJournal(); renderSettings();
+  buildSettingsPrefs(state.prefs || {});
+  syncRoute();
+}
+async function load() {
+  const token = $('token').value;
+  setMsg('Loading…');
+  let status, journal, daily, world, actors, settings, prefsRes, srcCtl, updates;
+  try {
+    // Promise.all needs an iterable; key the requests then reassemble.
+    const requests = {
+      status: api(token, '/api/status'),
+      journal: api(token, '/api/journal?n=100'),
+      daily: api(token, '/api/daily'),
+      world: api(token, '/api/exports/world'),
+      actors: api(token, '/api/actors'),
+      settings: api(token, '/api/exports/settings'),
+      prefsRes: api(token, '/api/prefs'),
+      srcCtl: api(token, '/api/source-control/status'),
+      updates: api(token, '/api/updates'),
+    };
+    const keys = Object.keys(requests);
+    const settled = await Promise.all(keys.map(k => requests[k]));
+    const results = Object.fromEntries(keys.map((k, i) => [k, settled[i]]));
+    status = results.status; journal = results.journal; daily = results.daily;
+    world = results.world; actors = results.actors; settings = results.settings;
+    prefsRes = results.prefsRes; srcCtl = results.srcCtl; updates = results.updates;
+  } catch (e) {
+    setMsg('Personal World is unreachable — the core may be down.');
+    return;
+  }
+  for (const v of [status, journal, daily, world, actors, settings]) {
+    if (v && v.error === 'unauthorized') {
+      setMsg('Authentication failed — check the token.'); return; }
+    if (v && v.error === 'no_auth') {
+      setMsg('Auth not configured on the server.'); return; }
+    if (v && v.error) { setMsg('Personal World is unreachable — the core may be down.'); return; }
+  }
+  state.token = token;
+  state.status = status.data;
+  state.journal = journal.data;
+  state.daily = daily.data;
+  state.world = world.data;
+  state.actors = actors.data;
+  state.settings = settings.data;
+  state.prefs = (prefsRes && prefsRes.data && prefsRes.data.data) || {};
+  state.sourceControl = srcCtl;
+  state.updates = updates;
+  setMsg('Loaded ' + nowHHMM());
+  $('login').setAttribute('hidden', '');
+  renderAll();
+}
 const state = {};
 function syncRoute() {
   const h = (location.hash || '#today').replace('#', '');
-  const routes = ['today', 'world', 'journal', 'settings'];
+  const routes = ['today', 'chat', 'world', 'journal', 'settings'];
   const r = routes.includes(h) ? h : 'today';
   document.title = 'Personal World — ' + r[0].toUpperCase() + r.slice(1);
   for (const x of routes) {
@@ -635,6 +1042,21 @@ function syncRoute() {
 window.addEventListener('hashchange', syncRoute);
 $('go').addEventListener('click', load);
 $('token').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+$('chat-form').addEventListener('submit', e => { e.preventDefault(); sendChat(); });
+for (const b of document.querySelectorAll('.jfilter')) {
+  b.addEventListener('click', () => {
+    for (const x of document.querySelectorAll('.jfilter')) x.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-pressed', 'true');
+    state.journalFilter = b.getAttribute('data-kind');
+    renderJournal();
+  });
+}
+$('journal-more').addEventListener('click', async () => {
+  if (!state.token) return;
+  const res = await api(state.token, '/api/journal?n=500');
+  if (!res.error) { state.journal = res.data; renderJournal();
+    setMsg('Loaded up to 500 journal entries — ' + nowHHMM()); }
+});
 syncRoute();
 </script>
 </body>

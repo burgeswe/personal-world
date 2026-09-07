@@ -46,15 +46,19 @@ on her own hardware, with portable state she owns.
 
 ## What works today
 
-Working and tested (229 tests, CI-gated): the world model with
-classification and cemented policies, CLI (17 commands), API with
-bearer-token auth, dashboard shell with preference-aware rendering,
-journal, all export paths, the native git baseline, the safe update
-flow, and the framework validator.
+Working and tested (CI-gated): the world model with classification and
+cemented policies, CLI (17 commands), API with bearer-token auth, the
+dashboard (Today, Chat, World, Journal, Settings) with real data
+wiring and server-rendered preferences, the Chat surface over a local
+model through a provider-neutral adapter (Ollama or any
+OpenAI-compatible endpoint), five companion characters with runtime
+selection, journal with kind filtering, source-repository status from
+the native git baseline, the safe update flow's read views, all export
+paths, and the framework validator.
 
-Designed, not yet implemented: the Chat surface, theme-pack loading,
-preference-driven dashboard customization — tracked in the
-[roadmap](ROADMAP.md).
+Designed, not yet implemented: theme-pack loading as a runtime system
+(companion selection and accent palettes are wired; full pack files
+are not loaded yet) — tracked in the [roadmap](ROADMAP.md).
 
 ## Try the CLI locally
 
