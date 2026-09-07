@@ -32,11 +32,11 @@ from personal_world.world import MutationDenied, UserAction, World  # noqa: E402
 
 FAKE_SENSITIVE = {
     "name": "Example Person",
-    "email": "burgeswe@hotmail.com",
-    "token": "sk-live-abcdef1234567890",
+    "email": "person@example.invalid",
+    "token": "synthetic-token-for-tests-only",
     "password": "correct-horse-battery-staple",
-    "private_lore": "the operator's most personal narrative that must never leak",
-    "api_key": "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+    "private_lore": "Example Person's private narrative that must never leak",
+    "api_key": "synthetic-api-key-for-tests-only",
 }
 
 
@@ -217,7 +217,7 @@ class TestProviderSubstitution:
     def test_gitea_and_fake_share_contract(self):
         reg = Registry()
         reg.define_capability("source_control", Gitea.__mro__[1])
-        real = Gitea("http://192.0.2.20:3000")
+        real = Gitea("http://service.example.invalid:3000")
         fake = FakeSourceControl()
         reg.register("source_control", "gitea", real,
                      health_check=lambda: False, writes="none")
