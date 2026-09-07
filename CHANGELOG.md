@@ -9,6 +9,20 @@ development line on `main`.
 
 ### Added
 
+- **Figma-faithful dashboard theme (2026-09-07).** The dashboard now
+  consumes the design truth the 0.1 pack shipped but never wired up:
+  the 72px sidebar icon rail with 44px touch targets (top banner
+  returns under 900px), self-hosted Young Serif display and Instrument
+  Sans variable fonts (the `font.expressive`/`font.interface` design
+  intent realized), the 72-glyph production icon sprite served at
+  `/icons/sprite.svg`, the greeting block + motif-badge + section
+  rhythm from `today-rylee-theme`, and the rylee accent corrected to
+  the design's rose `#b57f8b` (replacing an invented pastel). New
+  public routes serve only decorative static assets (icon sprite,
+  OFL-licensed font binaries). Palette tokens in `design/tokens.json`
+  are untouched; the accessibility floor is unchanged and all 25
+  dashboard tests pass. Design source: Figma file VATVojyJZT9HKx0CrDS0yr
+  frame 3:2147, extracted via the Figma MCP bridge 2026-09-07.
 - **Accessibility contract discoverability + current-state entry point
   (2026-09-07).** The four canonical accessibility documents
   (`ACCESSIBILITY_CONTRACT.md`, `SCREEN_READER_WALKTHROUGH.md`,
