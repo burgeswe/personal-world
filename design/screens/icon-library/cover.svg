@@ -25,17 +25,9 @@
 <path id="Vector_9" d="M448 213C454.627 213 460 207.627 460 201C460 194.373 454.627 189 448 189C441.373 189 436 194.373 436 201C436 207.627 441.373 213 448 213Z" stroke="#F0EAFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="Vector_10" d="M442.667 201L446.667 205L454.667 195.667" stroke="#F0EAFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
-<g id="Icon/Companion/Rylee Mermaid">
-<path id="Vector_11" d="M491.333 195.667C491.333 191.667 493.333 189 496 189C498.667 189 500.667 191.667 500.667 195.667V199.667C500.667 202.333 499.333 204.333 497.333 205.667L500.667 211.667L496 209.667L491.333 211.667L494.667 205.667C492.667 204.333 491.333 202.333 491.333 199.667V195.667Z" fill="#FFF0E4" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_12" d="M489.333 195.667C489.333 191 492 189 496 189C500 189 502.667 191 502.667 195.667C501.333 194.333 500 193 498.667 192.333C496 195.667 493.333 195.667 489.333 195.667Z" fill="#F8C5E8" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_13" d="M494.667 205.667C497.333 205.667 498.667 208.333 500.667 211.667L496 209.667L491.333 211.667C493.333 208.333 494.667 205.667 494.667 205.667Z" fill="#72B1B1" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_14" d="M494 198.333H494.013M498 198.333H498.013M494.667 201.667C495.6 202.333 496.4 202.333 497.333 201.667" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</g>
+<g id="Icon/Companion/Rylee Mermaid"><g transform="translate(480 185) scale(1.3333333333333333)" fill="none" stroke="#603D49" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8c0 5-6 7-6 11 0 3 3 4 6 3l2 2C11 23 4 19 4 14c0-5 4-7 2-11Z" fill="#72B1B1"/><path d="M14 17c-1-5 3-7 7-7 0 4-3 7-7 7Z" fill="#A8DCCC"/><path d="M14 17c4-1 7 1 7 5-4 0-7-2-7-5Z" fill="#A8DCCC"/><path d="M7 6h6" stroke-width="1"/></g></g>
 <g id="Icon/Companion/Personal World">
-<path id="Vector_15" d="M545.208 205.508C551.609 203.792 556.258 200.384 555.591 197.894C554.924 195.405 549.194 194.777 542.792 196.492C536.391 198.208 531.742 201.616 532.409 204.106C533.076 206.595 538.806 207.223 545.208 205.508Z" fill="#C8B8E1" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_16" d="M544 209C548.418 209 552 205.418 552 201C552 196.582 548.418 193 544 193C539.582 193 536 196.582 536 201C536 205.418 539.582 209 544 209Z" fill="#FAE8BC" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_17" d="M536 201C538.667 202.333 541.333 202.333 544 201C546.667 199.667 549.333 199.667 552 201" stroke="#A8DCCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="Vector_18" d="M541.333 199.667H541.347M546.667 199.667H546.68M542 203.667C543.333 204.6 544.667 204.6 546 203.667" stroke="#603D49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(528 185) scale(1.3333333333)" fill="none" stroke="#603D49" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(-15 12 12)" fill="#C8B8E1"/><circle cx="12" cy="12" r="6" fill="#FAE8BC"/><path d="M10 11h.01M14 11h.01M10.5 14c1 .7 2 .7 3 0" stroke-width="1"/></g>
 </g>
 </g>
 </g>

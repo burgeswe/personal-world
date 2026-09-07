@@ -21,8 +21,7 @@
 </g>
 <g id="nav-chat">
 <g id="message-circle">
-<rect id="bubble" x="28" y="189" width="16" height="13" rx="4" stroke="#F4EEFF" stroke-width="1.8"/>
-<ellipse id="tail" cx="31.5" cy="203" rx="2.5" ry="2" stroke="#F4EEFF" stroke-width="1.8"/>
+<path id="bubble" d="M32 189H40Q44 189 44 193V198Q44 202 40 202H35L31 205V202Q28 202 28 198V193Q28 189 32 189Z" fill="none" stroke="#F4EEFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 </g>
 <g id="nav-world">
