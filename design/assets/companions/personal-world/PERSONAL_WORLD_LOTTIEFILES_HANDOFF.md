@@ -1,12 +1,12 @@
-# Personal World — Saturn pet source rig
+# Personal World — planet pet source rig
 
-**Source:** `saturn-source-rig.svg` · 512 × 512 viewBox · transparent background.
-**Preview:** `saturn-preview.png` (reference only; import the SVG).
-**Status:** editable vector artwork in a neutral idle pose, not final animation. No keyframes, markers, constraints or pivots are embedded. SVG structure and rendered appearance were checked; LottieFiles import and app playback remain unverified.
+**Source:** `personal-world-source-rig.svg` · 512 × 512 viewBox · transparent background.
+**Preview:** `personal-world-preview.png` (reference only; import the SVG).
+**Status:** editable vector artwork in a neutral idle pose, not final animation. Both ring groups have explicit matching local origins and SVG transforms. The shared-controller setup is documented in `personal-world-ring-rig.json`; an animator must create and link that control after import. No keyframes or state markers are embedded. Neutral rendering is pixel-identical to the prior source, and three ring-only tilt poses were visually checked. LottieFiles import and app playback remain unverified.
 
 ## Character direction
 
-A proposed main Personal World pet: a friendly, unmistakably round Saturn-like globe with a wide tilted ring. Buttercream and peach make the planet feel warm; lavender and mint connect it to the mermaid companion. Aubergine-brown outlines, rosy cheeks and a small smile keep both pets in the same visual family. This is a stylized character, not an astronomical diagram.
+**Character name: Personal World** (formerly called Saturn in asset filenames). The main Personal World pet is a friendly, unmistakably round Saturn-like globe with a wide tilted ring. Buttercream and peach make the planet feel warm; lavender and mint connect it to the mermaid companion. Aubergine-brown outlines, rosy cheeks and a small smile keep both pets in the same visual family. This is a stylized character, not an astronomical diagram.
 
 Keep the circular silhouette, clear ring opening and readable face. No arms are necessary: a modest tilt or nod can greet the user. The companion should feel calm, present and observant.
 
@@ -16,7 +16,7 @@ All coordinates use the 512-unit source. Left/right refer to the viewer.
 
 | Group | Role |
 |---|---|
-| `saturn-pet` | Whole pet; excludes decorative sparkles |
+| `personal-world-pet` | Whole pet; excludes decorative sparkles |
 | `ring-back` | Rear half of ring, stripe and local outlines; behind globe |
 | `globe` | Parent for body, bands, highlight, outline and face |
 | `planet-body` | Buttercream circular disc |
@@ -31,7 +31,27 @@ All coordinates use the 512-unit source. Left/right refer to the viewer.
 | `sparkles` | Optional accents outside the pet parent |
 | `sparkle-left`, `sparkle-right`, `orbit-dot` | Independently removable accents |
 
-**Preserve painter order:** ring-back → globe → ring-front. Both ring halves share a center at **(256, 280)** and a baked-in **−18°** tilt. Set their anchors to the same center and drive them with one shared control; do not rotate one half independently. A whole-pet control can pivot around **(256, 250)**. The globe center is **(256, 242)**. These are anchor suggestions, not an authored rig.
+## Ring animation controls
+
+**Preserve painter order:** `ring-back` → `globe` → `ring-front`. The ring halves must remain separate layers so the globe can sit between them.
+
+Both ring groups now use **local anchor (0, 0)** with **position (256, 280)**. Their paths are rebased around that local origin. Neutral transforms are identical:
+
+```svg
+transform="translate(256 280) rotate(0) scale(1 1)"
+```
+
+The visible −18° tilt is already baked into the shape coordinates; rotation is an additional delta. To adjust the ring without moving the planet, apply the same transform to both groups. For example, `translate(256 280) rotate(4) scale(1 1)` changes only the ring's tilt by +4°.
+
+In the animation tool, create a **shared `rings` control** and link both halves' position, rotation and scale to it. Keep the globe outside that control. The `data-rig-control` attributes and JSON file are descriptive source metadata; SVG does not automatically bind these siblings, and importers may drop metadata. Verify the links explicitly after import.
+
+**Authoring files:**
+- `personal-world-ring-rig.json`: machine-readable target IDs, origin, default transforms, suggested bounds and motion constraints. This is a custom source mapping, not an importable Lottie state machine.
+- `personal-world-ring-poses.png`: checked −4°, neutral and +4° ring-only poses, with the globe staying fixed.
+
+Use **±4° as an initial range for brief pose changes**, not a validated limit for every possible animation. For subtle idle motion, start within **±1.4°** and measure total visible excursion at 48 px, including any other movement. The ring may make a small tilt, settle or change position as part of a state gesture; keep motion smooth, brief and non-spinning. No continuous rotation or endless rocking.
+
+A whole-pet control may pivot around **(256, 250)**. Globe center: **(256, 242)**. These two controls still need setup in the animation tool.
 
 Keep body, bands, highlight, face and circular outline together. The cloud-band shapes meet the disc edge without masks; do not translate them independently beyond that edge. Use shape changes if atmospheric drift is needed. Keep facial changes subtle and clear of the front ring. Large ring tilts, spins or 3D rotations require reworking geometry and occlusion; this source supports restrained 2D animation.
 
@@ -43,12 +63,12 @@ Deliver one master with six named segments and documented frame ranges:
 
 | State | Playback | Suggested expression |
 |---|---|---|
-| `idle` | Seamless loop | Almost-still float, occasional soft blink |
-| `listening` | Seamless loop | Small attentive tilt, open eyes |
+| `idle` | Seamless loop | Almost-still float, occasional soft blink; ring normally settled |
+| `listening` | Seamless loop | Small attentive pose and optional ring tilt, then hold |
 | `thinking` | Seamless loop | Restrained upward gaze and tiny settled tilt |
 | `sleep` | Seamless loop | Closed eyelids, resting pose, minimal drift |
-| `hello` | One-shot | Small friendly nod or tilt, then settle |
-| `celebrate` | One-shot | Brief happy expression and modest lift; optional static stars |
+| `hello` | One-shot | Small friendly ring tilt or nod, then settle |
+| `celebrate` | One-shot | Brief happy expression and small ring flourish; optional static stars |
 
 Only the idle artwork is supplied. Author closed eyelids and any alternate mouths in the animation tool; keep the source IDs recognizable. Match loop endpoints without jumps.
 
