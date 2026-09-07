@@ -1,18 +1,43 @@
-# LottieFiles Reference Assets
+# Personal World — Design Assets
 
-This folder contains the visual reference files for the mermaid companion animation handoff.
+Visual reference files for the Personal World companion character system and UI.
 
-See [`../LOTTIEFILES_HANDOFF.md`](../LOTTIEFILES_HANDOFF.md) for the full animation brief.
-
-## Files
+## Mermaid Companion (the operator's Theme)
 
 | File | Description |
 |---|---|
-| `mermaid-character-sheet.png` | Primary reference — source artwork with all 6 poses, color system, scale hierarchy, and placement rules |
-| `world-keeper-globe.png` | Quality/style reference — the existing globe companion animation |
-| `rylee-theme-spec.png` | Full theme spec showing the mermaid in UI context |
-| `lottiefiles-handoff-brief.png` | Visual version of the animation handoff document |
-| `mermaid-favicon-256.png` | Mermaid at small circular crop — color reference |
-| `mermaid-favicon-128.png` | Favicon 128px |
-| `mermaid-favicon-64.png` | Favicon 64px |
-| `mermaid-favicon-32.png` | Favicon 32px |
+| `mermaid-source-rig-v2.svg` | **Primary deliverable** — polished, animation-ready SVG with 53+ named layer groups, the operator palette colors, and face variants (eyes-closed, mouth-neutral) for LottieFiles rigging |
+| `MERMAID_RIG_CHANGES.md` | Detailed change notes from the art direction pass |
+| `mermaid-idle.svg` | Earlier vector mermaid attempt (superseded by v2) |
+
+## Companion System
+
+The mermaid is the first of several companion characters:
+- **the operator's Mermaid** — pastel kawaii, pink/lavender/mint/teal (✅ complete)
+- **Little Helper** — cute robot with heart screen (pending final files)
+- **VEFR Norse Squirrel** — squirrel with book tree (pending final files)
+- **Tacos & the Morning Paper** — food truck companion (pending final files)
+
+See `../COMPANION_INTEGRATION.md` for the full placement map and architecture.
+
+## Color Palette
+
+| Token | Hex | Usage |
+|---|---|---|
+| Ink Line | `#5A2D35` | All strokes |
+| Pastel Pink | `#F8C5E8` | Hair, shells, cheeks |
+| Lavender | `#E3D5F7` | Back hair |
+| Soft Blue | `#BFD8FE` | Hair accent, shells |
+| Mint Pastel | `#A7F3D0` | Hair accent, fins |
+| Pale Gold | `#F6F0BA` | Sparkle |
+| Mascot Teal | `#72B1B1` | Tail, bubbles |
+| Skin | `#FFF0E4` | Face, torso, arms |
+
+## Accessibility Constraints
+
+All companion animations must follow migraine-safety rules:
+- No flashing or strobing
+- No rotation
+- Max 300ms transitions
+- Max 2px idle drift
+- `prefers-reduced-motion` → static only
