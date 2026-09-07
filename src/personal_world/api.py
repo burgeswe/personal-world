@@ -19,6 +19,7 @@ from .chat_context import build_world_context
 from .envelope import Result
 from .journal import AuditRenderer, Journal
 from .loop import daily
+from .providers.lab_state import DEFAULT_LAB, LabState
 from .providers.registry import Registry
 from .source_control import (
     discover_repositories,
@@ -278,6 +279,24 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         commits = repository_history(matches[0]["path"], limit)
         return {"ok": True, "status": "healthy",
                 "data": {"repo": repo, "commits": commits}}
+
+    @app.get("/api/lab/state", dependencies=[Depends(require_auth)])
+    async def lab_state() -> dict:
+        """Operator packet from the homelab Lab CLI (lab-lowbw/1).
+
+        Presentation-only: the packet is produced by the lab layer;
+        this route never derives homelab state itself.
+        """
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        r = provider.observe()
+        payload = {
+            "ok": r.ok,
+            "status": r.status,
+            "data": r.data or {"rows": [], "reason": r.status},
+        }
+        if r.warnings:
+            payload["warnings"] = r.warnings
+        return payload
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
@@ -739,6 +758,11 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <tbody><tr><td colspan="4" class="muted">Loading…</td></tr></tbody></table>
 </div>
 </section>
+<section aria-labelledby="world-lab-h2">
+<h2 id="world-lab-h2">Lab status</h2>
+<p class="muted">Operator packet from the homelab Lab CLI. The lab layer owns this truth; this view only presents it.</p>
+<div id="world-lab" class="muted">Loading…</div>
+</section>
 <section aria-labelledby="world-src-h2">
 <h2 id="world-src-h2">Source repositories</h2>
 <div id="world-src" class="muted">Loading…</div>
@@ -1048,6 +1072,53 @@ function renderWorld() {
     sc2.setAttribute('aria-label', 'Repositories table'); sc2.setAttribute('tabindex', '0');
     sc2.appendChild(tbl); src.appendChild(sc2);
   }
+  const lab = $('world-lab'); clear(lab);
+  const lp = state.lab;
+  if (!lp || lp.ok === false) {
+    const why = (lp && lp.warnings && lp.warnings[0]) || 'not configured';
+    lab.appendChild(el('p', 'Lab: ' + statusWord(lp && lp.status) + ' — ' + why));
+  } else {
+    const rows = (lp.data && lp.data.rows) || [];
+    lab.appendChild(el('p', rows.length + ' operator rows — evidence freshness enforced upstream.'));
+    const tbl = el('table'); const thead = el('thead'); const trh = el('tr');
+    for (const h of ['Row', 'Items', 'State', 'Freshness']) {
+      trh.appendChild(el('th', h));
+    }
+    thead.appendChild(trh); tbl.appendChild(thead);
+    const tbody = el('tbody');
+    for (const r of rows) {
+      const tr = el('tr');
+      tr.appendChild(el('td', r.row));
+      tr.appendChild(el('td', String(r.count)));
+      if (r.unrecognized) {
+        tr.appendChild(el('td', 'unrecognized row (schema grew upstream)'));
+      } else {
+        const td = el('td'); td.appendChild(chip(r.stale ? 'stale' : 'healthy'));
+        tr.appendChild(td);
+      }
+      tr.appendChild(el('td', r.stale ? 'stale' : 'current'));
+      tbody.appendChild(tr);
+    }
+    tbl.appendChild(tbody);
+    const wrap = el('div'); wrap.className = 'scroll'; wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', 'Lab operator rows table'); wrap.setAttribute('tabindex', '0');
+    wrap.appendChild(tbl); lab.appendChild(wrap);
+    // Evidence details, per row, inside progressive disclosure.
+    for (const r of rows) {
+      if (!r.observations || r.observations.length === 0) continue;
+      const d = el('details', null, {class: 'provenance'});
+      d.appendChild(el('summary', r.row + ' — ' + r.observations.length + ' observation(s)'));
+      for (const o of r.observations) {
+        const p = el('p', (o.detail || '').slice(0, 140) +
+          (o.observed_at ? ' — observed ' + o.observed_at.slice(0, 16) : ''));
+        d.appendChild(p);
+        if (o.action) {
+          d.appendChild(el('p', 'action: ' + o.action.slice(0, 140)));
+        }
+      }
+      lab.appendChild(d);
+    }
+  }
   const up = $('world-updates'); clear(up);
   const upd = state.updates;
   if (!upd || upd.ok === false) {
@@ -1173,7 +1244,7 @@ function renderAll() {
 async function load() {
   const token = $('token').value;
   setMsg('Loading…');
-  let status, journal, daily, world, actors, settings, prefsRes, srcCtl, updates;
+  let status, journal, daily, world, actors, settings, prefsRes, srcCtl, updates, lab;
   try {
     // Promise.all needs an iterable; key the requests then reassemble.
     const requests = {
@@ -1186,6 +1257,7 @@ async function load() {
       prefsRes: api(token, '/api/prefs'),
       srcCtl: api(token, '/api/source-control/status'),
       updates: api(token, '/api/updates'),
+      lab: api(token, '/api/lab/state'),
     };
     const keys = Object.keys(requests);
     const settled = await Promise.all(keys.map(k => requests[k]));
@@ -1193,6 +1265,7 @@ async function load() {
     status = results.status; journal = results.journal; daily = results.daily;
     world = results.world; actors = results.actors; settings = results.settings;
     prefsRes = results.prefsRes; srcCtl = results.srcCtl; updates = results.updates;
+    lab = results.lab;
   } catch (e) {
     setMsg('Personal World is unreachable — the core may be down.');
     return;
@@ -1214,6 +1287,7 @@ async function load() {
   state.prefs = (prefsRes && prefsRes.data && prefsRes.data.data) || {};
   state.sourceControl = srcCtl;
   state.updates = updates;
+  state.lab = lab;
   setMsg('Loaded ' + nowHHMM());
   $('login').setAttribute('hidden', '');
   renderAll();
