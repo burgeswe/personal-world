@@ -116,8 +116,25 @@ TARGET_SIZE = NumberPref(
     key="target_size", default=44, floor=44, integer=True, unit="px",
     css_var="--pw-target-size", data_attr="data-pw-target-size",
 )
+COMPANION = EnumPref(
+    key="companion", default="personal-world",
+    allowed=(
+        "personal-world", "mermaid", "robot",
+        "world-tree-squirrel", "taco-news-truck",
+    ),
+    floor="personal-world",
+    css_var="--pw-companion", data_attr="data-pw-companion",
+)
+ACCENT = EnumPref(
+    key="accent", default="world-keeper",
+    allowed=("world-keeper", "rylee"),
+    floor="world-keeper",
+    css_var="--pw-accent", data_attr="data-pw-accent",
+)
 PREFS: dict[str, EnumPref | NumberPref] = {
-    p.key: p for p in (MOTION, CONTRAST, TEXT_SCALE, DENSITY, TARGET_SIZE)
+    p.key: p
+    for p in (MOTION, CONTRAST, TEXT_SCALE, DENSITY, TARGET_SIZE,
+              COMPANION, ACCENT)
 }
 
 

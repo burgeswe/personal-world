@@ -7,7 +7,43 @@ development line on `main`.
 
 ## Unreleased
 
+### Added
+
+- **Chat surface with local-AI integration (2026-09-07).** Chat is a
+  first-class dashboard destination backed by `POST /api/chat` and a
+  provider-neutral `ChatContract`. Two adapters ship: `ollama`
+  (Ollama's native API) and `openai_compat` (any OpenAI-compatible
+  endpoint). The model observes a trimmed read-only world snapshot —
+  capability statuses, actors, intents, policies, world-classified
+  lore, recent journal events, source-repository summaries — and
+  degrades honestly: `not_configured` with no provider, an inline
+  error card when a model is unreachable. The core boots and stays
+  fully usable with zero AI.
+- **Dashboard rebuild on the canonical token system (2026-09-07).**
+  Five-section navigation (Today, Chat, World, Journal, Settings),
+  aubergine palette from `design/tokens.json`, status chips that lead
+  with text words, journal kind-filtering, source-repository and
+  update read views on World, and honest empty states throughout.
+- **Companion runtime (2026-09-07).** The five approved companion
+  source rigs ship byte-identical in the package and render at the
+  brand lockup and Chat surface; companion selection and the Rylee
+  accent palette are live preferences applied server-side and
+  client-side.
+- **Live preference editing (2026-09-07).** Text scale, density, touch
+  targets, companion, and accent change the UI immediately and persist
+  to the world state via `PUT /api/prefs`; the accessibility floor
+  remains non-lowerable.
+- `POST /api/chat`, the `reasoning` capability registry seam, and a
+  19-test chat suite covering context trimming, private-lore
+  exclusion, provider substitution, and fail-honest API behavior.
+
 ### Fixed
+
+- Dashboard `load()` used `Promise.all()` on a plain object (not
+  iterable), so every load threw and reported the core unreachable
+  even when all APIs returned 200 (2026-09-07).
+
+### Changed
 
 - History sanitization: removed operator deployment endpoints and
   personal identifiers from the tracked default configuration and from
@@ -18,9 +54,6 @@ development line on `main`.
 - New `tests/test_public_safety.py` regression gate blocks private
   endpoints (RFC1918 ranges and known operator hostnames) from
   re-entering shipped defaults.
-
-### Changed
-
 - CI workflow actions bumped to current major versions
   (`actions/setup-python` v7).
 

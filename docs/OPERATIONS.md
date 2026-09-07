@@ -70,6 +70,47 @@ Back up the data volume securely before deployment changes. It contains world
 state and the journal; deleting it can lose user-authored state and history.
 Do not put backups, journal exports or diagnostic dumps in this public repo.
 
+## Chat (optional local AI)
+
+The Chat surface is a provider-neutral conversation over a read-only
+world snapshot. With no chat provider configured the capability reports
+`not_configured` and every other surface works unchanged; an unreachable
+model degrades to an honest inline error, never a fake reply.
+
+Wire a provider in your **private** runtime config
+(`config.local/connections.json`), never the tracked default:
+
+```json
+{
+  "$schema": "personal-world/connections/1",
+  "connections": [
+    {
+      "type": "ollama",
+      "name": "local-qwen",
+      "capability": "reasoning",
+      "base_url": "http://127.0.0.1:11434",
+      "model": "qwen3:8b",
+      "timeout": 300
+    }
+  ]
+}
+```
+
+`type` is `ollama` (Ollama's native `/api/chat`) or `openai_compat` (any
+OpenAI-compatible `/v1/chat/completions` endpoint — llama.cpp server,
+LiteLLM, vLLM). API keys for remote endpoints use env indirection:
+`"api_key_env": "MY_KEY_ENV"` (see the framework secret rule; the
+provider never reads the value into settings or exports). `timeout` is
+seconds; generous values suit CPU-only inference where a cold 8B model
+load can take minutes.
+
+The model observes a trimmed text snapshot of your world (capability
+statuses, actors, intents, policies, world-classified lore, recent
+journal events, source-repository summaries) plus the last six chat
+turns. Private-class lore and secret material are never included. The
+chat path is read-only: there is no tool execution and no state
+mutation from chat.
+
 ## Updates and validation
 
 Fetch and review upstream changes in a clean deployment checkout. Preserve local

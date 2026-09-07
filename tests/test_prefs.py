@@ -39,6 +39,8 @@ class TestDefaultsSatisfyFloor:
             "text_scale": 1.0,
             "density": "comfortable",
             "target_size": 44,
+            "companion": "personal-world",
+            "accent": "world-keeper",
         }
 
     def test_every_spec_default_equals_normalize(self):
