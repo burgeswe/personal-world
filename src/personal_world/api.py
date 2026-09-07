@@ -319,6 +319,35 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             raise HTTPException(status_code=404, detail="companion art missing")
         return FileResponse(path, media_type="image/svg+xml")
 
+    static_dir = Path(__file__).parent / "static"
+
+    @app.get("/icons/sprite.svg")
+    async def icon_sprite() -> Response:
+        # 72-glyph production icon system (design/assets/icons/). Public:
+        # decorative geometry, stroke=currentColor, carries no world state.
+        path = static_dir / "icons" / "sprite.svg"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="sprite missing")
+        return FileResponse(path, media_type="image/svg+xml")
+
+    @app.get("/fonts/{name}")
+    async def webfont(name: str) -> Response:
+        # Self-hosted Figma-export families (design/tokens.json
+        # font.expressive / font.interface). Public: OFL-licensed
+        # font binaries, no world state.
+        allowed = {
+            "young-serif-latin.woff2": "font/woff2",
+            "instrument-sans-var-latin.woff2": "font/woff2",
+        }
+        ctype = allowed.get(name)
+        if ctype is None or "/" in name or ".." in name:
+            raise HTTPException(status_code=404, detail="unknown font")
+        path = static_dir / "fonts" / name
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="font missing")
+        return FileResponse(path, media_type=ctype, headers={
+            "Cache-Control": "public, max-age=604800, immutable"})
+
     return app
 
 
@@ -335,6 +364,25 @@ DASHBOARD_HTML = """<!doctype html>
 <title>Personal World — Today</title>
 <!--PW-PREFS-STYLE-->
 <style>
+/* Figma-faithful theme (file VATVojyJZT9HKx0CrDS0yr, today-rylee-theme
+   #3:2147, extracted via Figma MCP 2026-09-07). Tokens are the
+   canonical repo design/tokens.json aubergine palette; families are
+   the self-hosted Figma-export fonts. Layout mirrors the design's
+   sidebar rail + reading column. Accessibility floor unchanged. */
+@font-face {
+  font-family: "Young Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/young-serif-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2");
+}
 :root {
   color-scheme: dark;
   /* Canonical design tokens (design/tokens.json, aubergine palette) */
@@ -347,9 +395,23 @@ DASHBOARD_HTML = """<!doctype html>
   --text-muted: #6b5f82;
   --accent-primary: #72b1b1;
   --accent-secondary: #b57f8b;
+  /* Figma rylee-theme surface additions (inset + badge ring) */
+  --surface-inset: #13111c;
   --bg: var(--surface-canvas); --text: var(--text-primary);
   --border: var(--border-subtle); --panel: var(--surface-panel);
   --muted: var(--text-secondary);
+  /* Figma type scale (today-rylee-theme) */
+  --font-expressive: "Young Serif", system-ui, sans-serif;
+  --font-interface: "Instrument Sans", system-ui, sans-serif;
+  --size-display: 2.5rem;      /* 40px greeting */
+  --size-section: 1.375rem;    /* 22px world-health heading */
+  --size-card-title: 1.125rem; /* 18px card titles */
+  --size-body: 1rem;           /* 16px */
+  --size-meta: 0.9375rem;      /* 15px timestamps/meta */
+  --size-label: 0.875rem;      /* 14px card labels */
+  --size-tag: 0.8125rem;       /* 13px journal tags */
+  /* Figma layout: 72px rail, reading column */
+  --rail-width: 72px;
 }
 @media (prefers-color-scheme: light) {
   :root {
@@ -359,16 +421,52 @@ DASHBOARD_HTML = """<!doctype html>
   }
 }
 [data-pw-accent="rylee"] {
-  --accent-secondary: #f8c5e8;
+  /* Figma rylee-theme accent-secondary (#B57F8B rose) — the design's
+     own rose, not an invented pastel */
+  --accent-secondary: #b57f8b;
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text);
-       font-family: system-ui, sans-serif; margin: 0; padding: 1.5rem;
+       font-family: var(--font-interface); margin: 0;
        line-height: 1.6; max-width: 100%;
        font-size: calc(1rem * var(--pw-text-scale, 1)); }
-.wrap { max-width: 56rem; margin: 0 auto; }
-h1 { font-size: 1.3rem; margin: 0; }
-h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+
+/* Layout: app shell = sidebar rail + reading column (Figma
+   today-rylee-theme main-reading-content + sidebar-rail) */
+.app-shell { display: flex; align-items: stretch; min-height: 100vh; }
+.wrap { flex: 1; min-width: 0; margin-left: var(--rail-width); }
+.rail { position: fixed; top: 0; bottom: 0; left: 0;
+        width: var(--rail-width);
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: space-between; padding: 2rem 0;
+        border-right: 1px solid var(--border); background: var(--bg); }
+.rail-group { display: flex; flex-direction: column; align-items: center;
+              gap: 1rem; }
+.rail-group.nav-gap { gap: 2.5rem; }
+.appliance-logo { width: 44px; height: 44px; display: flex;
+                  align-items: center; justify-content: center;
+                  background: var(--surface-inset); border-radius: 12px;
+                  font-family: var(--font-expressive); font-size: 1.25rem;
+                  color: var(--accent-primary); }
+.rail nav[aria-label="Main"] { display: flex; flex-direction: column;
+                               gap: 0; }
+.rail nav[aria-label="Main"] a { width: 44px; height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--text-secondary); text-decoration: none;
+        border-radius: 8px; }
+.rail nav[aria-label="Main"] a svg { width: 24px; height: 24px; }
+.rail nav[aria-label="Main"] a:hover { background: var(--surface-inset); }
+.rail nav[aria-label="Main"] a[aria-current="page"] {
+        background: var(--surface-inset); color: var(--accent-primary); }
+.rail .brand-companion { width: 32px; height: 32px; flex: 0 0 32px;
+                         border-radius: 6px; overflow: hidden; }
+.rail .brand-companion img { width: 100%; height: 100%; display: block; }
+
+h1, h2, h3 { font-family: var(--font-interface); }
+h1 { font-family: var(--font-expressive); font-size: 1.25rem; margin: 0;
+     font-weight: 400; }
+h2 { font-size: var(--size-section); margin: 1.5rem 0 0.5rem;
+     color: var(--text); font-weight: 500; }
 h3 { font-size: 0.95rem; margin: 1rem 0 0.25rem; color: var(--muted);
      font-weight: 500; }
 section { margin-bottom: 1.5rem; }
@@ -383,7 +481,31 @@ th { color: var(--muted); font-weight: 500; }
 .scroll { overflow-x: auto; }
 code { background: var(--panel); padding: 0.1rem 0.3rem; border-radius: 4px;
        overflow-wrap: anywhere; }
-header.banner { display: flex; flex-wrap: wrap; align-items: center;
+
+/* Reading column (Figma: padding 64px 120px 80px, gap 56px between
+   top-level sections; collapses at the 900px narrow design) */
+main { padding: 4rem 7.5rem 5rem; display: flex;
+       flex-direction: column; gap: 1rem; }
+main > section { margin-bottom: 0; padding-bottom: 1rem; }
+.greeting { display: flex; flex-wrap: wrap; align-items: flex-start;
+            justify-content: space-between; gap: 1rem; }
+.greeting h2 { font-family: var(--font-expressive);
+               font-size: var(--size-display); font-weight: 400;
+               margin: 0; color: var(--text); }
+.greeting .meta-row { display: flex; align-items: center; gap: 0.5rem;
+                      color: var(--text-secondary);
+                      font-size: var(--size-meta); }
+.meta-dot { width: 4px; height: 4px; border-radius: 50%;
+            background: var(--accent-primary); display: inline-block; }
+.motif-badge { display: inline-flex; align-items: center; gap: 0.5rem;
+               padding: 0.625rem; border: 1px solid var(--border);
+               border-radius: 999px; color: var(--text-secondary);
+               font-size: 0.75rem; font-weight: 500; }
+.motif-planet { width: 12px; height: 12px; border-radius: 50%;
+                background: var(--accent-primary); display: inline-block; }
+.hr { border: 0; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+
+header.banner { display: none; flex-wrap: wrap; align-items: center;
                 gap: 1rem; padding-bottom: 1rem;
                 border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
 .brand-lockup { display: flex; align-items: center; gap: 0.75rem; }
@@ -391,15 +513,19 @@ header.banner { display: flex; flex-wrap: wrap; align-items: center;
                    border-radius: 50%; }
 .brand-companion img { width: 100%; height: 100%; display: block;
                        border-radius: 50%; }
-nav[aria-label="Main"] { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-nav[aria-label="Main"] a { display: inline-flex; align-items: center;
-                           padding: 0.55rem 0.9rem;
-                           min-width: var(--pw-target-size, 44px);
-                           min-height: var(--pw-target-size, 44px);
-                           color: var(--text); text-decoration: none;
-                           border: 1px solid var(--border); border-radius: 6px;
-                           background: var(--panel); }
-nav[aria-label="Main"] a[aria-current="page"] { border-color: var(--text); }
+/* Top nav fallback: hidden on desktop (rail carries nav), visible <900px */
+header.banner nav[aria-label="Main"] { display: flex; gap: 0.25rem;
+                                       flex-wrap: wrap; }
+header.banner nav[aria-label="Main"] a {
+        display: inline-flex; align-items: center;
+        padding: 0.55rem 0.9rem;
+        min-width: var(--pw-target-size, 44px);
+        min-height: var(--pw-target-size, 44px);
+        color: var(--text); text-decoration: none;
+        border: 1px solid var(--border); border-radius: 6px;
+        background: var(--panel); }
+header.banner nav[aria-label="Main"] a[aria-current="page"] {
+        border-color: var(--text); }
 #login { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
 /* The load flow sets [hidden] after a successful token check; without
    this rule display:flex would override the UA's [hidden] and the
@@ -414,16 +540,17 @@ textarea { width: 100%; resize: vertical; }
 button { background: var(--panel); color: var(--text);
          border: 1px solid var(--border); border-radius: 6px;
          padding: 0.55rem 1rem; font-size: 1rem;
+         font-family: var(--font-interface);
          min-width: var(--pw-target-size, 44px);
          min-height: var(--pw-target-size, 44px); cursor: pointer; }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 button[aria-pressed="true"] { border-color: var(--text); }
-.skip { position: absolute; left: -9999px; top: auto; }
-.skip:focus { left: 1rem; top: 1rem; background: var(--panel);
-              padding: 0.5rem; border: 1px solid var(--text); z-index: 10; }
+.skip { position: absolute; left: -9999px; top: auto; z-index: 20; }
+.skip:focus { left: 5.5rem; top: 1rem; background: var(--panel);
+              padding: 0.5rem; border: 1px solid var(--text); z-index: 20; }
 :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .muted { color: var(--muted); }
-#msg { color: var(--muted); }
+#msg { color: var(--muted); padding: 0 7.5rem; }
 .view { display: none; }
 .view.active { display: block; }
 /* Status chips: luminance + text word, never color-only */
@@ -438,6 +565,18 @@ button[aria-pressed="true"] { border-color: var(--text); }
 .card { background: var(--panel); border: 1px solid var(--border);
         border-radius: 8px; padding: 0.75rem 1rem; }
 .card h3 { margin-top: 0; }
+/* Attention rows (Figma: 40px inset icon tile + two-line label) */
+.attention-item { display: flex; align-items: center; gap: 1rem;
+                  padding: 0.75rem 0; }
+.attention-item .icon-container { width: 40px; height: 40px; flex: 0 0 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--surface-inset); border-radius: 8px;
+        color: var(--text-secondary); }
+.attention-item .icon-container svg { width: 20px; height: 20px; }
+.attention-item .lines { display: flex; flex-direction: column; gap: 2px; }
+.attention-item .lines .title { font-weight: 500; color: var(--text); }
+.attention-item .lines .detail { color: var(--text-secondary);
+                                 font-size: var(--size-meta); }
 /* Chat surface */
 #chat-log { display: flex; flex-direction: column; gap: 0.75rem;
             min-height: 8rem; }
@@ -460,9 +599,25 @@ details.provenance { margin: 0.25rem 0; }
 details.provenance summary { cursor: pointer; color: var(--muted); }
 .journal-filters { display: flex; flex-wrap: wrap; gap: 0.25rem;
                    margin-bottom: 0.5rem; }
+/* Narrow design (Figma today-hybrid-narrow-900 + responsive cascade):
+   rail collapses to a top banner under 900px */
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .rail { position: static; width: auto; flex-direction: row;
+          padding: 0.75rem 1rem; border-right: 0;
+          border-bottom: 1px solid var(--border); }
+  .wrap { margin-left: 0; }
+  .rail nav[aria-label="Main"] { flex-direction: row; }
+  header.banner { display: flex; }
+  .rail-only { display: none; }
+  main { padding: 1.5rem 1rem 2rem; }
+  #msg { padding: 0 1rem; }
+}
 @media (max-width: 640px) {
-  body { padding: 1rem 0.75rem; }
+  body { padding: 0; }
   .chat-msg { max-width: 100%; }
+  main { padding: 1rem 0.75rem 2rem; }
+  #msg { padding: 0 0.75rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
@@ -471,6 +626,23 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 </head>
 <body>
 <a class="skip" href="#main-content">Skip to main content</a>
+<div class="app-shell">
+<nav class="rail rail-only" aria-label="Main">
+<div class="rail-group">
+<span class="appliance-logo" aria-hidden="true">p</span>
+<div class="rail-group nav-gap">
+<a href="#today" data-route="today" aria-label="Today"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-today"></use></svg></a>
+<a href="#chat" data-route="chat" aria-label="Chat"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-chat"></use></svg></a>
+<a href="#world" data-route="world" aria-label="Worlds"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-worlds"></use></svg></a>
+<a href="#journal" data-route="journal" aria-label="Journal"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-journal"></use></svg></a>
+</div>
+</div>
+<div class="rail-group">
+<span class="brand-companion" data-pw-companion-slot="brand"><img
+ src="/companions/personal-world.svg" alt="" width="32" height="32"></span>
+<a href="#settings" data-route="settings" aria-label="Settings"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-settings"></use></svg></a>
+</div>
+</nav>
 <div class="wrap">
 <header class="banner">
 <div class="brand-lockup">
@@ -494,19 +666,29 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <p id="msg" role="status" aria-live="polite">Token stays in this browser; requests go to /api/*.</p>
 <main id="main-content">
 <section id="view-today" class="view active" aria-labelledby="today-h1">
+<div class="greeting">
+<div>
 <h2 id="today-h1">Today</h2>
+<div class="meta-row"><span>Saturday, September 6</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Personal World Appliance active</span></div>
+</div>
+<span class="motif-badge"><span class="motif-planet" aria-hidden="true"></span>Local Node 01</span>
+</div>
+<hr class="hr">
 <section aria-labelledby="today-health-h2">
 <h2 id="today-health-h2">World health</h2>
 <div id="today-health" class="muted">Loading…</div>
 </section>
+<hr class="hr">
 <section aria-labelledby="today-attention-h2">
 <h2 id="today-attention-h2">Needs attention</h2>
-<ul id="today-attention"><li class="muted">Loading…</li></ul>
+<ul id="today-attention" class="cards"><li class="muted">Loading…</li></ul>
 </section>
+<hr class="hr">
 <section aria-labelledby="today-changes-h2">
 <h2 id="today-changes-h2">Recent changes</h2>
 <div id="today-changes" class="muted">Loading…</div>
 </section>
+<hr class="hr">
 <section aria-labelledby="today-caps-h2">
 <h2 id="today-caps-h2">Capabilities</h2>
 <div class="scroll" role="region" aria-label="Capabilities table" tabindex="0">
@@ -514,6 +696,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <tbody><tr><td colspan="2" class="muted">Loading…</td></tr></tbody></table>
 </div>
 </section>
+<hr class="hr">
 <section aria-labelledby="today-journal-h2">
 <h2 id="today-journal-h2">Recent journal</h2>
 <ul id="today-journal"><li class="muted">Loading…</li></ul>
