@@ -1,8 +1,9 @@
 # design/handoff/ — archived design spec package
 
 The original Personal World 0.1 design handoff (GitHub `burgeswe/personal-world`
-commit `6258f96`, 2026-09-06). Preserved verbatim as historical/reference
-material.
+commit `aa3f6d8`, 2026-09-06). Preserved verbatim as historical/reference
+material; commit IDs predate the 2026-09-07 history sanitization and were
+remapped to their rewritten equivalents.
 
 Canonical status, per the operator's 2026-09-06 decision: the **most recent Figma
 export** (see `../exports/0.1/`) and the spec package it corresponds to are

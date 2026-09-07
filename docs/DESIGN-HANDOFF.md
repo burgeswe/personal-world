@@ -1,9 +1,10 @@
 # Personal World — Design Handoff (V0.1)
 
-**For: the Figma design stage.** This document describes the ACTUAL
-implemented product as of V0.1 (commit `1f4e404`+). It is sanitized:
-no credentials, no tokens, no personal journal contents, no private
-lore, no real indexer/client names. All examples below are either
+**Status: canonical design reference** (as of V0.1; superseded sections
+are marked inline). **For: the Figma design stage.** This document describes
+the ACTUAL implemented product as of V0.1 (commit `7c16a61`+). It is
+sanitized: no credentials, no tokens, no personal journal contents, no
+private lore, no real indexer/client names. All examples below are either
 real structural output or clearly synthetic.
 
 Give this document plus the V0.1 final report to ChatGPT to produce
