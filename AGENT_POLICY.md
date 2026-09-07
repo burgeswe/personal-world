@@ -1,141 +1,143 @@
-# Agent Policy — Repository Decision Kernel
+# Agent Policy — Personal World Decision Kernel
 
-This is the mandatory entry point for AI agents working in this repository.
+This is the mandatory entry point for AI agents working on Personal World.
 
 ## Mandatory preflight
 
-Before planning, researching, modifying, reviewing, merging, deploying, or declaring work complete:
+Before planning, researching, designing, modifying, reviewing, merging, or releasing:
 
-1. Read the repository's canonical contract index.
-2. Identify and read every contract applicable to the task.
-3. Inspect current repository and runtime evidence before trusting handoffs, TODOs, or assumptions.
-4. Reuse the existing canonical owner of a capability before creating another implementation.
-5. Determine how compliance will be verified before making the change.
+1. Read the repository's canonical contract/index documentation.
+2. Load every applicable contract, especially Accessibility and Human Reliability.
+3. Inspect current repository behavior before trusting old handoffs or assumptions.
+4. Identify whose state, data, or experience a change affects.
+5. Determine how the result will be verified.
 
 **Repository truth outranks inference. Unknown is a valid state. Make honesty cheaper than fabrication.**
 
-## Decision rule
+## Product rule
+
+Personal World is a personal appliance, not an administration console.
+
+Technology should disappear behind understandable human concepts.
 
 Prefer:
 
-`inspect → verify → decide → change → prove`
+`human intent → native Personal World concept → adapter`
 
 over:
 
-`assume → generate → hope`
+`provider → provider-shaped UI`
 
-When multiple designs work, prefer the one where:
+Examples:
 
+- source control, not a Gitea/GitHub clone
+- health, not a Gatus clone
+- deployment state, not a Komodo clone
+- safe secret state, not a vault clone
+- personal memory, not a vector-database console
+- settings and drift, not a configuration-management dashboard
+
+## Decision rule
+
+Prefer designs where:
+
+- the correct behavior is the easiest behavior
 - truth is easier to retrieve than fabricate
-- safe behavior is easier than unsafe behavior
-- accessible behavior is the default
-- state is visible rather than remembered
-- recovery is easier than heroics
-- ownership is explicit rather than inferred
-- deterministic behavior replaces unnecessary judgment
-- unknown state remains visibly unknown
-- evidence is cheaper than confidence
-- one canonical interface is easier than competing interfaces
-- humans can understand and recover the system without reconstructing agent history
+- accessibility is the default
+- private state is private by default
+- ownership is explicit
+- uncertainty remains visible
+- recovery is understandable
+- complexity is progressively disclosed
+- users do not need infrastructure knowledge for ordinary use
+- single-user operation stays simple even as multi-user capabilities grow
 
 ## Contracts are requirements
 
-The contract index determines which repository contracts govern the work.
+The canonical contract/index system governs decisions.
 
-Always consider applicability of:
+Always consider:
 
-- Human Reliability
 - Accessibility
-- security and secret handling
-- architecture and ownership
-- deployment and recovery
-- public/private boundaries
-- repository-specific operational contracts
+- Human Reliability
+- security/privacy
+- identity and ownership
+- public repository boundaries
+- recovery and reversibility
+- provider-neutral architecture
 
-Do not duplicate those contracts here.
+Do not duplicate canonical contracts here.
 
-Read and obey their canonical versions.
+## Human experience
 
-If a contract and an old handoff disagree, follow the canonical contract and current verified truth.
+Before accepting a design, ask:
 
-## Before changing anything
+- What does the person think is happening?
+- What actually is happening?
+- Can those differ silently?
+- What needs attention?
+- What can safely wait?
+- What is healthy?
+- What is unknown?
+- Can the person recover without understanding implementation internals?
 
-Answer:
+Accessibility requirements are architectural requirements, not polish.
 
-### Truth
-- What is currently true?
-- What evidence proves it?
-- Is the handoff older than repository or runtime state?
-- Is this already implemented?
-
-### Scope
-- What is the smallest coherent change?
-- What is explicitly out of scope?
-- Which existing abstraction owns this responsibility?
-
-### Safety
-- What could break?
-- Is the operation reversible?
-- What must be preserved?
-- What condition should make the agent stop?
-
-## While working
-
-Prefer extending existing capabilities over creating new:
-
-- services
-- containers
-- databases
-- dashboards
-- CLIs
-- agent frameworks
-- settings systems
-- backup systems
-- state stores
-
-Use explicit states such as:
-
-- `UNKNOWN`
-- `NOT_CONFIGURED`
-- `DEGRADED`
-- `BLOCKED`
-- `DEFERRED`
-
-Never convert uncertainty into success merely to finish a task.
-
-Never expose credentials, secret values, resolved secret configuration, tokens, or sensitive payloads by default.
-
-A running container is not proof of correctness.
-
-HTTP 200 is not proof of semantic health.
-
-Git equality is not proof of deployment.
-
-A handoff saying something happened is not proof that it remains true.
-
-## Human-facing work
-
-All user-facing work must preserve the Accessibility and Human Reliability contracts.
+Do not weaken accessibility floors for visual preference or implementation convenience.
 
 Use progressive disclosure.
 
-Keep important state understandable.
+Do not make the calm/simple interface dependent on hiding important truth.
 
-Do not rely on color alone.
+## Ownership
 
-Preserve accessibility floors.
+For state that can become personal, always ask:
 
-Dangerous operations must be explicit and appropriately reversible.
+> Whose state is this?
+
+Design new capabilities so identity, profile, ownership, permissions, memory, agents, integrations, preferences, and sharing can have explicit boundaries.
+
+Do not create architecture that assumes all state is globally owned if it is reasonably likely to become user-specific.
+
+## Security
+
+Never expose:
+
+- credentials
+- tokens
+- secret values
+- resolved secret configuration
+- private memory belonging to another boundary
+- sensitive provider payloads
+
+Fail closed when authorization or ownership is ambiguous.
+
+Administrative capability must not automatically imply routine access to private content.
+
+## Simplicity
+
+Before adding a new service, framework, database, agent system, or UI, ask whether an existing Personal World or Lab abstraction already owns the responsibility.
+
+Prefer:
+
+- small files
+- explicit schemas
+- boring APIs
+- deterministic logic
+- native Personal World concepts
+- provider adapters
+- ordinary Git
+- visible state
+
+Do not introduce complexity merely because an AI agent can manage it.
 
 ## Definition of done
 
-Code existing is not sufficient.
+When applicable:
 
-When applicable, completion includes:
+`implement → test → accessibility check → security/ownership check → docs → review → CI → merge → deploy → verify`
 
-`implement → test → document → review diff → PR → CI → merge → promote/deploy → verify runtime`
-
-Before saying **done**, evaluate applicable contracts as:
+Evaluate relevant contracts as:
 
 - `PASS`
 - `FAIL`
@@ -144,29 +146,21 @@ Before saying **done**, evaluate applicable contracts as:
 
 Never silently convert `UNKNOWN` into `PASS`.
 
-Required `FAIL` means the work is not complete.
-
-Required `UNKNOWN` means gather evidence or report the uncertainty.
-
 ## Final truth report
 
-Substantial work should end with:
+Substantial work ends with:
 
-**CHANGED:** what actually changed  
-**VERIFIED:** evidence gathered  
-**CONTRACTS:** applicable contract status  
-**UNKNOWN:** unresolved uncertainty  
-**DEFERRED:** intentionally postponed work  
-**NEXT:** next legitimate action, or `nothing required`
-
-Stopping is valid.
-
-`NEXT: nothing required` is a successful outcome.
+**CHANGED:** actual changes  
+**VERIFIED:** evidence  
+**CONTRACTS:** contract status  
+**ACCESSIBILITY:** relevant verification  
+**OWNERSHIP/SECURITY:** relevant verification  
+**UNKNOWN:** unresolved truth  
+**DEFERRED:** intentional future work  
+**NEXT:** legitimate next action or `nothing required`
 
 ## Core principle
 
 > **Make honesty cheaper than fabrication.**
 
-Do not depend on an agent being unusually careful.
-
-Build and use systems where finding truth, following contracts, behaving safely, and proving the result are the easiest paths.
+Personal World should make the safe, accessible, truthful, understandable path the natural path—for its users and for the agents building it.
