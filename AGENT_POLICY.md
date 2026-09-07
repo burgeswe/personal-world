@@ -8,9 +8,10 @@ Before planning, researching, designing, modifying, reviewing, merging, or relea
 
 1. Read [`AGENT_CONTRACTS.md`](./AGENT_CONTRACTS.md), the repository's canonical contract index.
 2. Load every applicable contract, especially Accessibility and Human Reliability.
-3. Inspect current repository behavior before trusting old handoffs or assumptions.
-4. Identify whose state, data, or experience a change affects.
-5. Determine how the result will be verified.
+3. Load the canonical contract text: Accessibility, Human Reliability (`docs/HUMAN_RELIABILITY_CONTRACT.md`), and every other applicable contract.
+4. Inspect current repository behavior before trusting old handoffs or assumptions.
+5. Identify whose state, data, or experience a change affects.
+6. Determine how the result will be verified.
 
 **Repository truth outranks inference. Unknown is a valid state. Make honesty cheaper than fabrication.**
 

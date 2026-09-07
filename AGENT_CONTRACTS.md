@@ -52,13 +52,10 @@ anything a person perceives or interacts with.
 - **Purpose:** Governs cognitive load, visible state, calm defaults,
   honest status (`PASS` / `FAIL` / `N/A` / `UNKNOWN`), recoverability,
   and healthy agent/human collaboration.
-- **Contract:** [`AGENT_POLICY.md`](./AGENT_POLICY.md) — sections
-  "Mandatory preflight", "Human experience", and "Definition of done".
+- **Contract:** [`docs/HUMAN_RELIABILITY_CONTRACT.md`](docs/HUMAN_RELIABILITY_CONTRACT.md)
 
-No dedicated file exists yet. The authoritative text lives inside
-`AGENT_POLICY.md`; do not paraphrase it elsewhere. If a dedicated
-contract file is added later, register it here and re-point this
-entry.
+The contract was extracted verbatim-in-meaning from `AGENT_POLICY.md`,
+which continues to state the policy from the agent's side.
 
 ### Public Repository Boundary
 
