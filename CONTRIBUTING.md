@@ -34,7 +34,7 @@ Keep source rigs and approved animations intact unless the task explicitly
 authorizes changing them. The Mermaid master is documented in the
 [asset index](design/assets/README.md); renderer QA remains a separate gate.
 Respect reduced motion, static alternatives, keyboard access and the
-[accessibility contract](design/handoff/ACCESSIBILITY_CONTRACT.md).
+[accessibility contract](docs/accessibility/ACCESSIBILITY_CONTRACT.md).
 
 The repository includes an [Apache-2.0 license](LICENSE). Contributors must have
 the right to contribute their code and artwork; preserve third-party notices and

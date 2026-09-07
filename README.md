@@ -26,7 +26,7 @@ on her own hardware, with portable state she owns.
 |---|---|
 | Facts / intent / policy / lore — the AI records, never invents | [Architecture](docs/ARCHITECTURE.md) |
 | Capabilities core-owned; every provider swappable, nothing mandatory | [Native baseline](docs/NATIVE-BASELINE-AND-ENRICHMENT.md) (test-enforced) |
-| Accessibility contract as a non-negotiable, pack-proof invariant | [Accessibility contract](design/handoff/ACCESSIBILITY_CONTRACT.md) |
+| Accessibility contract as a non-negotiable, pack-proof invariant | [Accessibility contract](docs/accessibility/ACCESSIBILITY_CONTRACT.md) |
 | Five companion characters with semantic states, not status icons | [Companion system](design/COMPANION_INTEGRATION.md) |
 | Zero-provider boot: the core survives every integration disappearing | [Operations](docs/OPERATIONS.md) |
 
