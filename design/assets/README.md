@@ -2,6 +2,10 @@
 
 Visual reference files for the Personal World companion character system and UI.
 
+## Production Icon System
+
+The [Personal World icon system](icons/README.md) contains 72 deterministic SVG assets, a Figma import library, application sprite, semantic manifest, and rendered QA previews. Interface glyphs use `currentColor`; five compact companion identity marks point back to the canonical source rigs below.
+
 ## Mermaid Companion (the operator's Theme)
 
 | File | Description |
