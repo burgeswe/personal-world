@@ -1,107 +1,196 @@
-# Companion Integration — Mermaid Across Personal World UI
+# Companion System & Chat — Personal World UI Architecture
 
 **Date:** 2026-09-07
-**Status:** Initial pass complete — mermaid companion added to all sidebar-based screens
+**Status:** Companion system regen + Chat first-class surface — complete
 **Source:** Figma file `VATVojyJZT9HKx0CrDS0yr`
 
 ## Overview
 
-Rylee's Mermaid is the first companion character integrated into the Personal World UI. She serves as the digital resident — a comforting, always-present mascot that lives in the sidebar navigation and appears contextually in empty/loading states.
+Personal World has five companion residents — real characters, not placeholders. Each companion maps to a domain/theme context within the product. Chat has been promoted to a first-class product surface alongside Today, World, and Journal.
 
-More companions are coming (Little Helper robot, VEFR Norse squirrel, Tacos & the morning paper truck). The mermaid is Rylee's special companion for Rylee's theme; other companions will map to other themes.
+This document supersedes the earlier Mermaid-centric integration pass.
 
-## Placement Rules (from Character Sheet)
+## Current Residents
 
-| Context | Size | Behavior |
+| Companion | Role | Strong Contexts | Source Rig |
+|---|---|---|---|
+| **Mermaid** | Personal companion (Rylee Theme) | Rylee theme, personal presence, conversation, reassurance | `companions/mermaid/mermaid-source-rig.svg` |
+| **Little Helper Robot** | Lab / development / AI helper | Development, automation, Workshop, configuration, tooling | `companions/robot/robot-source-rig.svg` |
+| **World-tree Squirrel** | Worlds / lore / memory keeper | VEFR, worlds, lore, memory, journal/history, worldbuilding | `companions/world-tree-squirrel/world-tree-squirrel-source-rig.svg` |
+| **Tacos & the Morning Paper** | Journalism / stories / city life | Burrito Journalism, reporting, news, city stories | `companions/taco-news-truck/taco-news-truck-source-rig.svg` |
+| **Personal World** | Default system companion | System default, generic theme, product identity | `companions/personal-world/personal-world-source-rig.svg` |
+
+They are siblings in art direction — shared pastel palette, aubergine outlines, friendly rounded forms, rosy cheeks, sparkle decorations — but each has a completely distinct silhouette.
+
+## Companion Architecture
+
+```
+Companion System
+├── Resident (which character)
+│   ├── Mermaid
+│   ├── Little Helper Robot
+│   ├── World-tree Squirrel
+│   ├── Tacos & the Morning Paper
+│   └── Personal World
+│
+├── Size (how large)
+│   ├── Micro        16-20px  (nav/header identity, silhouette only)
+│   ├── Nav/Sidebar   32px    (persistent sidebar presence)
+│   ├── Inline        32-48px (loading, inline context)
+│   ├── Empty State   48-64px (empty/comfort presence)
+│   ├── Error/Comfort  64px   (error state companion)
+│   └── Feature       96px+   (showcase, family portrait — use sparingly)
+│
+└── Identity Layer
+    ├── Personal Companion  (theme-linked or manually selected)
+    └── Contextual Character (project/world-linked identity)
+```
+
+### Personal vs Contextual Identity
+
+These are separate concepts that can coexist:
+
+- **Personal Companion** — selected by theme or user preference. Persistent across the product.
+- **Contextual Character** — associated with the current world/project context.
+
+Example: Rylee selects Mermaid as her personal companion. When browsing VEFR, World-tree Squirrel appears as the contextual project identity. They don't both flood the screen — personal companion provides presence, contextual character provides context identity.
+
+## Primary Navigation
+
+Chat is now a first-class destination. The sidebar nav hierarchy is:
+
+```
+[p] Appliance Logo
+[📅] Today
+[💬] Chat          ← NEW: first-class surface
+[🌐] World
+[📓] Journal
+[🧜] Companion     ← context-appropriate companion
+[⚙️] Settings
+```
+
+## Screen Companion Mapping
+
+| Screen | Companion | Rationale |
 |---|---|---|
-| Sidebar (always present) | 32px | Image fill, rounded corners, above settings gear |
-| Empty state | 48-56px | Larger vector, beside status text for comfort |
-| Loading state | 32px | Sidebar presence, gentle reassurance |
-| Header accent | 20px | Beside branding text |
-| Footer | inline | Town keeper presence |
-| Error pages (404) | 64px | Large companion for error comfort |
+| `today-hybrid-desktop-1440` | Mermaid (32px) | Rylee theme context |
+| `today-hybrid-narrow-900` | Mermaid (32px) | Rylee theme context |
+| `today-state-empty` | Mermaid (48px) | Comfort presence, Rylee theme |
+| `today-state-loading` | **Robot** (32px) | Non-Mermaid demo — system/tools context |
+| `today-state-attention` | Mermaid (32px) | Rylee theme context |
+| `today-state-partial` | **Personal World** (32px) | Non-Mermaid demo — system default |
+| `today-generic-theme` | **Personal World** (32px) | Generic/non-Rylee theme |
+| `today-rylee-theme` | Mermaid (32px) | Rylee's home theme |
+| `world-capability-first` | **Personal World** (32px) | System/product context |
+| `journal-screen` | **World-tree Squirrel** (32px) | Lore/memory/history context |
+| `settings-refined` | **Personal World** (32px) | System settings context |
 
-### Mascot Rules
-1. **Safety & Presence** — Appears everywhere EXCEPT destructive alert dialogs
-2. **Non-Obstructive** — Never blocks links, click bounds, or status overlays
-3. **Micro-Scaling** — Scales to 16px silhouette with rainbow hair streak for navbars
-4. **Always Kind** — Expressions are always gentle, cozy, and reassuring
-5. **Workshop Friends** — Coexists with the LRW robot ecosystem
-6. **Resident Status** — She is not optional. She is the resident.
+## Chat Surface
 
-## Screens Updated
+Chat is the conversational doorway into Personal World. It supports asking about and working with Today, journals, worlds, projects, memory/provenance, capabilities, and connected information.
 
-### Core App Screens (sidebar companion)
-- `today-hybrid-desktop-1440` — 32px sidebar + ellipse-based mermaid illustration
-- `world-capability-first` — 32px sidebar image
-- `journal-screen` — 32px sidebar image
-- `settings-refined` — 32px sidebar image
-- `today-hybrid-narrow-900` — 32px sidebar image (responsive)
+### Chat Screens Produced
 
-### Today State Variants
-- `today-state-empty` — **56px vector mermaid** beside "Your world is ready" (comfort presence)
-- `today-state-attention` — 32px sidebar image
-- `today-state-partial` — 32px sidebar image
-- `today-state-loading` — 32px sidebar + vector detail mermaid
+| Screen | Description |
+|---|---|
+| `chat-active-conversation` | Multi-turn desktop conversation with deployment logs, links, structured data |
+| `chat-empty-new` | Empty state with Mermaid companion, suggestion chips ("Check on my world", "What happened today?") |
+| `chat-thinking-working` | Thinking indicator with text status + capability disclosure ("Checking your connected sources...") |
+| `chat-error-partial` | Calm error card with cached data fallback, Retry + Continue actions |
+| `chat-contextual-vefr` | VEFR context with Squirrel contextual identity + Mermaid personal companion |
+| `chat-tool-capability` | Discovery Feed scan with step-by-step progress indicators |
+| `chat-source-provenance` | Inline citation pills + collapsible Sources panel with match percentages |
+| `chat-long-dense` | Rich response with heading, prose, YAML code block, bulleted list, summary |
+| `chat-narrow-responsive` | 900px responsive layout with collapsed sidebar, full-width composer |
 
-### Theme Screens
-- `today-generic-theme` — 32px sidebar image
-- `today-rylee-theme` — 32px sidebar image (her home theme!)
+### Chat Design Principles
 
-### Not Yet Updated (no standard sidebar)
-- `capability-disclosure-pattern` — pattern spec, no sidebar
-- `auth-error-escalation` — error flow, no sidebar (candidate for 64px error companion)
-- `world-assistant-chat` — chat interface, no sidebar (candidate for inline companion)
-- `provenance-pattern` — pattern spec, no sidebar
+1. Chat is NOT a modal, sidebar, or utility tucked behind World
+2. Chat has sufficient reading width (~640-720px message column)
+3. Composer is obvious, accessible, full-width
+4. World/project context is always visible in the header
+5. Working state uses text status independent of companion animation
+6. Provenance/source is available without overwhelming content
+7. Error recovery is explicit with clear actions
+8. Companion presence is restrained — not a giant talking avatar
 
-### Intentionally Skipped
-- Handoff/spec documents (implementation-handoff-index, accessibility-contract, etc.)
-- Reference frames (character sheet, theme pack framework, etc.)
-- Superseded screens (section ⑩)
+## Companion Component Page
 
-## Companion System Architecture
+The `companion-family-portrait` frame shows all 5 residents together at 96px with:
+- Active/Standby state indicators
+- Role labels and theme associations
+- Personal Companion vs Contextual Character architecture explanation
 
-```
-Theme Pack Layer
-├── Rylee Theme → Mermaid companion
-├── [Future] Theme B → Little Helper robot
-├── [Future] Theme C → Norse squirrel + VEFR book tree
-└── [Future] Theme D → Tacos & the morning paper
+## Accessibility & Motion
 
-Invariant Core
-├── Companion slot in sidebar (32px, above settings)
-├── Empty state companion area (48-64px)
-├── Loading state companion area (32px)
-└── Error state companion area (64px)
+- Companions NEVER carry critical information — semantic state is always in UI text
+- `prefers-reduced-motion`: static poses only, no animation
+- No flashing, strobing, shaking, rapid pulsing, or repeated large bounce
+- Idle motion at 48px: ≤ 2px visible excursion
+- Maximum 300ms transitions
+- Chat thinking/working state has proper accessible text status independent of mascot animation
 
-User Preferences
-├── Companion visibility (on/off per prefers-reduced-motion)
-├── Companion selection (theme-linked or manual override)
-└── Animation level (idle drift ≤2px, or static)
-```
+## Scale System Reference
+
+| Size | Use | Priority |
+|---|---|---|
+| Micro (16-20px) | Nav/header identity | Silhouette readability |
+| Nav (32px) | Sidebar persistent presence | Character recognition |
+| Inline (48px) | Loading, inline context | Detail visibility |
+| Empty State (64px) | Empty state comfort | Expression + character |
+| Error (64px) | Error state companion | Comfort + recognition |
+| Feature (96px+) | Showcase, family portrait | Full detail — use sparingly |
 
 ## Asset Files
 
-| File | Description |
+| Path | Description |
 |---|---|
-| `design/assets/mermaid-source-rig-v2.svg` | Polished animation-ready SVG with all named groups |
-| `design/assets/MERMAID_RIG_CHANGES.md` | Detailed change notes from art direction pass |
-| `design/LOTTIEFILES_HANDOFF.md` | Animation handoff for LottieFiles |
-| `design/assets/mermaid-idle.svg` | Earlier vector attempt (superseded by v2) |
+| `design/assets/companions/` | All 5 companion source packages |
+| `design/assets/companions/README.md` | Collection overview + download links |
+| `design/assets/companions/IMPORT_GUIDE.md` | Figma + LottieFiles import instructions |
+| `design/assets/companions/COMPATIBILITY_AUDIT.json` | SVG structure verification |
+| `design/assets/mermaid-source-rig-v2.svg` | Polished Mermaid v2 (earlier art direction pass) |
+| `design/screens/chat/` | All 9 Chat screen SVG exports |
+| `design/screens/` | Updated screen SVG exports with companion system |
 
-## PNG Previews
+## Exported Screens
 
-PNG screen exports must be uploaded via GitHub web UI (binary files).
-Recommended uploads to `design/screens/`:
-- `today-hybrid-desktop-1440.png`
-- `today-state-empty.png`
-- `today-state-loading.png`
-- `today-rylee-theme.png`
+### Chat (`design/screens/chat/`)
+- `chat-active-conversation.svg`
+- `chat-empty-new.svg`
+- `chat-thinking-working.svg`
+- `chat-error-partial.svg`
+- `chat-contextual-vefr.svg`
+- `chat-tool-capability.svg`
+- `chat-source-provenance.svg`
+- `chat-long-dense.svg`
+- `chat-narrow-responsive.svg`
 
-## Next Steps
+### Companion System
+- `companion-family-portrait.svg`
 
-1. **Receive final companion vector files** from ChatGPT/team for robot, squirrel, and taco truck
-2. **Add companion to non-sidebar screens** (error states, chat interface)
-3. **Create companion component** in Figma for instance-based consistency
-4. **Wire up theme switching** so companion swaps with theme selection
-5. **Animation handoff** for idle sidebar presence (gentle 2px drift per migraine safety rules)
+### Updated Screens (`design/screens/`)
+- `today-hybrid-desktop-1440.svg`
+- `today-state-empty.svg`
+- `today-state-loading.svg`
+- `today-state-attention.svg`
+- `today-state-partial.svg`
+- `world-capability-first.svg`
+- `journal-screen.svg`
+- `settings-refined.svg`
+- `today-hybrid-narrow-900.svg`
+- `today-generic-theme.svg`
+- `today-rylee-theme.svg`
+
+## What Changed From Previous Pass
+
+1. **Deleted** all old blob/ellipse/placeholder Mermaid artwork from screens
+2. **Imported** all 5 approved companion SVG rigs as editable Figma vectors
+3. **Placed** correct companion per screen context (not Mermaid everywhere)
+4. **Added Chat** to primary navigation across all 11 screens
+5. **Created 9 Chat screens** as a first-class product surface
+6. **Created companion family portrait** showing all 5 residents with architecture docs
+7. **Generic theme proves** the system isn't Mermaid-specific (uses Personal World planet)
+8. **Loading state uses Robot** to demonstrate non-Mermaid companions in action
+9. **Journal uses Squirrel** for lore/memory context
+10. **VEFR Chat uses dual identity** — Mermaid personal + Squirrel contextual
