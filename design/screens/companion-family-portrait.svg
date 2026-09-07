@@ -24,8 +24,7 @@
 <g id="nav-chat">
 <rect x="14" y="176" width="44" height="44" rx="12" fill="#201A2C"/>
 <g id="message-circle">
-<rect id="Rectangle" x="28.9" y="189.9" width="14.2" height="11.2" rx="3.1" stroke="#72B1B1" stroke-width="1.8"/>
-<path id="Ellipse" d="M31.5 201.9C32.5814 201.9 33.0996 202.57 33.0996 203C33.0996 203.43 32.5814 204.1 31.5 204.1C30.4186 204.1 29.9004 203.43 29.9004 203C29.9004 202.57 30.4186 201.9 31.5 201.9Z" stroke="#72B1B1" stroke-width="1.8"/>
+<path id="bubble" d="M32 189H40Q44 189 44 193V198Q44 202 40 202H35L31 205V202Q28 202 28 198V193Q28 189 32 189Z" fill="none" stroke="#72B1B1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 </g>
 <g id="nav-world">
