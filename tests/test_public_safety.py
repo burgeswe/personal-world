@@ -47,8 +47,12 @@ PRIVATE_IP_PARTS = (
 # Real-world deployment hostnames discovered in the original exposure.
 # Kept as an explicit regression list: a future edit that re-adds one
 # of these strings fails CI with a name, not a mystery.
+# (Literal redacted post-rewrite: the original operator hostname lives
+# only in private runtime configs now; the RFC2606 .invalid TLD is
+# reserved for documentation and can never be a real deployment host.)
 FORBIDDEN_HOSTS = (
-    "example.invalid",
+    ".hulganfamily.duckdns.org",
+    "hulganfamily",
 )
 
 
