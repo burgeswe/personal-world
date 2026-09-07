@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Rylee Mermaid — layered idle source rig</title>
+  <desc id="desc">A smiling pastel mermaid with pink, lavender, mint and blue hair, a soft-blue shell top, and a teal tail. All face variants (eyes-open, eyes-closed, mouth, mouth-neutral) included for animation rigging. Transparent background.</desc>
+<g id="mermaid-source-rig">
+<g id="mermaid">
+<g id="hair-back">
+<path id="hair-back-base" d="M169 100C173 57 227 43 271 65C313 83 324 122 315 161C308 199 330 232 320 272C316 289 306 300 292 303C302 266 277 241 278 207C250 219 207 219 182 204C183 242 163 260 167 287C140 280 127 262 133 235C140 201 128 177 143 140L169 100Z" fill="#E3D5F7" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="hair-back-blue" d="M156 167C169 197 161 224 154 242C149 258 153 271 167 287C138 278 125 254 136 225C144 203 138 185 156 167Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="hair-back-mint" d="M294 117C322 143 304 180 309 209C312 229 325 246 318 270C291 250 284 222 290 192C295 165 283 144 294 117Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="body-torso">
+<path id="torso-skin" d="M220 190V207C211 211 195 214 190 225C185 239 201 253 204 267L202 289C222 300.333 242.333 300.333 263 289L262 269C265 253 280 235 273 223C268 214 253 211 245 207V190H220Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="tail-assembly">
+<g id="tail-fin-left">
+<path id="fin-left-shape" d="M348 400C325 378 330 346 375 334C370 353 379 379 359 398C355.667 401.333 352 402 348 400Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="fin-left-detail" d="M352 391C351.333 375 356 361 366 349" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="tail-fin-right">
+<path id="fin-right-shape" d="M349 397C376 378 407 391 428 422C404 418 379 439 358 419C352 413 349 405.667 349 397Z" fill="#8ECECE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="fin-right-detail" d="M360 405C376.667 403.667 393.667 407.667 411 417" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="tail">
+<path id="tail-shape" d="M203 279C221.667 285 241.667 285 263 279C274 301 272 326 257 347C242 368 237 386 254 402C281 428 325 409 347 392C353.667 390.667 357.667 393.333 359 400C337 433 295 465 251 448C204 431 188 397 195 365C199 344 211 330 209 313C208 299 198 289 203 279Z" fill="#72B1B1" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="tail-highlight" d="M218 302C238 331 209 355 211 384C214 420 249 443 282 436C244 435 225 409 228 384C231 356 250 334 243 308L218 302Z" fill="#9DD4D4"/>
+<g id="outline-details">
+<path id="waist-detail" d="M207 290C223.667 296 241.667 296 261 290" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="scales-upper" d="M220 317C224 322.333 228 322.333 232 317C236 322.333 240 322.333 244 317" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="scales-lower" d="M212 339C216 344.333 220 344.333 224 339C228 344.333 232 344.333 236 339" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="tail-curve-detail" d="M243 418C256.333 431.333 272.667 434.667 292 428" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+<g id="arm-left">
+<path id="arm-left-skin" d="M194 218C183 217 179 231 177 243C175 253 165 261 159 267C153 274 158 281 165 279C184 273 197 257 201 240C204 229 204 222 194 218Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="hand-left-detail" d="M159 269L166 270" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="arm-right">
+<path id="arm-right-skin" d="M271 219C281 217 284 228 289 239C293 248 301 249 307 244L316 237C321 234 326 240 323 246C315 262 299 270 287 261C275 252 268 241 265 231C263.666 225.667 265.666 221.667 271 219Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="hand-right-detail" d="M313 243L317 247" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="shell-top">
+<path id="shell-left" d="M232 239C221 223 207 222 201 231C197 240 208 251 220 251C226 251 230 249 232 245V239Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="shell-right" d="M233 239C244 223 258 222 264 231C268 240 257 251 245 251C239 251 235 249 233 245V239Z" fill="#BFD8FE" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="shell-ridges">
+<path id="Vector" d="M224 245L211 232M220 247L206 240M242 245L255 232M246 247L260 240" stroke="#5A2D35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<path id="shell-center" d="M233 237C237.667 240.333 237.667 244 233 248C228.333 244 228.333 240.333 233 237Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="face-head">
+<path id="head-skin" d="M173 121C173 81 208 72 239 78C278 80 295 108 294 141C293 173 266 200 235 201C200 203 172 176 173 143V121Z" fill="#FFF0E4" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="face-details">
+<g id="eyes-open">
+<path id="Vector_2" d="M207 145C209.651 145 211.8 142.314 211.8 139C211.8 135.686 209.651 133 207 133C204.349 133 202.2 135.686 202.2 139C202.2 142.314 204.349 145 207 145Z" fill="#5A2D35"/>
+<path id="Vector_3" d="M263 145C265.651 145 267.8 142.314 267.8 139C267.8 135.686 265.651 133 263 133C260.349 133 258.2 135.686 258.2 139C258.2 142.314 260.349 145 263 145Z" fill="#5A2D35"/>
+<path id="Vector_4" d="M205.5 138.5C206.328 138.5 207 137.828 207 137C207 136.172 206.328 135.5 205.5 135.5C204.672 135.5 204 136.172 204 137C204 137.828 204.672 138.5 205.5 138.5Z" fill="white"/>
+<path id="Vector_5" d="M261.5 138.5C262.328 138.5 263 137.828 263 137C263 136.172 262.328 135.5 261.5 135.5C260.672 135.5 260 136.172 260 137C260 137.828 260.672 138.5 261.5 138.5Z" fill="white"/>
+</g>
+<g id="eyes-closed" display="none">
+<g id="eye-closed" clip-path="url(#clip0_0_1)">
+<path id="Vector_6" d="M215.712 144.229L215.1 143.285M204.694 141.324C205.329 141.919 206.482 142.434 207.998 142.798C209.514 143.161 211.319 143.356 213.169 143.356C215.019 143.356 216.824 143.161 218.34 142.798C219.856 142.434 221.01 141.919 221.644 141.324M219.949 143.357L218.486 142.762M206.389 143.357L207.852 142.762M210.627 144.229L211.238 143.285" stroke="#5A2D35" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g id="eye-closed_2" clip-path="url(#clip1_0_1)">
+<path id="Vector_7" d="M258.929 144.229L258.318 143.285M247.912 141.324C248.546 141.919 249.7 142.434 251.215 142.798C252.731 143.161 254.537 143.356 256.387 143.356C258.237 143.356 260.042 143.161 261.558 142.798C263.074 142.434 264.227 141.919 264.861 141.324M263.167 143.357L261.704 142.762M249.607 143.357L251.07 142.762M253.844 144.229L254.456 143.285" stroke="#5A2D35" stroke-width="3" stroke-linecap="round"/>
+</g>
+</g>
+<g id="cheeks">
+<path id="Vector_8" d="M195 165C201.627 165 207 161.418 207 157C207 152.582 201.627 149 195 149C188.373 149 183 152.582 183 157C183 161.418 188.373 165 195 165Z" fill="#F8C5E8"/>
+<path id="Vector_9" d="M274 165C280.627 165 286 161.418 286 157C286 152.582 280.627 149 274 149C267.373 149 262 152.582 262 157C262 161.418 267.373 165 274 165Z" fill="#F8C5E8"/>
+</g>
+<path id="nose" d="M234 151L237 152" stroke="#BD9994" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="mouth" d="M226 165C231.333 171 237 170.667 243 164" stroke="#5A2D35" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="mouth-neutral" display="none" x1="231.5" y1="165.5" x2="238.5" y2="165.5" stroke="#5A2D35" stroke-width="3" stroke-linecap="round"/>
+</g>
+</g>
+<g id="hair-front">
+<path id="fringe-pink" d="M160.001 123C151.001 95 174.001 62 211.001 59C248.001 52 280.001 67 296.001 95C274.001 113 242.001 110 224.001 88C214.001 113 187.001 126 160.001 123Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="fringe-sweep" d="M224 88C242 63 278 75 295 94C311 111 310 130 300 143C293 115 255 126 224 88Z" fill="#F8C5E8" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="side-lock-mint" d="M164 111C184 117 179 146 164 166C152 182 151 197 154 209C132 198 133 169 143 149C149 136 146 119 164 111Z" fill="#A7F3D0" stroke="#5A2D35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="hair-strand-detail" d="M181 99C191 97.6667 199 92.3333 205 83M255 88C269 87.3333 279.667 92.3333 287 103" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="bubbles-sparkles">
+<path id="bubble-large" d="M354 189C358.971 189 363 184.971 363 180C363 175.029 358.971 171 354 171C349.029 171 345 175.029 345 180C345 184.971 349.029 189 354 189Z" stroke="#72B1B1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="bubble-small" d="M369 160C371.209 160 373 158.209 373 156C373 153.791 371.209 152 369 152C366.791 152 365 153.791 365 156C365 158.209 366.791 160 369 160Z" stroke="#72B1B1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="sparkle" d="M117 303C117 309.667 113.667 313.333 107 314C113.667 314.667 117 318.333 117 325C117.667 318.333 121.333 314.667 128 314C121.333 313.333 117.667 309.667 117 303Z" fill="#F6F0BA" stroke="#5A2D35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_1">
+<rect width="20.3376" height="6.97171" fill="white" transform="translate(203 139)"/>
+</clipPath>
+<clipPath id="clip1_0_1">
+<rect width="20.3376" height="6.97171" fill="white" transform="translate(246.218 139)"/>
+</clipPath>
+</defs>
+</svg>
