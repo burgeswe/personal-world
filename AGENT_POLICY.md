@@ -6,7 +6,7 @@ This is the mandatory entry point for AI agents working on Personal World.
 
 Before planning, researching, designing, modifying, reviewing, merging, or releasing:
 
-1. Read the repository's canonical contract/index documentation.
+1. Read [`docs/INDEX.md`](./docs/INDEX.md), the repository's canonical contract/index documentation.
 2. Load every applicable contract, especially Accessibility and Human Reliability.
 3. Inspect current repository behavior before trusting old handoffs or assumptions.
 4. Identify whose state, data, or experience a change affects.
