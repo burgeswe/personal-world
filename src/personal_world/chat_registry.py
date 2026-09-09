@@ -26,6 +26,12 @@ CHAT_TIMEOUT_SECONDS = 120
 class ChatContract:
     """Provider-neutral conversation contract."""
 
+    def health(self) -> Result:
+        """Cheap reachability probe. Contract seam used by
+        registry health_check lambdas; default to observe()."""
+        return self.observe()
+
+
     def chat(self, messages: list[dict[str, str]]) -> Result:
         raise NotImplementedError
 
