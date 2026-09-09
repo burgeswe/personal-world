@@ -627,6 +627,18 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
                     return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
         return {"ok": False, "status": "not_configured", "warnings": ["no gitea connection"]}
 
+    @app.get("/api/ingress/rollups", dependencies=[Depends(require_auth)])
+    async def ingress_rollups() -> dict:
+        """Traefik ingress route rollups (read-only over LAN)."""
+        try:
+            from .providers.traefik_ingress import TraefikIngress
+        except ImportError:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["traefik provider missing"]}
+        r = TraefikIngress().observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data,
+                "warnings": r.warnings}
+
     # --- Quick actions ---
 
     @app.post("/api/world/intent", dependencies=[Depends(require_auth)])

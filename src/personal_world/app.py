@@ -178,6 +178,21 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
         except Exception:  # native baseline must never block boot
             registry.native_baselines.discard("source_control")
 
+    # Traefik ingress rollups (ROADMAP Next): read-only over the LAN
+    # router API; degrades honestly when the API is missing.
+    try:
+        from .providers.traefik_ingress import TraefikIngress
+        traefik = TraefikIngress()
+        registry.register(
+            "ingress", "traefik", traefik,
+            health_check=lambda: True,
+            writes="none",
+            mode=ProviderMode.NATIVE,
+            required=False,
+        )
+    except Exception:
+        pass
+
     for conn in connections:
         ptype = conn.get("type")
         name = conn.get("name")
