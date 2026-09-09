@@ -84,6 +84,10 @@ input:focus { border-color: var(--accent); outline: none; }
 .msg.ok { color: var(--ok); }
 .msg.err { color: var(--err); }
 a.finish { color: var(--accent); }
+.composer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.composer input { flex: 1 1 260px; min-height: 48px; background: var(--panel); color: var(--text, #f2eefa); border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; font: inherit; }
+.composer button { min-height: 48px; min-width: 88px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: inherit; font: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -433,6 +437,22 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         events = target.recent(n)
         return {"ok": True,
                 "data": [e.model_dump(mode="json") for e in events]}
+
+    @app.post("/api/journal", dependencies=[Depends(require_auth)])
+    async def journal_note(request: Request) -> dict:
+        """Write a personal note to the caller's own journal.
+
+        Body: {"text": "<1-2000 chars>"}. Stored when the user is in
+        multi mode; shared journal in single mode.
+        """
+        body = await request.json()
+        text = (body or {}).get("text", "").strip()
+        if not text or len(text) > 2000:
+            raise HTTPException(status_code=422, detail="text must be 1-2000 chars")
+        _, _, uj = _state_for(request)
+        target = journal if uj == journal.path else Journal(uj)
+        target.record(kind=JournalKind.OBSERVATION, summary=text, source="user")
+        return {"ok": True, "data": {"written": len(text)}}
 
     @app.get("/api/journal/audit", dependencies=[Depends(require_auth)])
     async def journal_audit(request: Request) -> dict:
@@ -888,6 +908,40 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     async def stop_scheduler() -> None:
         _reminders.stop()
 
+    @app.get("/api/apps", dependencies=[Depends(require_auth)])
+    async def apps_list(request: Request) -> dict:
+        """Services launcher registry (config/data/apps.json).
+
+        Each entry: {id, name, url, icon?, category?}. User-editable,
+        optional; absent file = empty list.
+        """
+        _, _, _uj = _state_for(request)
+        path = data_dir / "apps.json"
+        if not path.exists():
+            return {"ok": True, "data": []}
+        try:
+            items = json.loads(path.read_text())
+        except Exception:
+            return {"ok": True, "data": []}
+        return {"ok": True, "data": items}
+
+    @app.put("/api/apps", dependencies=[Depends(require_step_up)])
+    async def apps_put(request: Request) -> dict:
+        """Replace the services registry (step-up gated, like prefs)."""
+        _, _, _uj = _state_for(request)
+        body = await request.json()
+        items = body.get("apps") if isinstance(body, dict) else None
+        if not isinstance(items, list):
+            raise HTTPException(status_code=422, detail="apps must be a list")
+        path = data_dir / "apps.json"
+        path.write_text(json.dumps(items, indent=2))
+        journal.record(
+            kind=JournalKind.SETTINGS_CHANGE,
+            summary=f"apps registry updated: {len(items)} services",
+            source="api",
+        )
+        return {"ok": True, "data": items}
+
     @app.get("/api/reminders", dependencies=[Depends(require_auth)])
     async def reminders_list() -> dict:
         """List all reminders."""
@@ -1181,8 +1235,9 @@ button { background: var(--accent); color: var(--bg); border: none; border-radiu
 <div id="err" class="error"></div>
 </div>
 <script>
-const saved = localStorage.getItem('pw_token');
-if (saved) window.location.href = '/';
+const saved = localStorage.getItem('pw-token') || localStorage.getItem('pw_token');
+if (!saved && document.body.getAttribute("data-setup-needed") === "true") window.location.href = "/setup-wizard";
+
 document.getElementById('go').addEventListener('click', () => {
   const t = document.getElementById('token').value;
   if (!t) return;
@@ -1195,7 +1250,9 @@ document.getElementById('token').addEventListener('keydown', e => {
 </script>
 </body>
 </html>"""
-        return HTMLResponse(LOGIN_HTML)
+        setup_needed = not (data_dir / "setup-complete").exists()
+        LOGIN_HTML = LOGIN_HTML.replace(
+            "<body>", '<body data-setup-needed="' + ("true" if setup_needed else "false") + '">')
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
@@ -1610,9 +1667,24 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <div id="today-quota" class="muted">Loading…</div>
 </section>
 <hr class="hr">
+<section aria-labelledby="today-services-h2">
+<h2 id="today-services-h2">Services</h2>
+<ul id="today-services" class="cards"><li class="muted">No services configured yet.</li></ul>
+</section>
+<hr class="hr">
 <section aria-labelledby="today-attention-h2">
 <h2 id="today-attention-h2">Needs attention</h2>
 <ul id="today-attention" class="cards"><li class="muted">Loading…</li></ul>
+</section>
+<hr class="hr">
+<section aria-labelledby="today-composer-h2">
+<h2 id="today-composer-h2">Add a note</h2>
+<div class="composer">
+  <label for="note-text" class="sr-only">Note text</label>
+  <input id="note-text" type="text" maxlength="2000" placeholder="A thought, a win, something to remember…" autocomplete="off">
+  <button id="note-save" type="button">Save</button>
+  <span id="note-status" class="muted" role="status"></span>
+</div>
 </section>
 <hr class="hr">
 <section aria-labelledby="today-changes-h2">
@@ -2238,6 +2310,7 @@ async function load() {
       srcRollups: api(token, '/api/source-control/rollups'),
       updates: api(token, '/api/updates'),
       lab: api(token, '/api/lab/state'),
+      apps: api(token, '/api/apps'),
       labx: api(token, '/api/lab/state').then(r => r.clone ? r.clone() : r),
     };
     const keys = Object.keys(requests);
@@ -2256,7 +2329,15 @@ async function load() {
             const li = document.createElement('li');
             const d = row.last_date ? new Date(row.last_date) : null;
             const ago = d ? Math.ceil((Date.now() - d.getTime()) / 86400000) : null;
-            li.textContent = `${\u0022repo\u0022}: ${row.repo} — ${row.commit_count} commits, last ${ago ?? '?'}d ago: ${row.last_commit}`;
+                        const a = document.createElement('a');
+            a.href = '/#source-history-' + encodeURIComponent(row.repo);
+            a.textContent = `${row.repo} — ${row.commit_count} commits, last ${ago ?? '?'}d ago`;
+            li.appendChild(a);
+            const span = document.createElement('span');
+            span.className = 'muted';
+            span.textContent = ` ${row.last_commit}`;
+            li.appendChild(span);
+            ul.appendChild(li);
             ul.appendChild(li);
           }
           rollEl.replaceChildren(ul);
@@ -2268,6 +2349,28 @@ async function load() {
     world = results.world; actors = results.actors; settings = results.settings;
     try {
       const labEnv = results.lab && results.lab.ok ? results.lab.data : null;
+      const svcEl = document.getElementById('today-services');
+      if (svcEl) {
+        const apps = (results.apps && results.apps.ok && results.apps.data) || [];
+        if (!apps.length) {
+          const li = document.createElement('li');
+          li.className = 'muted';
+          li.textContent = 'No services configured yet — add them in Settings or data/apps.json.';
+          svcEl.appendChild(li);
+        } else {
+          svcEl.replaceChildren();
+          for (const a of apps) {
+            const li = document.createElement('li');
+            const aEl = document.createElement('a');
+            aEl.href = a.url || '#';
+            aEl.textContent = a.name || a.id || 'service';
+            aEl.rel = 'noopener';
+            li.appendChild(aEl);
+            if (a.category) { const c = document.createElement('span'); c.className='muted'; c.textContent = ' — ' + a.category; li.appendChild(c); }
+            svcEl.appendChild(li);
+          }
+        }
+      }
       const quotaEl = document.getElementById('today-quota');
       if (!quotaEl) return;
       if (!labEnv) { quotaEl.textContent = 'Lab packet unavailable — usage view needs the lab CLI mount.'; }
