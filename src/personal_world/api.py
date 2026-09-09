@@ -1261,6 +1261,11 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <div id="today-changes" class="muted">Loading…</div>
 </section>
 <hr class="hr">
+<section aria-labelledby="today-rollups-h2">
+<h2 id="today-rollups-h2">Repo activity</h2>
+<div id="today-rollups" class="muted">Loading…</div>
+</section>
+<hr class="hr">
 <section aria-labelledby="today-caps-h2">
 <h2 id="today-caps-h2">Capabilities</h2>
 <div class="scroll" role="region" aria-label="Capabilities table" tabindex="0">
@@ -1853,6 +1858,7 @@ async function load() {
       settings: api(token, '/api/exports/settings'),
       prefsRes: api(token, '/api/prefs'),
       srcCtl: api(token, '/api/source-control/status'),
+      srcRollups: api(token, '/api/source-control/rollups'),
       updates: api(token, '/api/updates'),
       lab: api(token, '/api/lab/state'),
       labx: api(token, '/api/lab/state').then(r => r.clone ? r.clone() : r),
@@ -1860,6 +1866,27 @@ async function load() {
     const keys = Object.keys(requests);
     const settled = await Promise.all(keys.map(k => requests[k]));
     const results = Object.fromEntries(keys.map((k, i) => [k, settled[i]]));
+    try {
+      const rollEl = document.getElementById('today-rollups');
+      if (rollEl) {
+        const res = results.srcRollups;
+        const rows = (res && res.ok && res.data && res.data.rollups) ? res.data.rollups : [];
+        if (!rows.length) {
+          rollEl.textContent = 'No repo activity rollups yet.';
+        } else {
+          const ul = document.createElement('ul'); ul.className='cards';
+          for (const row of rows.slice(0, 6)) {
+            const li = document.createElement('li');
+            const d = row.last_date ? new Date(row.last_date) : null;
+            const ago = d ? Math.ceil((Date.now() - d.getTime()) / 86400000) : null;
+            li.textContent = `${\u0022repo\u0022}: ${row.repo} — ${row.commit_count} commits, last ${ago ?? '?'}d ago: ${row.last_commit}`;
+            ul.appendChild(li);
+          }
+          rollEl.replaceChildren(ul);
+        }
+      }
+    } catch (e) { if (window.console) console.warn('rollups widget render failed', e); }
+
     status = results.status; journal = results.journal; daily = results.daily;
     world = results.world; actors = results.actors; settings = results.settings;
     try {
