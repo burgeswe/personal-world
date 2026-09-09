@@ -180,6 +180,6 @@ class TestDashboardLoadStates:
         # may say Loading… but the script must replace it on every exit
         # path (verified by msg setter coverage).
         assert "setMsg('Personal World is unreachable" in DASHBOARD_HTML
-        assert "setMsg('Authentication failed" in DASHBOARD_HTML
+        assert "setMsg('That token did not unlock your world" in DASHBOARD_HTML
         assert "setMsg('Auth not configured" in DASHBOARD_HTML
         assert "setMsg('Loaded '" in DASHBOARD_HTML

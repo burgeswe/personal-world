@@ -8,6 +8,7 @@ compared with hmac.compare_digest and never logged.
 import hmac
 import json
 import secrets
+import datetime
 import os
 import time
 from pathlib import Path
@@ -1409,6 +1410,7 @@ document.getElementById('token').addEventListener('keydown', e => {
         return HTMLResponse(
             DASHBOARD_HTML
             .replace("<html lang=\"en\">", f'<html lang="en" {attrs}>')
+            .replace("{TODAY}", datetime.datetime.now().strftime("%A, %B %d"))
             .replace(PREFS_STYLE_MARKER, str(prefs.prefs_style_block(p)), 1)
         )
 
@@ -1778,18 +1780,19 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <a href="#settings" data-route="settings">Settings</a>
 </nav>
 </header>
-<div id="login">
+<div id="auth-box">
 <label for="token" class="muted" style="display:none">API token</label>
-<input id="token" type="password" placeholder="API token" aria-label="API token">
+<input id="token" type="password" placeholder="Access code" aria-label="Access code">
 <button id="go" aria-label="Show my world">Show my world</button>
+<p class="hint">Your access code stays in this browser only.</p>
 </div>
-<p id="msg" role="status" aria-live="polite">Token stays in this browser; requests go to /api/*.</p>
+<p id="msg" role="status" aria-live="polite"></p>
 <main id="main-content">
 <section id="view-today" class="view active" aria-labelledby="today-h1">
 <div class="greeting">
 <div>
 <h2 id="today-h1">Today</h2>
-<div class="meta-row"><span>Saturday, September 6</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Personal World Appliance active</span></div>
+<div class="meta-row"><span id="today-date">{TODAY}</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Personal World Appliance active</span></div>
 </div>
 <span class="motif-badge"><span class="motif-planet" aria-hidden="true"></span>Local Node 01</span>
 </div>
@@ -2109,7 +2112,7 @@ function renderToday() {
     const age = mins < 60 ? mins + ' min ago'
       : mins < 1440 ? Math.floor(mins/60) + ' hours ago'
       : Math.floor(mins/1440) + ' days ago';
-    healthDiv.appendChild(el('p', 'Last observed: ' + age + '.');
+    healthDiv.appendChild(el('p', 'Last observed: ' + age + '.'));
     healthDiv.appendChild(document.createElement('br'));
   }
   const att = $('today-attention'); clear(att);
@@ -2444,7 +2447,17 @@ function renderAll() {
   syncRoute();
 }
 async function load() {
-  const token = $('token').value;
+  const dEl = document.getElementById('today-date');
+  if (dEl) dEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  let token = $('token').value;
+  if (!token) token = localStorage.getItem('pw-token') || localStorage.getItem('pw_token') || '';
+  const authBox = document.getElementById('auth-box');
+  if (token && authBox) authBox.style.display = 'none';
+  if (!token) {
+    setMsg('Waiting for your access token — paste it below to show your world.');
+    return;
+  }
   setMsg('Loading…');
   let status, journal, daily, world, actors, settings, prefsRes, srcCtl, updates, lab;
   try {
@@ -2581,7 +2594,7 @@ async function load() {
   }
   for (const v of [status, journal, daily, world, actors, settings]) {
     if (v && v.error === 'unauthorized') {
-      setMsg('Authentication failed — check the token.'); return; }
+      setMsg('That token did not unlock your world — check it, or ask the admin to provision a fresh one.'); return; }
     if (v && v.error === 'no_auth') {
       setMsg('Auth not configured on the server.'); return; }
     if (v && v.error) { setMsg('Personal World is unreachable — the core may be down.'); return; }
