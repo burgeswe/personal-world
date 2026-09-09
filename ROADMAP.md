@@ -41,9 +41,6 @@ Work that completes or hardens what 0.1 already promises:
 
 Strongly relevant, clearly scoped, not started:
 
-- **Scheduler/reminder engine.** Reminders persist via the API
-  (2026-09-09: two daily-ritual reminders recorded in the container);
-  still no background runner — fire is on request only.
 - **Source-control enrichment.** The Gitea adapter is health-only
   today; the native git baseline now feeds dashboard + chat context.
   Concept rollups ("3 repositories changed today") can deepen with
@@ -69,6 +66,12 @@ Preserved ideas, no commitment:
 
 ## Completed
 
+- 2026-09-09 evening: subscription-usage card on Today (real Kilo
+  data via the lab adapter); ChatContract.health seam; Wired the
+  reminder scheduler to a single fastapi app; first-run runbook
+  doc; loopback-or-private-only vault GET; source-control
+  discover_repositories gains optional depth-limited recursion;
+  GitHub issues #14, #15, #16, #17, #18 closed with evidence.
 - 2026-09-06: core world model, CLI, API, dashboard shell, journal,
   exports, provider framework with zero-provider boot.
 - 2026-09-06: standalone deployment, CI, security gates, license.
