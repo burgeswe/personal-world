@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-09 — first-run wizard /setup-wizard shipped
+
+### Added
+
+- **A step-by-step first-run wizard for Personal World** for low
+  cognition days: 5 short decisions, each skrippable; companions,
+  token generation, optional vault passphrase, and a summary +
+  Finish flow that start the dashboard. Uses the existing apliances
+  contract; a11y contract kept (44px targets, dark, luminance only).
+
 ## Unreleased (2026-09-09 late)
 
 ### Added

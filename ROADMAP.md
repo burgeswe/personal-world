@@ -66,6 +66,11 @@ Preserved ideas, no commitment:
 
 ## Completed
 
+- 2026-09-09: first-run setup wizard /setup-wizard (5 steps,
+  low-cognition, skippable pieces; world.name fact + companion pref
+  persisted on Finish; deep link from /login for fresh installs;
+  11 tests pins structure).
+
 - 2026-09-09 late: per-user preferences / journal paths behind
   PW_IDENTITY_MODE (issue #8 phase 1), /api/identity/principal
   read surface, step-up auth on prefs PUT, /api/journal pair
