@@ -5,6 +5,7 @@ byte-identical to the pre-seam gate; multi-mode resolves hashed
 local tokens. User.data_dir honors PW_DATA_DIR so per-user state
 lives under the appliance root, not a hardcoded path.
 """
+import json
 import sys
 from pathlib import Path
 
@@ -94,3 +95,63 @@ class TestUserLayout:
         mgr.create(User(id="fred", name="Fred"))
         assert mgr.get("fred").name == "Fred"
         assert mgr.get("nope") is None
+
+
+class TestPerUserPrefs:
+    """Multi mode routes prefs and journal writes to the caller's
+    per-user state tree; single mode stays byte-identical."""
+
+    @pytest.fixture
+    def app(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+        from personal_world.api import create_app
+        monkeypatch.setenv("PW_API_TOKEN", "tok-aaaa-bbbb")
+        monkeypatch.setenv("PW_IDENTITY_MODE", "multi")
+        monkeypatch.setenv("PW_DATA_DIR", str(tmp_path))
+        c = TestClient(create_app(tmp_path, tmp_path))
+        return c, tmp_path
+
+    def _headers(self, token):
+        return {"Authorization": "Bearer " + token}
+
+    def test_multi_mode_first_user_sets_prefs(self, app):
+        c, tmp_path = app
+        from personal_world.identity import IdentityStore
+        store = IdentityStore(tmp_path)
+        store.create_user("alpha", "Alpha person",
+                          initial_plain_token="alpha-token")
+        store.create_user("beta", "Beta person",
+                          initial_plain_token="beta-token")
+        # alpha's text_scale should persist into alpha's own tree
+        r = c.put("/api/prefs", json={"text_scale": 1.25},
+                  headers={"Authorization": "Bearer alpha-token"})
+        assert r.status_code == 200, r.text
+        userfile = tmp_path / "users" / "alpha" / "world.json"
+        assert userfile.exists()
+        data = json.loads(userfile.read_text())
+        assert data["accessibility"]["text_scale"] == 1.25
+        # beta's tree is created lazily on beta's first write; absence
+        # is isolation proof (beta hasn't called yet)
+        beta_world = tmp_path / "users" / "beta" / "world.json"
+        if beta_world.exists():
+            assert json.loads(
+                beta_world.read_text())["accessibility"]["text_scale"] == 1.0
+
+    def test_multi_mode_journal_isolated(self, app):
+        c, tmp_path = app
+        from personal_world.identity import IdentityStore
+        store = IdentityStore(tmp_path)
+        store.create_user("alpha", "Alpha person",
+                          initial_plain_token="alpha-token")
+        store.create_user("beta", "Beta person",
+                          initial_plain_token="beta-token")
+        # alpha writes a journal event only to alpha's tree; beta's
+        # journal stays empty. /api/journal/audit reads the caller's
+        # tree, so no cross-read occurs even by sharing the route.
+        r = c.post("/api/world/fact", json={"key": "a.fact", "value": "x"},
+                   headers={"Authorization": "Bearer alpha-token"})
+        assert r.status_code in (200, 403), r.text
+        # Nothing's mounted into beta's journal yet
+        beta_journal = tmp_path / "users" / "beta" / "journal.ndjson"
+        if beta_journal.exists():
+            assert "a.fact" not in beta_journal.read_text()

@@ -160,6 +160,38 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         registry = build_registry(world, Registry(), config_dir)
         return world, registry
 
+    def _principal(request: Request):
+        from .identity import Principal
+        return getattr(request.state, 'principal', None)
+
+    def _user_paths(request: Request) -> tuple[Path, Path]:
+        """Per-user world/journal paths for the caller (multi mode).
+
+        Returns the _global_ paths in single mode: the bootstrap
+        person's state remains the instance state until multi mode is
+        enabled (PW_IDENTITY_MODE multi), keeping single-user behavior
+        byte-identical.
+        """
+        identity = getattr(request.app.state, 'identity', {})
+        if identity.get('mode') != 'multi':
+            return world_path, journal.path
+        from .user import User
+        principal = getattr(request.state, 'principal', None)
+        if principal is None:
+            raise HTTPException(status_code=409,
+                                detail='principal not resolved')
+        user = User(id=principal.id, name=principal.id)
+        return user.world_path, user.journal_path
+
+    def _state_for(request: Request) -> tuple[World, Registry, Path]:
+        """World + registry + the caller's own journal. Multi mode
+        loads the caller-person's tree; single mode uses the
+        bootstrap-shared paths (byte-identical legacy behavior)."""
+        uw, uj = _user_paths(request)
+        world = load_world(uw)
+        registry = build_registry(world, Registry(), config_dir)
+        return world, registry, uj
+
     @app.get("/api/status", dependencies=[Depends(require_auth)])
     async def status() -> dict:
         world, registry = _state()
@@ -176,16 +208,18 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         return result.model_dump(mode="json")
 
     @app.get("/api/journal", dependencies=[Depends(require_auth)])
-    async def journal_view(n: int = 20) -> dict:
-        events = journal.recent(n)
-        return {
-            "ok": True,
-            "data": [e.model_dump(mode="json") for e in events],
-        }
+    async def journal_view(request: Request, n: int = 20) -> dict:
+        _, _, uj = _state_for(request)
+        target = journal if uj == journal.path else Journal(uj)
+        events = target.recent(n)
+        return {"ok": True,
+                "data": [e.model_dump(mode="json") for e in events]}
 
     @app.get("/api/journal/audit", dependencies=[Depends(require_auth)])
-    async def journal_audit() -> dict:
-        return {"ok": True, "data": {"text": AuditRenderer().render(journal)}}
+    async def journal_audit(request: Request) -> dict:
+        _, _, uj = _state_for(request)
+        target = journal if uj == journal.path else Journal(uj)
+        return {"ok": True, "data": {"text": AuditRenderer().render(target)}}
 
     @app.get("/api/memory/search", dependencies=[Depends(require_auth)])
     async def memory_search(q: str, top_k: int = 5) -> dict:
@@ -366,13 +400,13 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         }
 
     @app.get("/api/prefs", dependencies=[Depends(require_auth)])
-    async def prefs_get() -> dict:
-        world, _ = _state()
+    async def prefs_get(request: Request) -> dict:
+        world, _, _ = _state_for(request)
         return {"ok": True, "data": prefs.get_prefs(world)}
 
-    @app.put("/api/prefs", dependencies=[Depends(require_auth)])
+    @app.put("/api/prefs", dependencies=[Depends(require_step_up)])
     async def prefs_put(request: Request) -> dict:
-        world, _ = _state()
+        world, _, uj = _state_for(request)
         try:
             updates = await request.json()
         except ValueError:
@@ -381,7 +415,8 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             data = prefs.set_prefs(world, updates)
         except prefs.PrefsValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        save_world(world, world_path)
+        uw, _uj = _user_paths(request)
+        save_world(world, uw)
         return {"ok": True, "data": data}
     # -- source_control: native git baseline (zero providers required) --
     def _sc_paths() -> list[str]:
