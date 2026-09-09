@@ -524,18 +524,29 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     # --- Scheduler / Reminders ---
 
+    # One scheduler lives per app (background thread + shared state);
+    # per-request Scheduler instances would silently double-fire or
+    # miss entirely. Started with the app; stops at FastAPI shutdown.
+    from .scheduler import Scheduler, Reminder
+    _reminders = Scheduler(data_dir / "reminders.json", journal=journal)
+
+    @app.on_event("startup")
+    async def start_scheduler() -> None:
+        _reminders.start()
+
+    @app.on_event("shutdown")
+    async def stop_scheduler() -> None:
+        _reminders.stop()
+
     @app.get("/api/reminders", dependencies=[Depends(require_auth)])
     async def reminders_list() -> dict:
         """List all reminders."""
-        from .scheduler import Scheduler
-        sched = Scheduler(data_dir / "reminders.json")
-        reminders = sched.list_reminders()
+        reminders = _reminders.list_reminders()
         return {"ok": True, "data": [r.model_dump(mode="json") for r in reminders]}
 
     @app.post("/api/reminders", dependencies=[Depends(require_auth)])
     async def reminders_add(request: Request) -> dict:
         """Add a reminder. Body: {id, text, cron_hour, cron_minute, cron_day}."""
-        from .scheduler import Reminder, Scheduler
         body = await request.json()
         rid = body.get("id") or f"r-{int(time.time())}"
         text = body.get("text", "").strip()
@@ -547,16 +558,13 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             cron_minute=body.get("cron_minute"),
             cron_day=body.get("cron_day"),
         )
-        sched = Scheduler(data_dir / "reminders.json")
-        r = sched.add(reminder)
+        r = _reminders.add(reminder)
         return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
 
     @app.delete("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
     async def reminders_delete(rid: str) -> dict:
         """Delete a reminder."""
-        from .scheduler import Scheduler
-        sched = Scheduler(data_dir / "reminders.json")
-        r = sched.remove(rid)
+        r = _reminders.remove(rid)
         return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
 
     @app.patch("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
@@ -564,8 +572,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         """Toggle a reminder. Body: {enabled: bool}."""
         from .scheduler import Scheduler
         body = await request.json()
-        sched = Scheduler(data_dir / "reminders.json")
-        r = sched.toggle(rid, body.get("enabled", True))
+        r = _reminders.toggle(rid, body.get("enabled", True))
         return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
 
     # --- Source control enrichment ---
