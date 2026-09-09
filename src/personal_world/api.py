@@ -30,6 +30,219 @@ from .source_control import (
 )
 from .world import World
 
+WIZARD_HTML = """
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal World — Setup wizard</title>
+<style>
+:root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
+  --text: #f0eaff; --muted: #8a7ba3; --accent: #72b1b1; --ok: #5fb85f;
+  --warn: #d4a54c; --err: #d4644c; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
+  margin: 0; min-height: 100vh; display: flex; align-items: center;
+  justify-content: center; padding: 1rem; }
+.wizard { background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 2rem; max-width: 520px; width: 100%; }
+h1 { font-size: 1.4rem; margin: 0 0 0.25rem; color: var(--accent); }
+.step-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem;
+  letter-spacing: 0.05em; }
+.big { font-size: 1.08rem; line-height: 1.5; color: var(--text); margin: 1rem 0; }
+.hint { color: var(--muted); font-size: 0.88rem; line-height: 1.45; margin-top: 0.4rem; }
+label { display: block; margin: 1.2rem 0 0.3rem; font-size: 0.92rem; }
+input[type="text"], input[type="password"] { width: 100%; background: var(--bg);
+  color: var(--text); border: 2px solid var(--border); border-radius: 8px;
+  padding: 0.7rem; font-size: 1.05rem; min-height: 48px; }
+input:focus { border-color: var(--accent); outline: none; }
+.companions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem; margin-top: 1rem; }
+.comp-btn { background: var(--bg); border: 2px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 0.9rem 0.5rem; font-size: 0.98rem; min-height: 56px;
+  cursor: pointer; text-align: center; width: 100%; }
+.comp-btn.selected { border-color: var(--accent); background: #1a2a2a; }
+.nav { display: flex; gap: 0.75rem; margin-top: 2rem; }
+.nav button { flex: 1; padding: 0.8rem 1rem; font-size: 1rem; font-weight: 600;
+  border-radius: 8px; border: none; cursor: pointer; min-height: 48px; }
+.nav .back { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.nav .next { background: var(--accent); color: var(--bg); }
+.nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+.step { display: none; }
+.step.active { display: block; }
+.summary-row { display: flex; justify-content: space-between; padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+.summary-row .v { color: var(--accent); }
+.msg { margin-top: 1rem; font-size: 0.9rem; min-height: 1.2em; color: var(--muted); }
+.msg.ok { color: var(--ok); }
+.msg.err { color: var(--err); }
+a.finish { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wizard">
+<h1>Welcome to your Personal World</h1>
+<div id="steplabel" class="step-label">Step 1 of 5</div>
+
+<div class="step active" data-step="1">
+  <div class="big">What would you like to call this world?</div>
+  <div class="hint">Just a friendly name. You can change it later in the
+  dashboard. Leave it blank and we'll use "My Personal World".</div>
+  <input id="w-name" type="text" maxlength="60" autocomplete="off"
+         placeholder="My Personal World">
+</div>
+
+<div class="step" data-step="2">
+  <div class="big">Pick your companion.</div>
+  <div class="hint">A little face that lives in the dashboard with you. You can
+  change it any time.</div>
+  <div class="companions" role="radiogroup" aria-label="Companion">
+    <button type="button" class="comp-btn selected" data-c="personal-world">World Keeper</button>
+    <button type="button" class="comp-btn" data-c="mermaid">Mermaid</button>
+    <button type="button" class="comp-btn" data-c="robot">Robot</button>
+    <button type="button" class="comp-btn" data-c="world-tree-squirrel">Tree Squirrel</button>
+    <button type="button" class="comp-btn" data-c="taco-news-truck">Taco Truck</button>
+  </div>
+</div>
+
+<div class="step" data-step="3">
+  <div class="big">Choose your login token.</div>
+  <div class="hint">This is the password for the dashboard. At least 8
+  characters. You can also press Generate and let us make a strong one
+  for you — then copy it somewhere safe (like a password manager).</div>
+  <label for="w-token">Login token</label>
+  <input id="w-token" type="password" autocomplete="off">
+  <div style="display:flex; gap: 0.5rem; margin-top: 0.6rem;">
+    <button type="button" id="gen" style="background: transparent;
+      color: var(--accent); border: 1px solid var(--border); border-radius: 8px;
+      min-height: 44px; padding: 0.5rem 1rem; cursor: pointer;">Generate</button>
+    <button type="button" id="show" style="background: transparent;
+      color: var(--muted); border: 1px solid var(--border); border-radius: 8px;
+      min-height: 44px; padding: 0.5rem 1rem; cursor: pointer;">Show</button>
+  </div>
+  <div class="msg" id="tok-msg"></div>
+</div>
+
+<div class="step" data-step="4">
+  <div class="big">Optional: vault passphrase.</div>
+  <div class="hint">The vault keeps secrets encrypted. A passphrase here is
+  like a second key — you would use it every time you open the vault.
+  Totally fine to skip this now and add it later in Settings.</div>
+  <label for="v1">Vault passphrase (optional)</label>
+  <input id="v1" type="password" autocomplete="off">
+  <label for="v2">Confirm</label>
+  <input id="v2" type="password" autocomplete="off">
+</div>
+
+<div class="step" data-step="5">
+  <div class="big">Ready. Here's what we'll set up:</div>
+  <div class="summary-row"><span>World name</span>
+    <span class="v" id="sum-name"></span></div>
+  <div class="summary-row"><span>Companion</span>
+    <span class="v" id="sum-comp"></span></div>
+  <div class="summary-row"><span>Login token</span>
+    <span class="v" id="sum-tok"></span></div>
+  <div class="summary-row"><span>Vault passphrase</span>
+    <span class="v" id="sum-pv"></span></div>
+  <div class="hint" style="margin-top:1rem">Press Finish and your world
+  starts.</div>
+</div>
+
+<div class="nav">
+  <button type="button" class="back" id="back-btn" disabled>Back</button>
+  <button type="button" id="next-btn">Next</button>
+</div>
+<div class="msg" id="finish-msg"></div>
+</div>
+
+<script>
+const state = { step: 1, name: "", comp: "personal-world", token: "", pass: "" };
+const TOTAL = 5;
+function $(id) { return document.getElementById(id); }
+function label() { $("steplabel").textContent = "Step " + state.step + " of " + TOTAL; }
+function show(n) {
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  document.querySelector('[data-step="' + n + '"]').classList.add("active");
+  state.step = n; label();
+  $("back-btn").disabled = (n === 1);
+  $("next-btn").textContent = (n === TOTAL) ? "Finish" : "Next";
+}
+$("back-btn").addEventListener("click", () => { if (state.step > 1) show(state.step - 1); });
+$("next-btn").addEventListener("click", async () => {
+  if (state.step === 1) { state.name = $("w-name").value.trim(); show(2); return; }
+  if (state.step === 3) {
+    state.token = $("w-token").value;
+    if (state.token.length < 8) { $("tok-msg").textContent = "At least 8 characters, or press Generate."; return; }
+    $("tok-msg").textContent = "";
+  }
+  if (state.step === 4) {
+    const p1 = $("v1").value, p2 = $("v2").value;
+    if (p1 || p2) { if (p1 !== p2) { $("finish-msg").textContent = "Passphrases do not match."; return; } state.pass = p1; }
+    else state.pass = "";
+    $("sum-name").textContent = state.name || "My Personal World";
+    $("sum-comp").textContent = state.comp;
+    $("sum-tok").textContent = "(" + state.token.length + " characters)";
+    $("sum-pv").textContent = state.pass ? "set" : "skipped for now";
+    show(5); return;
+  }
+  // Step 5 → finish
+  const btn = $("next-btn"); btn.disabled = true;
+  $("finish-msg").className = "msg"; $("finish-msg").textContent = "Setting up your world…";
+  try {
+    const r = await fetch("/api/setup", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: state.token, vault_passphrase: state.pass }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({}));
+      $("finish-msg").textContent = j.detail || "Setup failed.";
+      $("finish-msg").className = "msg err"; btn.disabled = false; return; }
+    try {
+      await fetch("/api/prefs", { method: "PUT",
+        headers: { "Content-Type": "application/json",
+          "Authorization": "Bearer " + state.token },
+        body: JSON.stringify({ companion: state.comp }) });
+    } catch (e) { /* companion pref is cosmetic; never block setup */ }
+    localStorage.setItem("pw-token", state.token);
+    // Persist the world name as an instance fact (canonical key "world.name"),
+    // default "My Personal World" if left blank.
+    try {
+      const nm = state.name || "My Personal World";
+      await fetch("/api/world/fact", { method: "POST",
+        headers: { "Content-Type": "application/json",
+          "Authorization": "Bearer " + state.token },
+        body: JSON.stringify({ key: "world.name", value: nm }) });
+    } catch (e) { /* name persists after next login if the write races */ }
+    $("finish-msg").textContent = "Your world is ready. Opening the dashboard…";
+    $("finish-msg").className = "msg ok";
+    setTimeout(() => { window.location.href = "/"; }, 1200);
+  } catch (e) {
+    $("finish-msg").textContent = "Connection failed: " + e.message;
+    $("finish-msg").className = "msg err";
+    btn.disabled = false;
+  }
+});
+document.querySelectorAll(".comp-btn").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".comp-btn").forEach(x => x.classList.remove("selected"));
+  b.classList.add("selected"); state.comp = b.getAttribute("data-c");
+}));
+$("gen").addEventListener("click", () => {
+  const g = Array.from(crypto.getRandomValues(new Uint8Array(18)))
+    .map(x => "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 58]).join("");
+  $("w-token").value = g; $("w-token").setAttribute("type", "text");
+  state.token = g;
+  $("tok-msg").textContent = "Strong token generated. Copy it somewhere safe.";
+  $("tok-msg").className = "msg ok";
+});
+$("show").addEventListener("click", () => {
+  const t = $("w-token");
+  t.setAttribute("type", t.getAttribute("type") === "password" ? "text" : "password");
+});
+show(1);
+</script>
+</body>
+</html>
+"""
+
 
 def _token() -> str | None:
     return os.environ.get("PW_API_TOKEN")
@@ -905,6 +1118,14 @@ document.getElementById('go').addEventListener('click', async () => {
 </script>
 </body>
 </html>"""
+
+
+    @app.get("/setup-wizard", response_class=HTMLResponse)
+    async def setup_wizard() -> HTMLResponse:
+        """Step-by-step first-run wizard: friendly, low-cognition setup."""
+        if (data_dir / "setup-complete").exists():
+            return HTMLResponse(status_code=302, headers={"Location": "/"})
+        return HTMLResponse(WIZARD_HTML)
 
     @app.get("/setup", response_class=HTMLResponse)
     async def setup_page() -> HTMLResponse:
