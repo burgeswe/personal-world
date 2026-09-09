@@ -90,9 +90,8 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         # Initialize vault if passphrase provided
         vault_pass = body.get("vault_passphrase", "").strip()
         if vault_pass:
-            from .vault import Vault
-            vault = Vault(data_dir / "vault.enc")
-            vault.unlock(vault_pass)
+            _vault.unlock(vault_pass)
+            _vault._save()  # write the encrypted file immediately
         return {"ok": True, "data": {"token_set": True, "vault_initialized": bool(vault_pass)}}
 
     def _state() -> tuple[World, Registry]:
@@ -445,40 +444,41 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     # --- Vault endpoints ---
 
+    # --- Vault: one instance per app, survives across requests ---
+    # (fresh Vault per request would forget unlock state and secrets)
+    from .vault import Vault
+    _vault = Vault(data_dir / "vault.enc")
+
     @app.get("/api/vault/status", dependencies=[Depends(require_auth)])
     async def vault_status() -> dict:
         """Vault status: locked/unlocked, secret count. Never values."""
-        from .vault import Vault
-        vault = Vault(data_dir / "vault.enc")
-        return {
-            "ok": True,
-            "data": {
-                "locked": not vault.is_unlocked,
-                "encrypted": True,
-            },
-        }
+        return {"ok": True,
+                "data": {"locked": not _vault.is_unlocked,
+                         "encrypted": True}}
 
     @app.post("/api/vault/unlock", dependencies=[Depends(require_auth)])
     async def vault_unlock(request: Request) -> dict:
         """Unlock the vault with a master passphrase."""
-        from .vault import Vault
         body = await request.json()
         passphrase = body.get("passphrase", "")
         if not passphrase:
             raise HTTPException(status_code=400, detail="passphrase required")
-        vault = Vault(data_dir / "vault.enc")
-        r = vault.unlock(passphrase)
+        r = _vault.unlock(passphrase)
         return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
 
     @app.post("/api/vault/lock", dependencies=[Depends(require_auth)])
     async def vault_lock() -> dict:
         """Lock the vault, clearing secrets from memory."""
+        _vault.lock()
         return {"ok": True, "data": {"locked": True}}
 
     @app.get("/api/vault/names", dependencies=[Depends(require_auth)])
     async def vault_names() -> dict:
         """List secret names (never values). Requires unlocked vault."""
-        return {"ok": True, "data": {"names": []}}
+        try:
+            return {"ok": True, "data": {"names": _vault.list_names()}}
+        except RuntimeError:
+            raise HTTPException(status_code=409, detail="vault is locked")
 
     @app.post("/api/vault/set", dependencies=[Depends(require_auth)])
     async def vault_set(request: Request) -> dict:
@@ -488,11 +488,17 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         value = body.get("value")
         if not name or value is None:
             raise HTTPException(status_code=400, detail="name and value required")
+        r = _vault.set(name, value)
+        if not r.ok:
+            return {"ok": r.ok, "status": r.status, "warnings": r.warnings}
         return {"ok": True, "data": {"name": name}}
 
     @app.delete("/api/vault/{name}", dependencies=[Depends(require_auth)])
     async def vault_delete(name: str) -> dict:
         """Delete a secret by name."""
+        r = _vault.delete(name)
+        if not r.ok:
+            return {"ok": r.ok, "status": r.status, "warnings": r.warnings}
         return {"ok": True, "data": {"name": name}}
 
     # --- Theme pack endpoints ---
