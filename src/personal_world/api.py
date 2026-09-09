@@ -38,6 +38,9 @@ WIZARD_HTML = """
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Setup wizard</title>
+<meta name="theme-color" content="#0a0810">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
 <style>
 @font-face { font-family: "Young Serif"; src: url("/fonts/young-serif-latin.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Sans"; src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2"); }
@@ -101,11 +104,11 @@ a.finish { color: var(--accent); }
   <div class="hint">A little face that lives in the dashboard with you. You can
   change it any time.</div>
   <div class="companions" role="radiogroup" aria-label="Companion">
-    <button type="button" class="comp-btn selected" data-c="personal-world">World Keeper</button>
-    <button type="button" class="comp-btn" data-c="mermaid">Mermaid</button>
-    <button type="button" class="comp-btn" data-c="robot">Robot</button>
-    <button type="button" class="comp-btn" data-c="world-tree-squirrel">Tree Squirrel</button>
-    <button type="button" class="comp-btn" data-c="taco-news-truck">Taco Truck</button>
+    <button type="button" class="comp-btn selected" aria-pressed="true" data-c="personal-world">World Keeper</button>
+    <button type="button" class="comp-btn" aria-pressed="false" data-c="mermaid">Mermaid</button>
+    <button type="button" class="comp-btn" aria-pressed="false" data-c="robot">Robot</button>
+    <button type="button" class="comp-btn" aria-pressed="false" data-c="world-tree-squirrel">Tree Squirrel</button>
+    <button type="button" class="comp-btn" aria-pressed="false" data-c="taco-news-truck">Taco Truck</button>
   </div>
 </div>
 
@@ -225,8 +228,8 @@ $("next-btn").addEventListener("click", async () => {
   }
 });
 document.querySelectorAll(".comp-btn").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll(".comp-btn").forEach(x => x.classList.remove("selected"));
-  b.classList.add("selected"); state.comp = b.getAttribute("data-c");
+  document.querySelectorAll(".comp-btn").forEach(x => { x.classList.remove("selected"); x.setAttribute("aria-pressed","false"); });
+  b.classList.add("selected"); b.setAttribute("aria-pressed","true"); state.comp = b.getAttribute("data-c");
 }));
 $("gen").addEventListener("click", () => {
   const g = Array.from(crypto.getRandomValues(new Uint8Array(18)))
@@ -1029,6 +1032,9 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Setup</title>
+<meta name="theme-color" content="#0a0810">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
 <style>
 :root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
   --text: #f0eaff; --muted: #6b5f82; --accent: #72b1b1; }
@@ -1145,6 +1151,9 @@ document.getElementById('go').addEventListener('click', async () => {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Login</title>
+<meta name="theme-color" content="#0a0810">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
 <style>
 @font-face { font-family: "Instrument Sans"; src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2"); }
 @font-face { font-family: "Young Serif"; src: url("/fonts/young-serif-latin.woff2") format("woff2"); }
@@ -1274,6 +1283,9 @@ DASHBOARD_HTML = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Today</title>
+<meta name="theme-color" content="#0a0810">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
 <!--PW-PREFS-STYLE-->
 <style>
 /* Figma-faithful theme (file VATVojyJZT9HKx0CrDS0yr, today-rylee-theme
@@ -1902,6 +1914,14 @@ function renderToday() {
       const tr = el('tr');
       tr.appendChild(el('td', k));
       const td = el('td'); td.appendChild(chip(caps[k].status));
+      if (caps[k].last_observed) {
+        dt = new Date(caps[k].last_observed);
+        const mins_o = Math.floor((Date.now() - dt.getTime()) / 60000);
+        const age_o = mins_o < 60 ? mins_o + ' min'
+          : mins_o < 1440 ? Math.floor(mins_o/60) + ' h'
+          : Math.floor(mins_o/1440) + ' d';
+        td.appendChild(document.createTextNode(' — observed ' + age + ' ago'));
+      }
       if (caps[k].warnings && caps[k].warnings.length) {
         td.appendChild(document.createTextNode(' — ' + caps[k].warnings[0]));
       }
