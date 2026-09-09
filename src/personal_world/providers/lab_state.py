@@ -29,6 +29,7 @@ from .registry import StatusContract
 LAB_CANDIDATES = (
     "/opt/scripts/lab",
     "/opt/homelab/scripts/lab",
+    "/homelab/scripts/lab",  # read-only laptop mount of kilo2/homelab
 )
 
 DEFAULT_LAB = LAB_CANDIDATES[0]
@@ -91,8 +92,11 @@ class LabState(StatusContract):
         try:
             proc = subprocess.run(
                 (self.lab_path, "lowbw", "--cached", "--json"),
-                capture_output=True, text=True, timeout=60, check=True,
+                capture_output=True, text=True, timeout=60, check=False,
             )
+            # exit code reflects worst severity (FAILED/BLOCKED). A
+            # parsed packet is still a valid packet; states do the
+            # work — the caller reacts to severity, not the exit code.
             packet = json.loads(proc.stdout)
         except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
             return None

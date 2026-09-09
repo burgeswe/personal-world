@@ -1203,6 +1203,11 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <div id="today-health" class="muted">Loading…</div>
 </section>
 <hr class="hr">
+<section aria-labelledby="today-quota-h2">
+<h2 id="today-quota-h2">Subscription usage</h2>
+<div id="today-quota" class="muted">Loading…</div>
+</section>
+<hr class="hr">
 <section aria-labelledby="today-attention-h2">
 <h2 id="today-attention-h2">Needs attention</h2>
 <ul id="today-attention" class="cards"><li class="muted">Loading…</li></ul>
@@ -1807,12 +1812,36 @@ async function load() {
       srcCtl: api(token, '/api/source-control/status'),
       updates: api(token, '/api/updates'),
       lab: api(token, '/api/lab/state'),
+      labx: api(token, '/api/lab/state').then(r => r.clone ? r.clone() : r),
     };
     const keys = Object.keys(requests);
     const settled = await Promise.all(keys.map(k => requests[k]));
     const results = Object.fromEntries(keys.map((k, i) => [k, settled[i]]));
     status = results.status; journal = results.journal; daily = results.daily;
     world = results.world; actors = results.actors; settings = results.settings;
+    try {
+      const labEnv = results.lab && results.lab.ok ? results.lab.data : null;
+      const quotaEl = document.getElementById('today-quota');
+      if (!quotaEl) return;
+      if (!labEnv) { quotaEl.textContent = 'Lab packet unavailable — usage view needs the lab CLI mount.'; }
+      else {
+        const obs = [...(labEnv.rows||[]).flatMap(r => r.observations||[])];
+        const quotaObs = obs.filter(o => {
+          const d = (o.detail||'') + '';
+          return d.includes('credit balance') || (/\/used \d/.test(d)) || (d.includes('window') && d.includes('%') && d.includes('resets'));
+        });
+        if (!quotaObs.length) { quotaEl.textContent = 'No subscription usage observations in the current packet.'; }
+        else {
+          const ul = document.createElement('ul'); ul.className='cards';
+          for (const o of quotaObs) {
+            const li = document.createElement('li');
+            li.textContent = (o.state||'') + ' — ' + (o.detail||'');
+            ul.appendChild(li);
+          }
+          quotaEl.replaceChildren(ul);
+        }
+      }
+    } catch (e) { if (window.console) console.warn('quota card render failed', e); }
     prefsRes = results.prefsRes; srcCtl = results.srcCtl; updates = results.updates;
     lab = results.lab;
   } catch (e) {

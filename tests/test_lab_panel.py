@@ -69,7 +69,11 @@ def test_default_matches_real_checkouts():
     list covers a homelab-nested layout."""
     from personal_world.providers.lab_state import LAB_CANDIDATES
     assert DEFAULT_LAB == "/opt/scripts/lab"
-    assert LAB_CANDIDATES == ("/opt/scripts/lab", "/opt/homelab/scripts/lab")
+    assert LAB_CANDIDATES == (
+        "/opt/scripts/lab",
+        "/opt/homelab/scripts/lab",
+        "/homelab/scripts/lab",  # read-only laptop mount (compose)
+    )
     assert FRESHNESS == timedelta(minutes=30)
 
 
