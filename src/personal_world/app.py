@@ -21,7 +21,7 @@ from .model import (
     ProviderMode,
     SCHEMA_VERSION,
 )
-from .chat import build_chat_provider
+from .chat_registry import build_chat_provider
 from .providers.adapters import (
     CandyDispenser,
     FakeSourceControl,
@@ -29,6 +29,11 @@ from .providers.adapters import (
     HttpStatus,
     LangGraphMemory,
 )
+from .providers.lab_deploy import LabDeploy
+from .providers.lab_health import LabHealth
+from .providers.lab_resources import LabResources
+from .providers.lab_secrets import LabSecrets
+from .providers.lab_settings import LabSettings
 from .providers.registry import Contract, Registry, StatusContract
 from .source_control import NativeGit, configured_search_paths
 from .world import World
@@ -50,6 +55,11 @@ STANDARD_CAPABILITIES: list[tuple[str, str, bool]] = [
     ("reasoning", "Optional AI interpretation", False),
     ("notifications", "Send notifications", False),
     ("scheduler", "Run tasks on a schedule", False),
+    ("homelab_settings", "Homelab settings reconciliation", False),
+    ("homelab_health", "Homelab service health monitoring", False),
+    ("homelab_deploy", "Homelab deployment status", False),
+    ("homelab_secrets", "Homelab secret management", False),
+    ("homelab_resources", "Homelab VM resource monitoring", False),
 ]
 
 
@@ -128,13 +138,24 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
     define_standard_capabilities(registry)
     registry.native_baselines = native_baseline_capabilities()
 
+    # Load connections from tracked config + optional private override
     conn_path = config_dir / "connections.json"
+    local_conn_path = config_dir / "connections.local.json"
     conns: dict[str, Any] = {}
     if conn_path.exists():
         try:
             conns = json.loads(conn_path.read_text())
         except json.JSONDecodeError:
             conns = {}
+    # Merge private connections (local overrides)
+    if local_conn_path.exists():
+        try:
+            local_conns = json.loads(local_conn_path.read_text())
+            existing = conns.get("connections", [])
+            local = [c for c in local_conns.get("connections", []) if isinstance(c, dict)]
+            conns["connections"] = existing + local
+        except json.JSONDecodeError:
+            pass
     connections = [
         c for c in conns.get("connections", []) if isinstance(c, dict)
     ]
@@ -197,7 +218,7 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     mode=mode,
                     required=required,
                 )
-        elif ptype in ("ollama", "openai_compat"):
+        elif ptype in ("ollama", "openai_compat", "opencode", "openai", "anthropic"):
             # Chat/reasoning providers use the same fail-closed registry:
             # an unreachable local model is 'unavailable', never a crash.
             built = build_chat_provider(conn)
@@ -232,6 +253,48 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     writes="none",
                     mode=mode,
                     required=required,
+                )
+        elif ptype == "lab_api":
+            # Lab API provider: connects to the lab API server for
+            # homelab operator data. Registers multiple capabilities
+            # from a single connection.
+            base = conn.get("base_url")
+            lab_path = conn.get("lab_path", "/opt/scripts/lab")
+            if base:
+                # Settings
+                settings_impl = LabSettings(lab_path)
+                registry.register(
+                    "homelab_settings", f"{name}-settings", settings_impl,
+                    health_check=lambda: settings_impl.observe().ok,
+                    writes="none", mode=mode, required=required,
+                )
+                # Health
+                health_impl = LabHealth(lab_path)
+                registry.register(
+                    "homelab_health", f"{name}-health", health_impl,
+                    health_check=lambda: health_impl.observe().ok,
+                    writes="none", mode=mode, required=required,
+                )
+                # Deploy
+                deploy_impl = LabDeploy(lab_path)
+                registry.register(
+                    "homelab_deploy", f"{name}-deploy", deploy_impl,
+                    health_check=lambda: deploy_impl.observe().ok,
+                    writes="none", mode=mode, required=required,
+                )
+                # Secrets
+                secrets_impl = LabSecrets(lab_path)
+                registry.register(
+                    "homelab_secrets", f"{name}-secrets", secrets_impl,
+                    health_check=lambda: secrets_impl.observe().ok,
+                    writes="none", mode=mode, required=required,
+                )
+                # Resources
+                resources_impl = LabResources(lab_path)
+                registry.register(
+                    "homelab_resources", f"{name}-resources", resources_impl,
+                    health_check=lambda: resources_impl.observe().ok,
+                    writes="none", mode=mode, required=required,
                 )
         # unknown types: skipped, not fatal -- standalone deployments
         # boot with zero providers

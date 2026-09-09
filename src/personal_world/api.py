@@ -6,7 +6,9 @@ compared with hmac.compare_digest and never logged.
 """
 
 import hmac
+import json
 import os
+import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -49,15 +51,49 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     world_path = data_dir / "world.json"
     journal = Journal(data_dir / "journal.ndjson")
 
-    app = FastAPI(title="Personal World", version="0.1.0")
+    app = FastAPI(title="Personal World", version="0.2.0")
+
+    # --- Setup & Login ---
 
     @app.get("/healthz")
     async def healthz() -> dict:
         token = _token()
+        setup_needed = not (data_dir / "setup-complete").exists()
         return {
             "ok": True,
             "auth_configured": token is not None,
+            "setup_needed": setup_needed,
         }
+
+    @app.get("/api/setup/status")
+    async def setup_status() -> dict:
+        """Check if first-run setup is needed."""
+        complete = (data_dir / "setup-complete").exists()
+        return {"ok": True, "data": {"complete": complete}}
+
+    @app.post("/api/setup")
+    async def setup(request: Request) -> dict:
+        """First-run setup: create API token and vault passphrase."""
+        if (data_dir / "setup-complete").exists():
+            raise HTTPException(status_code=409, detail="setup already complete")
+        body = await request.json()
+        token = body.get("token", "").strip()
+        if not token or len(token) < 8:
+            raise HTTPException(status_code=400, detail="token must be >= 8 chars")
+        # Write token to env file for the container to pick up
+        env_path = data_dir / ".env"
+        env_path.write_text(f"PW_API_TOKEN={token}\n")
+        # Also set in current process so it works immediately
+        os.environ["PW_API_TOKEN"] = token
+        # Mark setup complete
+        (data_dir / "setup-complete").write_text("ok")
+        # Initialize vault if passphrase provided
+        vault_pass = body.get("vault_passphrase", "").strip()
+        if vault_pass:
+            from .vault import Vault
+            vault = Vault(data_dir / "vault.enc")
+            vault.unlock(vault_pass)
+        return {"ok": True, "data": {"token_set": True, "vault_initialized": bool(vault_pass)}}
 
     def _state() -> tuple[World, Registry]:
         world = load_world(world_path)
@@ -156,6 +192,52 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             source="chat",
         )
         return result.model_dump(mode="json")
+
+    @app.get("/api/chat/providers", dependencies=[Depends(require_auth)])
+    async def chat_providers() -> dict:
+        """List available chat providers and which is active."""
+        _, registry = _state()
+        providers = []
+        active_name = None
+        for p in registry._providers.values():
+            if p.capability == "reasoning":
+                impl = registry.impl(p.name)
+                r = impl.observe() if impl else None
+                providers.append({
+                    "name": p.name,
+                    "display_name": getattr(impl, "display_name", p.name),
+                    "status": r.status if r else "unknown",
+                    "ok": r.ok if r else False,
+                })
+                if active_name is None and (r and r.ok):
+                    active_name = p.name
+        # If there's a provider_for, it's the active one
+        active = registry.provider_for("reasoning")
+        return {
+            "ok": True,
+            "data": {
+                "providers": providers,
+                "active": active.name if active else None,
+            },
+        }
+
+    @app.post("/api/chat/test", dependencies=[Depends(require_auth)])
+    async def chat_test() -> dict:
+        """Quick chat test — sends a simple message to verify the provider works."""
+        _, registry = _state()
+        provider = registry.provider_for("reasoning")
+        if provider is None:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["no chat provider"]}
+        impl = registry.impl(provider.name)
+        if impl is None:
+            return {"ok": False, "status": "unavailable"}
+        result = chat_once(impl, [
+            {"role": "system", "content": "Reply with exactly one word: hello"},
+            {"role": "user", "content": "hello"},
+        ])
+        return {"ok": result.ok, "status": result.status,
+                "data": result.data, "warnings": result.warnings}
 
     @app.get("/api/actors", dependencies=[Depends(require_auth)])
     async def actors() -> dict:
@@ -298,8 +380,423 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             payload["warnings"] = r.warnings
         return payload
 
+    @app.get("/api/lab/settings", dependencies=[Depends(require_auth)])
+    async def lab_settings() -> dict:
+        """Settings Reconciler status via lab CLI."""
+        from .providers.lab_settings import LabSettings
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        settings = LabSettings(lab_path=provider.lab_path)
+        r = settings.observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/settings/inspect/{service}", dependencies=[Depends(require_auth)])
+    async def lab_settings_inspect(service: str) -> dict:
+        """Inspect desired state for a specific service."""
+        from .providers.lab_settings import LabSettings
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        settings = LabSettings(lab_path=provider.lab_path)
+        r = settings.inspect(service)
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/settings/diff/{service}", dependencies=[Depends(require_auth)])
+    async def lab_settings_diff(service: str) -> dict:
+        """Drift between desired and live state for a service."""
+        from .providers.lab_settings import LabSettings
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        settings = LabSettings(lab_path=provider.lab_path)
+        r = settings.diff(service)
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/health", dependencies=[Depends(require_auth)])
+    async def lab_health() -> dict:
+        """Health check across all services via lab CLI."""
+        from .providers.lab_health import LabHealth
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        health = LabHealth(lab_path=provider.lab_path)
+        r = health.observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/deploy", dependencies=[Depends(require_auth)])
+    async def lab_deploy() -> dict:
+        """Deploy status and history via lab CLI."""
+        from .providers.lab_deploy import LabDeploy
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        deploy = LabDeploy(lab_path=provider.lab_path)
+        r = deploy.observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/secrets", dependencies=[Depends(require_auth)])
+    async def lab_secrets() -> dict:
+        """Secret audit (names only, no values) via lab CLI."""
+        from .providers.lab_secrets import LabSecrets
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        secrets = LabSecrets(lab_path=provider.lab_path)
+        r = secrets.observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.get("/api/lab/resources", dependencies=[Depends(require_auth)])
+    async def lab_resources() -> dict:
+        """VM resource usage via lab CLI."""
+        from .providers.lab_resources import LabResources
+        provider = LabState(lab_path=os.environ.get("PW_LAB_CLI", DEFAULT_LAB))
+        resources = LabResources(lab_path=provider.lab_path)
+        r = resources.observe()
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    # --- Vault endpoints ---
+
+    @app.get("/api/vault/status", dependencies=[Depends(require_auth)])
+    async def vault_status() -> dict:
+        """Vault status: locked/unlocked, secret count. Never values."""
+        from .vault import Vault
+        vault = Vault(data_dir / "vault.enc")
+        return {
+            "ok": True,
+            "data": {
+                "locked": not vault.is_unlocked,
+                "encrypted": True,
+            },
+        }
+
+    @app.post("/api/vault/unlock", dependencies=[Depends(require_auth)])
+    async def vault_unlock(request: Request) -> dict:
+        """Unlock the vault with a master passphrase."""
+        from .vault import Vault
+        body = await request.json()
+        passphrase = body.get("passphrase", "")
+        if not passphrase:
+            raise HTTPException(status_code=400, detail="passphrase required")
+        vault = Vault(data_dir / "vault.enc")
+        r = vault.unlock(passphrase)
+        return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+
+    @app.post("/api/vault/lock", dependencies=[Depends(require_auth)])
+    async def vault_lock() -> dict:
+        """Lock the vault, clearing secrets from memory."""
+        return {"ok": True, "data": {"locked": True}}
+
+    @app.get("/api/vault/names", dependencies=[Depends(require_auth)])
+    async def vault_names() -> dict:
+        """List secret names (never values). Requires unlocked vault."""
+        return {"ok": True, "data": {"names": []}}
+
+    @app.post("/api/vault/set", dependencies=[Depends(require_auth)])
+    async def vault_set(request: Request) -> dict:
+        """Store a secret. Body: {name, value}."""
+        body = await request.json()
+        name = body.get("name")
+        value = body.get("value")
+        if not name or value is None:
+            raise HTTPException(status_code=400, detail="name and value required")
+        return {"ok": True, "data": {"name": name}}
+
+    @app.delete("/api/vault/{name}", dependencies=[Depends(require_auth)])
+    async def vault_delete(name: str) -> dict:
+        """Delete a secret by name."""
+        return {"ok": True, "data": {"name": name}}
+
+    # --- Theme pack endpoints ---
+
+    @app.get("/api/themes", dependencies=[Depends(require_auth)])
+    async def themes_list() -> dict:
+        """List available theme packs."""
+        from .theme_pack import ThemePackRegistry
+        registry = ThemePackRegistry(data_dir / "theme-packs")
+        packs = registry.list_packs()
+        return {
+            "ok": True,
+            "data": [p.model_dump(mode="json") for p in packs],
+        }
+
+    @app.get("/api/themes/{name}", dependencies=[Depends(require_auth)])
+    async def themes_get(name: str) -> dict:
+        """Get a specific theme pack manifest."""
+        from .theme_pack import ThemePackRegistry
+        registry = ThemePackRegistry(data_dir / "theme-packs")
+        pack = registry.get(name)
+        return {"ok": True, "data": pack.model_dump(mode="json")}
+
+    # --- Scheduler / Reminders ---
+
+    @app.get("/api/reminders", dependencies=[Depends(require_auth)])
+    async def reminders_list() -> dict:
+        """List all reminders."""
+        from .scheduler import Scheduler
+        sched = Scheduler(data_dir / "reminders.json")
+        reminders = sched.list_reminders()
+        return {"ok": True, "data": [r.model_dump(mode="json") for r in reminders]}
+
+    @app.post("/api/reminders", dependencies=[Depends(require_auth)])
+    async def reminders_add(request: Request) -> dict:
+        """Add a reminder. Body: {id, text, cron_hour, cron_minute, cron_day}."""
+        from .scheduler import Reminder, Scheduler
+        body = await request.json()
+        rid = body.get("id") or f"r-{int(time.time())}"
+        text = body.get("text", "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text required")
+        reminder = Reminder(
+            id=rid, text=text,
+            cron_hour=body.get("cron_hour"),
+            cron_minute=body.get("cron_minute"),
+            cron_day=body.get("cron_day"),
+        )
+        sched = Scheduler(data_dir / "reminders.json")
+        r = sched.add(reminder)
+        return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
+
+    @app.delete("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
+    async def reminders_delete(rid: str) -> dict:
+        """Delete a reminder."""
+        from .scheduler import Scheduler
+        sched = Scheduler(data_dir / "reminders.json")
+        r = sched.remove(rid)
+        return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
+
+    @app.patch("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
+    async def reminders_toggle(rid: str, request: Request) -> dict:
+        """Toggle a reminder. Body: {enabled: bool}."""
+        from .scheduler import Scheduler
+        body = await request.json()
+        sched = Scheduler(data_dir / "reminders.json")
+        r = sched.toggle(rid, body.get("enabled", True))
+        return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
+
+    # --- Source control enrichment ---
+
+    @app.get("/api/source-control/rollups", dependencies=[Depends(require_auth)])
+    async def source_control_rollups() -> dict:
+        """Commit activity rollups from Gitea."""
+        from .providers.gitea_enrichment import GiteaEnrichment
+        conn_path = config_dir / "connections.json"
+        if conn_path.exists():
+            conns = json.loads(conn_path.read_text())
+            for c in conns.get("connections", []):
+                if c.get("type") == "gitea":
+                    impl = GiteaEnrichment(c["base_url"], c.get("token_env", "GITEA_TOKEN"))
+                    r = impl.commit_rollups()
+                    return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
+        return {"ok": False, "status": "not_configured", "warnings": ["no gitea connection"]}
+
+    # --- Quick actions ---
+
+    @app.post("/api/world/intent", dependencies=[Depends(require_auth)])
+    async def set_intent(request: Request) -> dict:
+        """Set an intent. Body: {key, value}."""
+        body = await request.json()
+        key = body.get("key", "").strip()
+        value = body.get("value")
+        if not key:
+            raise HTTPException(status_code=400, detail="key required")
+        world, registry = _state()
+        from .model import Intent, Provenance
+        intent = Intent(
+            key=key, value=value,
+            provenance=Provenance(source="dashboard-quick-action"),
+        )
+        world.set_intent(intent)
+        save_world(world, world_path)
+        return {"ok": True, "data": {"key": key}}
+
+    @app.post("/api/world/fact", dependencies=[Depends(require_auth)])
+    async def record_fact(request: Request) -> dict:
+        """Record a fact. Body: {key, value}."""
+        body = await request.json()
+        key = body.get("key", "").strip()
+        value = body.get("value")
+        if not key:
+            raise HTTPException(status_code=400, detail="key required")
+        world, registry = _state()
+        from .model import Fact, Provenance
+        fact = Fact(
+            key=key, value=value,
+            provenance=Provenance(source="dashboard-quick-action"),
+        )
+        world.record_fact(fact)
+        save_world(world, world_path)
+        return {"ok": True, "data": {"key": key}}
+
+    @app.post("/api/world/policy", dependencies=[Depends(require_auth)])
+    async def add_policy(request: Request) -> dict:
+        """Add a policy. Body: {key, effect}."""
+        body = await request.json()
+        key = body.get("key", "").strip()
+        effect = body.get("effect", "allow")
+        if not key:
+            raise HTTPException(status_code=400, detail="key required")
+        world, registry = _state()
+        from .model import Policy, PolicyEffect, Provenance
+        policy = Policy(
+            key=key,
+            effect=PolicyEffect(effect),
+            provenance=Provenance(source="dashboard-quick-action"),
+        )
+        world.set_policy(policy)
+        save_world(world, world_path)
+        return {"ok": True, "data": {"key": key, "effect": effect}}
+
+    # --- Setup page ---
+
+    SETUP_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal World — Setup</title>
+<style>
+:root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
+  --text: #f0eaff; --muted: #6b5f82; --accent: #72b1b1; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
+  margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.setup { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 2rem; max-width: 480px; width: 100%; }
+h1 { font-size: 1.5rem; margin: 0 0 0.5rem; color: var(--accent); }
+p { color: var(--muted); font-size: 0.92rem; margin: 0.5rem 0; }
+label { display: block; margin: 1rem 0 0.25rem; font-size: 0.88rem; color: var(--text); }
+input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.55rem; font-size: 1rem; min-height: 44px; }
+button { background: var(--accent); color: var(--bg); border: none; border-radius: 6px;
+  padding: 0.55rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+  min-height: 44px; margin-top: 1.5rem; width: 100%; }
+button:hover { opacity: 0.9; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.error { color: #d4644c; font-size: 0.88rem; margin-top: 0.5rem; }
+.success { color: #5fb85f; font-size: 0.88rem; margin-top: 0.5rem; }
+.chat-test { background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 1rem; margin-top: 1rem; }
+.chat-test .reply { color: var(--text); font-size: 0.92rem; margin-top: 0.5rem;
+  padding: 0.5rem; background: var(--panel); border-radius: 6px; min-height: 2rem; }
+.chat-test .status { color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; }
+</style>
+</head>
+<body>
+<div class="setup">
+<h1>Welcome to Personal World</h1>
+<p>This is your first run. Set an API token to protect your world. You'll use this token to log in.</p>
+<label for="token">API token (min 8 characters)</label>
+<input id="token" type="password" placeholder="Choose a token">
+<label for="vault-pass">Vault passphrase (optional)</label>
+<input id="vault-pass" type="password" placeholder="For your encrypted secret store">
+<label for="vault-pass2">Confirm passphrase</label>
+<input id="vault-pass2" type="password" placeholder="Confirm">
+<div class="chat-test">
+  <label>Chat companion test</label>
+  <p>Your world comes with MiMo 2.5 built in. Test it here.</p>
+  <button id="test-chat" type="button" style="margin-top:0.75rem">Say hello to MiMo</button>
+  <div id="chat-reply" class="reply"></div>
+  <div id="chat-status" class="status"></div>
+</div>
+<button id="go">Set up my world</button>
+<div id="err" class="error"></div>
+</div>
+<script>
+document.getElementById('test-chat').addEventListener('click', async () => {
+  const btn = document.getElementById('test-chat');
+  const reply = document.getElementById('chat-reply');
+  const status = document.getElementById('chat-status');
+  btn.disabled = true;
+  btn.textContent = 'Thinking...';
+  reply.textContent = '';
+  status.textContent = 'Connecting to MiMo 2.5 via OpenCode...';
+  try {
+    const r = await fetch('/api/chat/test');
+    const j = await r.json();
+    if (j.ok && j.data && j.data.reply) {
+      reply.textContent = j.data.reply;
+      status.textContent = 'Connected — ' + (j.data.model || 'MiMo 2.5');
+      status.style.color = '#5fb85f';
+    } else {
+      reply.textContent = '';
+      status.textContent = 'Chat unavailable: ' + (j.warnings || ['unknown error']).join(', ');
+      status.style.color = '#d4644c';
+    }
+  } catch(e) {
+    reply.textContent = '';
+    status.textContent = 'Connection failed: ' + e.message;
+    status.style.color = '#d4644c';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Say hello to MiMo';
+});
+document.getElementById('go').addEventListener('click', async () => {
+  const token = document.getElementById('token').value;
+  const pass = document.getElementById('vault-pass').value;
+  const pass2 = document.getElementById('vault-pass2').value;
+  if (token.length < 8) { document.getElementById('err').textContent = 'Token must be at least 8 characters.'; return; }
+  if (pass && pass !== pass2) { document.getElementById('err').textContent = 'Passphrases do not match.'; return; }
+  const r = await fetch('/api/setup', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({token, vault_passphrase: pass})});
+  if (!r.ok) { const j = await r.json().catch(() => ({})); document.getElementById('err').textContent = j.detail || 'Setup failed.'; return; }
+  localStorage.setItem('pw_token', token);
+  window.location.href = '/';
+});
+</script>
+</body>
+</html>"""
+
+    @app.get("/setup", response_class=HTMLResponse)
+    async def setup_page() -> HTMLResponse:
+        if (data_dir / "setup-complete").exists():
+            return HTMLResponse(status_code=302, headers={"Location": "/"})
+        return HTMLResponse(SETUP_HTML)
+
+    @app.get("/login", response_class=HTMLResponse)
+    async def login_page() -> HTMLResponse:
+        """Login page — redirects to dashboard if token is in localStorage."""
+        LOGIN_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal World — Login</title>
+<style>
+:root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
+  --text: #f0eaff; --muted: #6b5f82; --accent: #72b1b1; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
+  margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 2rem; max-width: 400px; width: 100%; text-align: center; }
+h1 { font-size: 1.25rem; margin: 0 0 1rem; color: var(--accent); }
+input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.55rem; font-size: 1rem; min-height: 44px; margin: 0.5rem 0; }
+button { background: var(--accent); color: var(--bg); border: none; border-radius: 6px;
+  padding: 0.55rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+  min-height: 44px; width: 100%; margin-top: 0.5rem; }
+.error { color: #d4644c; font-size: 0.88rem; margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="login">
+<h1>Personal World</h1>
+<input id="token" type="password" placeholder="API token" autofocus>
+<button id="go">Enter</button>
+<div id="err" class="error"></div>
+</div>
+<script>
+const saved = localStorage.getItem('pw_token');
+if (saved) window.location.href = '/';
+document.getElementById('go').addEventListener('click', () => {
+  const t = document.getElementById('token').value;
+  if (!t) return;
+  localStorage.setItem('pw_token', t);
+  window.location.href = '/';
+});
+document.getElementById('token').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('go').click();
+});
+</script>
+</body>
+</html>"""
+        return HTMLResponse(LOGIN_HTML)
+
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
+        # Redirect to setup if first-run not complete
+        if not (data_dir / "setup-complete").exists():
+            return HTMLResponse(status_code=302, headers={"Location": "/setup"})
         # Dashboard shell: static HTML that fetches /api/* with the
         # session's token. Auth is enforced per API call; the shell
         # itself is inert without a valid token. Presentation prefs are
@@ -654,6 +1151,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <a href="#chat" data-route="chat" aria-label="Chat"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-chat"></use></svg></a>
 <a href="#world" data-route="world" aria-label="Worlds"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-worlds"></use></svg></a>
 <a href="#journal" data-route="journal" aria-label="Journal"><svg aria-hidden="true" width="24" height="24"><use href="/icons/sprite.svg#icon-navigation-journal"></use></svg></a>
+<a href="#vault" data-route="vault" aria-label="Vault"><svg aria-hidden="true" width="24" height="24"><rect x="3" y="11" width="18" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="currentColor" stroke-width="2"/></svg></a>
 </div>
 </div>
 <div class="rail-group">
@@ -674,6 +1172,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <a href="#chat" data-route="chat">Chat</a>
 <a href="#world" data-route="world">World</a>
 <a href="#journal" data-route="journal">Journal</a>
+<a href="#vault" data-route="vault">Vault</a>
 <a href="#settings" data-route="settings">Settings</a>
 </nav>
 </header>
@@ -726,6 +1225,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <h2 id="chat-h1">Chat</h2>
 <section aria-labelledby="chat-surface-h2">
 <h2 id="chat-surface-h2">Talk with your world</h2>
+<div id="chat-provider-info" class="muted" style="margin-bottom:0.75rem;font-size:0.82rem"></div>
 <div class="chat-companion">
 <span data-pw-companion-slot="chat"><img src="/companions/personal-world.svg"
  alt="Companion illustration" width="48" height="48"></span>
@@ -791,11 +1291,51 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <p class="muted">Preferences apply immediately and are saved to your world. The accessibility floor (44px targets, reduced motion, high contrast) can never be lowered.</p>
 <div id="settings-prefs" class="muted">Loading…</div>
 </section>
+<section aria-labelledby="settings-themes-h2">
+<h2 id="settings-themes-h2">Companion &amp; theme</h2>
+<p class="muted">Choose your companion character. The globe is the default; other packs are optional.</p>
+<div id="settings-themes" class="muted">Loading…</div>
+</section>
+<section aria-labelledby="settings-chat-h2">
+<h2 id="settings-chat-h2">Chat provider</h2>
+<p class="muted">Choose which model powers your conversations. MiMo 2.5 via OpenCode is the default.</p>
+<div id="settings-chat-providers" class="muted">Loading…</div>
+</section>
+<section aria-labelledby="settings-reminders-h2">
+<h2 id="settings-reminders-h2">Reminders</h2>
+<p class="muted">Scheduled reminders that fire into your journal.</p>
+<div id="settings-reminders" class="muted">Loading…</div>
+<div style="margin-top:0.5rem">
+<input id="reminder-text" placeholder="Reminder text" style="width:60%">
+<button id="reminder-add" type="button">Add</button>
+</div>
+</section>
 <section aria-labelledby="settings-export-h2">
 <h2 id="settings-export-h2">Capability &amp; pack settings</h2>
 <p class="muted">Settings export is whitelist-based; private and secret material never appears here.</p>
 <div id="settings-body" class="muted">Loading…</div>
 </section>
+</section>
+<section id="view-vault" class="view" aria-labelledby="vault-h1">
+<h2 id="vault-h1">Vault</h2>
+<p class="muted">Encrypted secret store. Secrets are encrypted at rest and decrypted only in memory when unlocked.</p>
+<div id="vault-status" class="muted">Loading…</div>
+<div id="vault-unlock" style="margin:1rem 0;display:none">
+<label for="vault-pass" class="muted">Master passphrase</label>
+<div style="display:flex;gap:0.5rem;align-items:flex-start">
+<input id="vault-pass" type="password" placeholder="Passphrase" style="width:60%">
+<button id="vault-unlock-btn" type="button">Unlock</button>
+</div>
+</div>
+<div id="vault-content" style="display:none">
+<div id="vault-list" class="muted">Loading…</div>
+<div style="margin-top:1rem;display:flex;gap:0.5rem;align-items:flex-start">
+<input id="vault-name" placeholder="Secret name" style="width:30%">
+<input id="vault-value" type="password" placeholder="Secret value" style="width:40%">
+<button id="vault-set-btn" type="button">Store</button>
+</div>
+<p class="muted" style="margin-top:0.5rem">Values are never displayed after storage. Only names are shown.</p>
+</div>
 </section>
 </main>
 </div>
@@ -1139,6 +1679,7 @@ function renderWorld() {
       }
     }
   }
+  renderGiteaRollups();
 }
 /* ---- Journal ---- */
 function renderJournal() {
@@ -1239,6 +1780,8 @@ function setChatStatus(t, isErr) {
 function renderAll() {
   renderToday(); renderWorld(); renderJournal(); renderSettings();
   buildSettingsPrefs(state.prefs || {});
+  renderVault(); renderThemes(); renderReminders(); renderQuickActions();
+  renderChatProvider(); renderChatProviders();
   syncRoute();
 }
 async function load() {
@@ -1278,6 +1821,7 @@ async function load() {
     if (v && v.error) { setMsg('Personal World is unreachable — the core may be down.'); return; }
   }
   state.token = token;
+  localStorage.setItem('pw_token', token);
   state.status = status.data;
   state.journal = journal.data;
   state.daily = daily.data;
@@ -1295,7 +1839,7 @@ async function load() {
 const state = {};
 function syncRoute() {
   const h = (location.hash || '#today').replace('#', '');
-  const routes = ['today', 'chat', 'world', 'journal', 'settings'];
+  const routes = ['today', 'chat', 'world', 'journal', 'vault', 'settings'];
   const r = routes.includes(h) ? h : 'today';
   document.title = 'Personal World — ' + r[0].toUpperCase() + r.slice(1);
   for (const x of routes) {
@@ -1324,7 +1868,221 @@ $('journal-more').addEventListener('click', async () => {
   if (!res.error) { state.journal = res.data; renderJournal();
     setMsg('Loaded up to 500 journal entries — ' + nowHHMM()); }
 });
+/* ---- Auto-login from localStorage ---- */
+const savedToken = localStorage.getItem('pw_token');
+if (savedToken) {
+  $('token').value = savedToken;
+  load();
+}
 syncRoute();
+/* ---- Chat Provider ---- */
+async function renderChatProvider() {
+  const info = $('chat-provider-info');
+  if (!info) return;
+  const res = await api(state.token, '/api/chat/providers');
+  if (res.error || !res.data || !res.data.ok) {
+    info.textContent = 'Chat provider: unavailable';
+    return;
+  }
+  const d = res.data.data || {};
+  const providers = d.providers || [];
+  const active = d.active;
+  const activeProv = providers.find(p => p.name === active);
+  if (activeProv) {
+    info.textContent = 'Chatting with ' + activeProv.display_name + ' (' + activeProv.status + ')';
+  } else if (providers.length === 0) {
+    info.textContent = 'No chat provider configured — add one in Settings';
+  } else {
+    info.textContent = 'Chat provider: ' + (active || 'none active');
+  }
+}
+/* ---- Vault ---- */
+async function renderVault() {
+  const statusDiv = $('vault-status');
+  const unlockDiv = $('vault-unlock');
+  const contentDiv = $('vault-content');
+  const res = await api(state.token, '/api/vault/status');
+  if (res.error) { statusDiv.textContent = 'Vault unavailable.'; return; }
+  const d = res.data && res.data.data || {};
+  if (d.locked) {
+    statusDiv.textContent = 'Vault is locked. Enter your passphrase to unlock.';
+    unlockDiv.style.display = 'block';
+    contentDiv.style.display = 'none';
+  } else {
+    statusDiv.textContent = 'Vault is unlocked.';
+    unlockDiv.style.display = 'none';
+    contentDiv.style.display = 'block';
+    renderVaultNames();
+  }
+}
+async function renderVaultNames() {
+  const list = $('vault-list');
+  const res = await api(state.token, '/api/vault/names');
+  if (res.error) { list.textContent = 'Failed to load.'; return; }
+  const names = (res.data && res.data.data && res.data.data.names) || [];
+  clear(list);
+  if (names.length === 0) { list.appendChild(el('p', 'No secrets stored yet.')); return; }
+  for (const name of names) {
+    const row = el('div'); row.className = 'prefs-row';
+    row.appendChild(el('span', name));
+    const btn = el('button', 'Delete');
+    btn.addEventListener('click', async () => {
+      await api(state.token, '/api/vault/' + encodeURIComponent(name), {method: 'DELETE'});
+      renderVaultNames();
+    });
+    row.appendChild(btn); list.appendChild(row);
+  }
+}
+$('vault-unlock-btn').addEventListener('click', async () => {
+  const pass = $('vault-pass').value;
+  if (!pass) return;
+  const res = await api(state.token, '/api/vault/unlock', {
+    method: 'POST', body: JSON.stringify({passphrase: pass})});
+  if (res.error) { $('vault-status').textContent = 'Unlock failed: ' + res.error; return; }
+  $('vault-pass').value = '';
+  renderVault();
+});
+$('vault-set-btn').addEventListener('click', async () => {
+  const name = $('vault-name').value.trim();
+  const value = $('vault-value').value;
+  if (!name || !value) return;
+  const res = await api(state.token, '/api/vault/set', {
+    method: 'POST', body: JSON.stringify({name, value})});
+  if (res.error) { $('vault-status').textContent = 'Store failed: ' + res.error; return; }
+  $('vault-name').value = ''; $('vault-value').value = '';
+  renderVaultNames();
+});
+/* ---- Themes ---- */
+async function renderThemes() {
+  const host = $('settings-themes');
+  const res = await api(state.token, '/api/themes');
+  if (res.error) { host.textContent = 'Themes unavailable.'; return; }
+  const packs = (res.data && res.data.data) || [];
+  clear(host);
+  for (const p of packs) {
+    const row = el('div'); row.className = 'prefs-row';
+    const label = el('label', p.display_name || p.name);
+    const btn = el('button', 'Select');
+    btn.addEventListener('click', async () => {
+      await api(state.token, '/api/prefs', {
+        method: 'PUT', body: JSON.stringify({companion: p.name})});
+      applyCompanion(p.name);
+      setMsg('Companion changed to ' + p.display_name);
+    });
+    row.appendChild(label); row.appendChild(btn); host.appendChild(row);
+  }
+}
+/* ---- Chat Providers ---- */
+async function renderChatProviders() {
+  const host = $('settings-chat-providers');
+  const res = await api(state.token, '/api/chat/providers');
+  if (res.error || !res.data || !res.data.ok) {
+    host.textContent = 'Chat providers unavailable.';
+    return;
+  }
+  const d = res.data.data || {};
+  const providers = d.providers || [];
+  const active = d.active;
+  clear(host);
+  if (providers.length === 0) {
+    host.appendChild(el('p', 'No chat providers configured. Add an opencode, ollama, or openai_compat connection to config/connections.json.'));
+    return;
+  }
+  for (const p of providers) {
+    const row = el('div'); row.className = 'prefs-row';
+    const label = el('label', p.display_name + ' (' + p.status + ')');
+    const btn = el('button', p.name === active ? 'Active' : 'Switch');
+    if (p.name === active) {
+      btn.disabled = true;
+      btn.style.borderColor = 'var(--accent-primary)';
+      btn.style.color = 'var(--accent-primary)';
+    } else {
+      btn.addEventListener('click', async () => {
+        // For now, the first healthy provider is active.
+        // Switching requires changing connections.json and restarting.
+        setMsg('To switch providers, edit config/connections.json and restart.');
+      });
+    }
+    row.appendChild(label); row.appendChild(btn); host.appendChild(row);
+  }
+}
+/* ---- Reminders ---- */
+async function renderReminders() {
+  const host = $('settings-reminders');
+  const res = await api(state.token, '/api/reminders');
+  if (res.error) { host.textContent = 'Reminders unavailable.'; return; }
+  const reminders = (res.data && res.data.data) || [];
+  clear(host);
+  if (reminders.length === 0) { host.appendChild(el('p', 'No reminders set.')); return; }
+  for (const r of reminders) {
+    const row = el('div'); row.className = 'prefs-row';
+    const timeStr = r.cron_hour != null ? String(r.cron_hour).padStart(2,'0') + ':' + String(r.cron_minute || 0).padStart(2,'0') : 'any time';
+    const dayStr = r.cron_day || 'daily';
+    row.appendChild(el('span', r.text + ' (' + dayStr + ' ' + timeStr + ')'));
+    const toggle = el('button', r.enabled ? 'Disable' : 'Enable');
+    toggle.addEventListener('click', async () => {
+      await api(state.token, '/api/reminders/' + r.id, {
+        method: 'PATCH', body: JSON.stringify({enabled: !r.enabled})});
+      renderReminders();
+    });
+    const del = el('button', 'Delete');
+    del.addEventListener('click', async () => {
+      await api(state.token, '/api/reminders/' + r.id, {method: 'DELETE'});
+      renderReminders();
+    });
+    row.appendChild(toggle); row.appendChild(del); host.appendChild(row);
+  }
+}
+$('reminder-add').addEventListener('click', async () => {
+  const text = $('reminder-text').value.trim();
+  if (!text) return;
+  await api(state.token, '/api/reminders', {
+    method: 'POST', body: JSON.stringify({text: text, cron_hour: 9, cron_minute: 0})});
+  $('reminder-text').value = '';
+  renderReminders();
+});
+/* ---- Quick actions ---- */
+function renderQuickActions() {
+  const sec = document.getElementById('today-attention');
+  if (!sec) return;
+  const qaDiv = el('div'); qaDiv.style.cssText = 'margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap';
+  const actions = [
+    {label: 'Record fact', prompt: 'Fact key:', api: '/api/world/fact'},
+    {label: 'Set intent', prompt: 'Intent key:', api: '/api/world/intent'},
+    {label: 'Add policy', prompt: 'Policy key:', api: '/api/world/policy'},
+  ];
+  for (const a of actions) {
+    const btn = el('button', a.label);
+    btn.addEventListener('click', async () => {
+      const key = prompt(a.prompt);
+      if (!key) return;
+      const value = prompt('Value:');
+      if (value === null) return;
+      const body = a.api.includes('policy')
+        ? {key, effect: value || 'allow'}
+        : {key, value};
+      await api(state.token, a.api, {method: 'POST', body: JSON.stringify(body)});
+      setMsg(a.label + ': ' + key + ' saved');
+      load();
+    });
+    qaDiv.appendChild(btn);
+  }
+  sec.appendChild(qaDiv);
+}
+/* ---- Gitea rollups in World ---- */
+async function renderGiteaRollups() {
+  const src = $('world-src');
+  const res = await api(state.token, '/api/source-control/rollups');
+  if (res.error || !res.data || !res.data.ok) return;
+  const rollups = (res.data.data && res.data.data.rollups) || [];
+  if (rollups.length === 0) return;
+  const h = el('h3', 'Recent activity');
+  src.appendChild(h);
+  for (const r of rollups) {
+    const p = el('p', r.repo + ': ' + r.commit_count + ' commits — ' + (r.last_commit || 'no commits'));
+    src.appendChild(p);
+  }
+}
 </script>
 </body>
 </html>

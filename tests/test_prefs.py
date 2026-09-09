@@ -257,6 +257,7 @@ class TestDashboardPrefsPlumbing:
             "providers": {}, "packs": {},
             "accessibility": accessibility,
         }))
+        (tmp_path / "setup-complete").write_text("ok")
         c = TestClient(create_app(tmp_path, tmp_path))
         return c.get("/").text
 

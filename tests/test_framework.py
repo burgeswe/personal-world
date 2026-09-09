@@ -41,6 +41,8 @@ STANDARD_CAPS = {
     "source_control", "deployment", "secrets", "calendar", "discovery",
     "settings_validation", "service_validation", "update_discovery",
     "memory", "journal", "reasoning", "notifications", "scheduler",
+    "homelab_settings", "homelab_health", "homelab_deploy",
+    "homelab_secrets", "homelab_resources",
 }
 
 

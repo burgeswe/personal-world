@@ -106,6 +106,7 @@ class TestDashboardEndpoint:
         from personal_world.api import create_app
         monkeypatch.setenv("PW_API_TOKEN", "t")
         monkeypatch.setenv("PW_DATA_DIR", str(tmp_path))
+        (tmp_path / "setup-complete").write_text("ok")
         app = create_app(tmp_path, tmp_path)
         c = TestClient(app)
         r = c.get("/")
@@ -125,6 +126,7 @@ class TestDashboardStyleInjection:
         from personal_world.api import create_app
         monkeypatch.setenv("PW_API_TOKEN", "t")
         monkeypatch.setenv("PW_DATA_DIR", str(tmp_path))
+        (tmp_path / "setup-complete").write_text("ok")
         c = TestClient(create_app(tmp_path, tmp_path))
         return c.get("/").text
 

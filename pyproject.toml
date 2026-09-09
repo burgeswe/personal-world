@@ -17,6 +17,9 @@ test = [
   "pytest-timeout>=2,<3",
   "httpx>=0.27,<1",
 ]
+crypto = [
+  "cryptography>=42.0,<44",
+]
 
 [project.scripts]
 personal-world = "personal_world.cli:main"

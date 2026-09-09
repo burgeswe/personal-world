@@ -2,24 +2,37 @@
   "$schema": "personal-world/connections/1",
   "connections": [
     {
+      "type": "opencode",
+      "name": "mimo",
+      "capability": "reasoning",
+      "model": "opencode-go/mimo-v2.5",
+      "timeout": 120,
+      "display_name": "MiMo 2.5 (OpenCode)"
+    },
+    {
+      "type": "openai_compat",
+      "name": "mimo-xiaomi",
+      "capability": "reasoning",
+      "base_url": "https://token-plan-sgp.xiaomimimo.com/v1",
+      "model": "mimo-v2.5",
+      "api_key_env": "XIAOMI_MIMO_API_KEY",
+      "timeout": 120,
+      "display_name": "MiMo 2.5 (Xiaomi)"
+    },
+    {
+      "type": "openai_compat",
+      "name": "qwen-local",
+      "capability": "reasoning",
+      "base_url": "http://qwen.example.invalid:8081",
+      "model": "qwen3:8b",
+      "timeout": 120,
+      "display_name": "Qwen (local)"
+    },
+    {
       "type": "gitea",
-      "name": "my-gitea",
+      "name": "gitea",
       "capability": "source_control",
       "base_url": "https://git.example.invalid:3000"
-    },
-    {
-      "type": "http_status",
-      "name": "my-gitea-healthz",
-      "capability": "service_validation",
-      "url": "https://git.example.invalid:3000/api/healthz",
-      "expected": 200
-    },
-    {
-      "type": "http_status",
-      "name": "my-status-page",
-      "capability": "service_validation",
-      "url": "https://status.example.invalid/api/v1/statuses",
-      "expected": 200
     }
   ]
 }
