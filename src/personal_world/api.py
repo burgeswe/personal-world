@@ -66,23 +66,53 @@ async def require_step_up(request: Request) -> None:
 
 
 async def require_auth(request: Request) -> None:
+    """Gate + principal resolution (the single seam).
+
+    On success the resolved principal lands on request.state.principal
+    for sub-dependencies and handlers. In "single" mode the bootstrap
+    "primary" person is the only principal; "multi" resolves hashed
+    user tokens from the local identity store.
+    """
+    from .identity import resolve_principal, NoPrincipalError
+    uma = getattr(request.app.state, "identity", None)
     token = _token()
     if not token:
         raise HTTPException(status_code=503, detail="auth not configured")
     header = request.headers.get("Authorization", "")
     supplied = header.removeprefix("Bearer ").strip()
-    if not supplied or not hmac.compare_digest(supplied, token):
+    if not supplied:
         raise HTTPException(status_code=401, detail="unauthorized")
+    identity = getattr(request.app.state, "identity", None)
+    mode = identity["mode"] if identity else "single"
+    store = identity["store"] if identity else None
+    try:
+        principal = resolve_principal(supplied, store, mode, token)
+    except NoPrincipalError:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    request.state.principal = principal
 
 
 def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> FastAPI:
     data_dir = Path(data_dir or os.environ.get("PW_DATA_DIR", "./data"))
     config_dir = Path(config_dir or os.environ.get("PW_CONFIG_DIR", "./config"))
+    # Identity seam state (issue #8 phase 0/1, per multi-user review
+    # 2026-09-09): local users as trust root, PW_IDENTITY_MODE picks
+    # single (bootstrap-primary bypass) or multi (hashed-token users).
+    from .identity import IdentityStore
+    _identity_mode = os.environ.get("PW_IDENTITY_MODE", "single")
+    _identity_store = IdentityStore(data_dir)
+    _app_instance_token = _token()
     world_path = data_dir / "world.json"
     journal = Journal(data_dir / "journal.ndjson")
 
     from .model import JournalKind
     app = FastAPI(title="Personal World", version="0.2.0")
+    # issue #8, phase 0: the identity seam state lives on app.state so
+    # single-mode behavior is byte-identical and multi-mode lights up
+    # without changing how the client calls the API.
+    app.state.identity = {"mode": _identity_mode,
+                          "store": _identity_store,
+                          "instance_token": _app_instance_token}
 
     # --- Setup & Login ---
 

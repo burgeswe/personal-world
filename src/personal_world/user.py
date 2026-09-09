@@ -27,7 +27,11 @@ class User(BaseModel):
 
     @property
     def data_dir(self) -> Path:
-        return Path(f"/data/users/{self.id}")
+        # Root honors PW_DATA_DIR so tests/alternate deployments respect
+        # the same layout; the per-user shape under it never changes.
+        import os
+        root = Path(os.environ.get("PW_DATA_DIR", "/data"))
+        return root / "users" / self.id
 
     @property
     def world_path(self) -> Path:
