@@ -1,3 +1,9 @@
 {
+  "$schema": "personal-world/connections/1",
+  "source_control": {
+    "search_paths": [
+      "/data/repos/personal-world"
+    ]
+  },
   "connections": []
 }

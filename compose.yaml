@@ -17,6 +17,8 @@ services:
       # the healthcheck's auth_configured assertion. Generate with:
       #   python -c "import secrets; print(secrets.token_urlsafe(32))"
       PW_API_TOKEN: ${PW_API_TOKEN:-}
+      # Chat provider keys use env indirection; forwarded to the core here.
+      XIAOMI_MIMO_API_KEY: ${XIAOMI_MIMO_API_KEY:-}
     volumes:
       - world-data:/data
       - ./config:/config:ro

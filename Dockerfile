@@ -1,6 +1,11 @@
 # TODO: pin by digest after the first build is validated
 FROM python:3.12-slim-bookworm
 
+# git: source-control capability feeds the dashboard + chat context.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md ./

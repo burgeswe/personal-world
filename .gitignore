@@ -35,6 +35,8 @@ Thumbs.db
 
 # Local provider configuration, credentials and diagnostic output
 config.local/
+config/connections.local.json
+config/connections.local.json.*
 *.pem
 *.p12
 *.pfx
