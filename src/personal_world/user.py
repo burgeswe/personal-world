@@ -15,6 +15,11 @@ from pydantic import BaseModel, Field
 from .model import Accessibility
 
 
+def _default_root() -> Path:
+    import os
+    return Path(os.environ.get("PW_DATA_DIR", "/data"))
+
+
 class User(BaseModel):
     """A person in the Personal World system."""
 
@@ -25,13 +30,14 @@ class User(BaseModel):
     accessibility: Accessibility = Field(default_factory=Accessibility)
     vault_enabled: bool = True
 
+    root: Path = Field(default_factory=lambda: _default_root())
+
     @property
     def data_dir(self) -> Path:
-        # Root honors PW_DATA_DIR so tests/alternate deployments respect
-        # the same layout; the per-user shape under it never changes.
-        import os
-        root = Path(os.environ.get("PW_DATA_DIR", "/data"))
-        return root / "users" / self.id
+        # Root is an explicit field (PW_DATA_DIR default) so callers can
+        # thread the app's real data dir without env luck; the per-user
+        # shape under it never changes.
+        return self.root / "users" / self.id
 
     @property
     def world_path(self) -> Path:

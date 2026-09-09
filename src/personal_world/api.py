@@ -88,6 +88,8 @@ a.finish { color: var(--accent); }
 .composer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .composer input { flex: 1 1 260px; min-height: 48px; background: var(--panel); color: var(--text, #f2eefa); border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; font: inherit; }
 .composer button { min-height: 48px; min-width: 88px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: inherit; font: inherit; }
+.composer-templates { display: flex; gap: 8px; margin-top: 8px; }
+.chip-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: inherit; font: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -413,7 +415,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         if principal is None:
             raise HTTPException(status_code=409,
                                 detail='principal not resolved')
-        user = User(id=principal.id, name=principal.id)
+        user = User(id=principal.id, name=principal.id, root=data_dir)
         return user.world_path, user.journal_path
 
     def _state_for(request: Request) -> tuple[World, Registry, Path]:
@@ -1805,6 +1807,14 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <section aria-labelledby="today-services-h2">
 <h2 id="today-services-h2">Services</h2>
 <ul id="today-services" class="cards"><li class="muted">No services configured yet.</li></ul>
+<div class="composer svc-editor">
+  <label for="svc-name" class="sr-only">Service name</label>
+  <input id="svc-name" type="text" placeholder="Name (e.g. Gitea)" autocomplete="off">
+  <label for="svc-url" class="sr-only">Service URL</label>
+  <input id="svc-url" type="text" placeholder="URL (https://…)" autocomplete="off">
+  <button id="svc-add" type="button">Add</button>
+  <span id="svc-status" class="muted" role="status"></span>
+</div>
 </section>
 <hr class="hr">
 <section aria-labelledby="today-attention-h2">
@@ -1819,6 +1829,12 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
   <input id="note-text" type="text" maxlength="2000" placeholder="A thought, a win, something to remember…" autocomplete="off">
   <button id="note-save" type="button">Save</button>
   <span id="note-status" class="muted" role="status"></span>
+  <div class="composer-templates" role="group" aria-label="Quick templates">
+    <button type="button" class="chip-btn" data-prefill="win: ">win:</button>
+    <button type="button" class="chip-btn" data-prefill="blocker: ">blocker:</button>
+    <button type="button" class="chip-btn" data-prefill="remember: ">remember:</button>
+  </div>
+
 </div>
 </section>
 <hr class="hr">
@@ -2505,6 +2521,36 @@ async function load() {
             svcEl.appendChild(li);
           }
         }
+      }
+      // chip prefill
+      document.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const inp = document.getElementById('note-text');
+          if (inp && !inp.value) inp.value = btn.getAttribute('data-prefill');
+          if (inp) inp.focus();
+        });
+      });
+      // services inline add
+      const svcAdd = document.getElementById('svc-add');
+      if (svcAdd && !svcAdd.dataset.bound) {
+        svcAdd.dataset.bound = '1';
+        svcAdd.addEventListener('click', async () => {
+          const name = document.getElementById('svc-name').value.trim();
+          const url = document.getElementById('svc-url').value.trim();
+          const stat = document.getElementById('svc-status');
+          if (!name || !url) { stat.textContent = 'Name and URL are both needed.'; return; }
+          svcAdd.disabled = true;
+          try {
+            const cur = (results.apps && results.apps.ok && results.apps.data) || [];
+            const next = cur.concat([{ id: name.toLowerCase().replace(/[^a-z0-9-]/g, '-'), name: name, url: url }]);
+            const r = await fetch('/api/apps', { method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, 'X-PW-StepUp': '1' },
+              body: JSON.stringify({ apps: next }) });
+            if (r.ok) { stat.textContent = 'Added.'; load(); }
+            else { stat.textContent = 'Add failed — try again.'; }
+          } catch { stat.textContent = 'Add failed — try again.'; }
+          svcAdd.disabled = false;
+        });
       }
       const quotaEl = document.getElementById('today-quota');
       if (!quotaEl) return;
