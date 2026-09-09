@@ -163,7 +163,11 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
     # Native baseline (see comment above)
     if not any(c.get("capability") == "source_control" for c in connections):
         try:
-            git_impl = NativeGit(configured_search_paths(config_dir))
+            from .source_control import config_recursive_flag
+            git_impl = NativeGit(
+                configured_search_paths(config_dir),
+                recurse=config_recursive_flag(config_dir),
+            )
             registry.register(
                 "source_control", "native-git", git_impl,
                 health_check=git_impl.git_available,

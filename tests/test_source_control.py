@@ -362,3 +362,31 @@ class TestNativeGitProvider:
         nothing = NativeGit([str(tmp_path / "void")])
         r = nothing.observe()
         assert not r.ok and r.status == "needs_attention"
+
+class TestRecursiveDiscovery:
+    """Issue #17: search_paths with recursion, depth-limited."""
+
+    def _git(self, cwd, *args):
+        import subprocess
+        proc = subprocess.run(
+            ["git", "--no-pager", "-C", str(cwd), *args],
+            capture_output=True, text=True, timeout=10)
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout
+
+    def test_recursive_finds_nested_repos(self, tmp_path):
+        outer = tmp_path / "hub"
+        outer.mkdir()
+        self._git(outer, "init", "-q")
+        inner = tmp_path / "hub2" / "inner"
+        inner.mkdir(parents=True)
+        self._git(inner, "init", "-q")
+        # depth 2 → hub + hub2 (not-repo-depth-correct); inner found
+        # since hub2 depth=1 then inner=depth reaching 0
+        p = NativeGit([str(tmp_path)], recurse=True, depth=3)
+        assert p.git_available()
+        result = p.observe()
+        assert result.ok
+        # observed data shape: {"repositories": N}; both outer repo and
+        # the nested one are counted, and a 2-depth walk finds both.
+        assert result.data == {"repositories": 2}

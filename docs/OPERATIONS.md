@@ -1,5 +1,9 @@
 # Operations guide (0.1)
 
+> **First run on new hardware?** See
+> [`docs/OPERATIONS-FIRST-RUN.md`](OPERATIONS-FIRST-RUN.md) — the
+> daily-use runbook matching what was actually done.
+
 This guide describes the public standalone application. Keep private deployment
 hostnames, service inventories, credentials and access procedures in private
 operator documentation.

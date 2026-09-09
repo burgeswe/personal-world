@@ -95,18 +95,57 @@ def _upstream_counts(
     return None, None
 
 
-def discover_repositories(search_paths: list[str]) -> list[dict]:
+def discover_repositories(
+    search_paths: list[str], recurse: bool = False, depth: int = 2
+) -> list[dict]:
     """Check each configured path directly. Plain directories come back
     with is_repository False (skipped by status workflows, never hidden
-    from the caller); missing or unreadable paths never raise."""
+    from the caller); missing or unreadable paths never raise.
+
+    With ``recurse`` set (via the configured ``source_control.recursive``
+    flag; default False to preserve the hard-coded "explicit only"
+    behavior), each search path is walked depth-limited (default 2) to
+    find nested checkouts. A directory with its own ``.git`` stops the
+    walk (inner-repo inner-dir not entered)."""
     out: list[dict] = []
-    for raw in search_paths:
-        p = Path(raw).expanduser()
+    seen: set[str] = set()
+
+    def visit(p: Path, remaining: int) -> None:
+        if str(p) in seen:
+            return
+        seen.add(str(p))
+        is_repo = _is_repository(p)
         out.append({
             "path": str(p),
             "name": p.name,
-            "is_repository": _is_repository(p),
+            "is_repository": is_repo,
         })
+        if remaining <= 0:
+            return
+        try:
+            entries = sorted(p.iterdir())
+        except OSError:
+            return
+        for child in entries:
+            if not child.is_dir():
+                continue
+            if child.name.startswith("."):
+                continue
+            if is_repo:
+                # inside a repo, don't descend further (tracked checkout)
+                continue
+            visit(child, remaining - 1)
+
+    for raw in search_paths:
+        p = Path(raw).expanduser()
+        if recurse:
+            visit(p, depth)
+        else:
+            out.append({
+                "path": str(p),
+                "name": p.name,
+                "is_repository": _is_repository(p),
+            })
     return out
 
 
@@ -216,13 +255,32 @@ def configured_search_paths(config_dir: Path) -> list[str]:
     return [str(p) for p in paths if isinstance(p, str) and p]
 
 
+def config_recursive_flag(config_dir: Path) -> bool:
+    """Optional drive for multi-repo discovery. Config key:
+    `source_control.recursive` (defaults False; explicit-only
+    indexes stay the canonical behavior)."""
+    conn_path = Path(config_dir) / "connections.json"
+    if not conn_path.exists():
+        return False
+    try:
+        payload = json.loads(conn_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return False
+    section = payload.get("source_control")
+    if not isinstance(section, dict):
+        return False
+    return bool(section.get("recursive"))
+
+
 class NativeGit(SourceControlContract):
     """Native baseline provider for source_control: the local git
     binary, zero external services, zero secrets. Registered with
     ProviderMode.NATIVE; enrichment providers never replace it."""
 
-    def __init__(self, search_paths: list[str]) -> None:
+    def __init__(self, search_paths: list[str], recurse: bool = False, depth: int = 2) -> None:
         self.search_paths = list(search_paths)
+        self.recurse = recurse
+        self.depth = depth
 
     def git_available(self) -> bool:
         return shutil.which("git") is not None
@@ -238,7 +296,9 @@ class NativeGit(SourceControlContract):
                 warnings=["no source_control search paths configured"],
             )
         repos = [
-            entry for entry in discover_repositories(self.search_paths)
+            entry for entry in discover_repositories(
+                self.search_paths, recurse=self.recurse, depth=self.depth
+            )
             if entry["is_repository"]
         ]
         if not repos:

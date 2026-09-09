@@ -28,6 +28,7 @@ copy of that state — one fact should be maintained once.
 | What governs UI work? | `docs/accessibility/ACCESSIBILITY_CONTRACT.md` (non-negotiable) |
 | How is it structured? | `docs/ARCHITECTURE.md`, `docs/NATIVE-BASELINE-AND-ENRICHMENT.md` |
 | How do I run it? | `docs/OPERATIONS.md` |
+| First run on new hardware | `docs/OPERATIONS-FIRST-RUN.md` (daily-use runbook, 2026-09-09) |
 | How do I validate my work? | `uv run pytest --timeout=30`, `uv run personal-world framework validate --json` |
 | Security contract? | `SECURITY.md` |
 
