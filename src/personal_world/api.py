@@ -221,7 +221,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             },
         }
 
-    @app.post("/api/chat/test", dependencies=[Depends(require_auth)])
+    @app.post("/api/chat/test")
     async def chat_test() -> dict:
         """Quick chat test — sends a simple message to verify the provider works."""
         _, registry = _state()
