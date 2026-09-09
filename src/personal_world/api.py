@@ -51,6 +51,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     world_path = data_dir / "world.json"
     journal = Journal(data_dir / "journal.ndjson")
 
+    from .model import JournalKind
     app = FastAPI(title="Personal World", version="0.2.0")
 
     # --- Setup & Login ---
@@ -492,6 +493,41 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         if not r.ok:
             return {"ok": r.ok, "status": r.status, "warnings": r.warnings}
         return {"ok": True, "data": {"name": name}}
+
+    @app.get("/api/vault/{name}", dependencies=[Depends(require_auth)])
+    async def vault_get(name: str, request: Request) -> dict:
+        """Read a single secret value. Loopback-host-only:
+        requests from non-loopback Remote-Addr are refused even with a
+        valid bearer, keeping secret-value extraction a local-only
+        operation (browser/keys never cross the wire).
+        Each retrieval audited to the journal with the NAME only."""
+        client = request.client.host if request.client else "?"
+        # Docker port-forward can show the container gateway (172.16-31.x)
+        # for the same host; accept either loopback or private bridge.
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(client)
+        except ValueError:
+            ip = None
+        loopback = client in ("127.0.0.1", "::1", "localhost", "testclient") or (
+            ip is not None and (ip.is_loopback or ip.is_private))
+        if not loopback:
+            raise HTTPException(
+                status_code=403,
+                detail=f"vault GET is loopback-only (client={client})")
+        try:
+            value = _vault.get(name)
+        except RuntimeError:
+            raise HTTPException(status_code=409, detail="vault is locked")
+        if value is None:
+            raise HTTPException(status_code=404, detail=f"{name} not found")
+        journal.record(
+            kind=JournalKind.OBSERVATION,
+            summary=f"vault get (name-only): {name}",
+            source="api",
+        )
+
+        return {"ok": True, "data": {"name": name, "value": value}}
 
     @app.delete("/api/vault/{name}", dependencies=[Depends(require_auth)])
     async def vault_delete(name: str) -> dict:
