@@ -76,6 +76,16 @@ Preserved ideas, no commitment:
   read surface, step-up auth on prefs PUT, /api/journal pair
   route the caller's own tree. Tests: 335 passed.
 
+- 2026-09-09 night (issue #8 phases 2+3): provisioning API
+  (POST/GET/DELETE /api/identity/users, admin+step-up; token shown
+  once, stored hashed); multi-mode bootstrap keeps the instance
+  token as the primary person's credential; agents as owned
+  principals with narrow scopes (read/write/journal/apps; token
+  shown once); person-only guard refuses agents on prefs/journal;
+  disable revokes access everywhere; 9 new tests prove the
+  two-user acceptance core. Remaining for #8: provider-neutral
+  OIDC attach, share-records UI. 361 tests passing.
+
 - 2026-09-09 evening: subscription-usage card on Today (real Kilo
   data via the lab adapter); ChatContract.health seam; Wired the
   reminder scheduler to a single fastapi app; first-run runbook
