@@ -31,6 +31,7 @@ from .source_control import (
 from .world import World
 
 WIZARD_HTML = """
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -38,16 +39,18 @@ WIZARD_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Setup wizard</title>
 <style>
+@font-face { font-family: "Young Serif"; src: url("/fonts/young-serif-latin.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2"); }
 :root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
   --text: #f0eaff; --muted: #8a7ba3; --accent: #72b1b1; --ok: #5fb85f;
   --warn: #d4a54c; --err: #d4644c; }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
+body { background: var(--bg); color: var(--text); font-family: "Instrument Sans", system-ui, sans-serif;
   margin: 0; min-height: 100vh; display: flex; align-items: center;
   justify-content: center; padding: 1rem; }
 .wizard { background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; padding: 2rem; max-width: 520px; width: 100%; }
-h1 { font-size: 1.4rem; margin: 0 0 0.25rem; color: var(--accent); }
+h1 { font-family: "Young Serif", system-ui, serif; font-size: 1.4rem; margin: 0 0 0.25rem; color: var(--accent); }
 .step-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem;
   letter-spacing: 0.05em; }
 .big { font-size: 1.08rem; line-height: 1.5; color: var(--text); margin: 1rem 0; }
