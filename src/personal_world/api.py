@@ -687,6 +687,20 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
                     return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
         return {"ok": False, "status": "not_configured", "warnings": ["no gitea connection"]}
 
+    @app.get("/api/identity/principal", dependencies=[Depends(require_auth)])
+    async def identity_principal(request: Request) -> dict:
+        """Read-only: who is calling. Useful for diagnostics and for a
+        future onboarding / profiles surface."""
+        p = getattr(request.state, "principal", None)
+        if p is None:
+            raise HTTPException(status_code=409,
+                                detail="principal not resolved")
+        return {"ok": True,
+                "data": {"id": p.id, "kind": p.kind,
+                         "display_name": p.display_name,
+                         "scopes": list(p.scopes),
+                         "source": p.source}}
+
     @app.get("/api/ingress/rollups", dependencies=[Depends(require_auth)])
     async def ingress_rollups() -> dict:
         """Traefik ingress route rollups (read-only over LAN)."""
