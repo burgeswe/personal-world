@@ -13,15 +13,24 @@ the code, or explicit spec documents — not invention.
 
 Work that completes or hardens what 0.1 already promises:
 
+- **Secret vault.** DONE (2026-09-09): Fernet-encrypted file vault
+  (`/data/vault.enc`, PBKDF2-600k) behind real unlock/lock/set/
+  delete/names endpoints; the image now installs `cryptography` so
+  the base64 fallback silently weakened it no longer. Values never
+  render; only names list.
+
 - **Accessibility-preference → dashboard wiring.** DONE (2026-09-07):
   preferences render server-side and apply live in the dashboard
   (text scale, density, targets, companion, accent); the floor stays
   test-enforced. Remaining polish: more granular reading preferences.
-- **Chat surface.** DONE (2026-09-07): Chat is a first-class surface
-  with a provider-neutral adapter (`ollama` or `openai_compat`
-  connections), a trimmed read-only world-context injection, honest
-  not_configured/unavailable states, and conversation history.
-  Remaining: streaming responses, richer per-surface context.
+- **Chat surface.** DONE (2026-09-07, extended 2026-09-09): Chat is a
+  first-class surface with a provider-neutral adapter (`ollama` or
+  `openai_compat` connections), a trimmed read-only world-context
+  injection, honest not_configured/unavailable states, and
+  conversation history. Verified end-to-end in-container against the
+  Xiaomi MiMo cloud endpoint (2026-09-09); provider keys reach the
+  core by env indirection. Remaining: streaming responses, richer
+  per-surface context.
 - **Theme Pack implementation.** Partially done (2026-09-07):
   companion selection and accent palettes are wired through the
   preference system with approved art served from the package. Still
@@ -32,7 +41,9 @@ Work that completes or hardens what 0.1 already promises:
 
 Strongly relevant, clearly scoped, not started:
 
-- **Scheduler/reminder engine.** The schema exists; no runner.
+- **Scheduler/reminder engine.** Reminders persist via the API
+  (2026-09-09: two daily-ritual reminders recorded in the container);
+  still no background runner — fire is on request only.
 - **Source-control enrichment.** The Gitea adapter is health-only
   today; the native git baseline now feeds dashboard + chat context.
   Concept rollups ("3 repositories changed today") can deepen with
@@ -66,3 +77,8 @@ Preserved ideas, no commitment:
   library.
 - 2026-09-07: public-safety hardening, history sanitization,
   public-safety regression gate.
+- 2026-09-09: container daily-use bring-up — in-container git for the
+  native source-control baseline, MiMo cloud-chat verified live, real
+  encrypted vault (issue: base64 fallback + missing `cryptography`
+  found and closed), provider-key env passthrough, world seeded for
+  first daily use, full suite green.

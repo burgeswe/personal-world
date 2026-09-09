@@ -66,6 +66,48 @@ development line on `main`.
   19-test chat suite covering context trimming, private-lore
   exclusion, provider substitution, and fail-honest API behavior.
 
+### Added (2026-09-08/09 — container bring-up session)
+
+- **MiMo cloud-chat provider wired.** `openai_compat` connection to
+  the Xiaomi MiMo endpoint ships as a private runtime config
+  (`config/connections.local.json`, gitignored; template +
+  `config/README.local.md` document the shape). Compose forwards the
+  provider key by env indirection; no credential enters the repo.
+- **Vault is real.** The vault endpoints were stubs returning
+  hardcoded empties; now one persistent `Vault` instance backs
+  unlock/lock/set/delete/names, secrets persist encrypted to
+  `/data/vault.enc`, and setup-with-passphrase writes the encrypted
+  file immediately. The Dockerfile installs the `cryptography` extra
+  (was silently falling back to base64) and the lockfile carries the
+  crypto deps (later bumped by dependabot to 50.0.0 with all gates
+  green).
+
+### Fixed (2026-09-08/09)
+
+- Container didn't ship `git`, so the native source-control baseline
+  reported `git binary not found` and the dashboard had no repository
+  status. The image now installs git and the compose config points
+  the native baseline at a container-internal clone
+  (`/data/repos/personal-world`); source-control status/repro health
+  verified live in-container.
+- `compose.yaml` did not forward chat-provider API keys, so chat
+  tested `401 Unauthorized` even with correct credentials. Keys now
+  flow via env indirection (`XIAOMI_MIMO_API_KEY`), matching the
+  provider contract's secret rule; chat verified working end-to-end
+  (`mimo-v2.5-pro` replies through the container).
+- Vault endpoints were stubs (see Added above).
+
+### Changed (2026-09-08/09)
+
+- Deployment image now installs `--extra test --extra crypto`;
+  `uv.lock` refreshed to include `cryptography` (43.0.3 -> 50.0.0
+  via dependabot PR #13).
+- World seeded for daily use: 26 facts, 4 open intents, 4 policies
+  (chat is read-only; private lore never exported; secrets never in
+  chat context), 2 reminders (morning check-in, evening close-out).
+- Repo state: GitHub + Gitea synced at `553e4b0`; CI green on every
+  push of the session.
+
 ### Fixed
 
 - Dashboard `load()` used `Promise.all()` on a plain object (not
