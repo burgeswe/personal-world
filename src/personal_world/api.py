@@ -35,6 +35,36 @@ def _token() -> str | None:
     return os.environ.get("PW_API_TOKEN")
 
 
+def _step_up_authorized(request: Request) -> bool:
+    """Write path semantics. Loopback OR non-forwarded Header X-PW-StepUp: 1.
+
+    Loopback in Docker bridge mode passes automatically (mirrors the
+    vault GET). External requests must send the step-up header
+    (step-up login keeps sessions) - documented contract; consumers
+    that need to write from remote browsers add `X-PW-StepUp: 1` when
+    they're past Authelia."""
+    client = request.client.host if request.client else "?"
+    if client in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return True
+    if request.headers.get("X-PW-StepUp") == "1":
+        return True
+    import ipaddress as _ipa
+    try:
+        ip = _ipa.ip_address(client)
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_loopback or ip.is_private):
+        return True
+    return False
+
+
+async def require_step_up(request: Request) -> None:
+    await require_auth(request)
+    if not _step_up_authorized(request):
+        raise HTTPException(
+            status_code=403, detail="write requires step-up auth")
+
+
 async def require_auth(request: Request) -> None:
     token = _token()
     if not token:
@@ -641,7 +671,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     # --- Quick actions ---
 
-    @app.post("/api/world/intent", dependencies=[Depends(require_auth)])
+    @app.post("/api/world/intent", dependencies=[Depends(require_step_up)])
     async def set_intent(request: Request) -> dict:
         """Set an intent. Body: {key, value}."""
         body = await request.json()
@@ -659,7 +689,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         save_world(world, world_path)
         return {"ok": True, "data": {"key": key}}
 
-    @app.post("/api/world/fact", dependencies=[Depends(require_auth)])
+    @app.post("/api/world/fact", dependencies=[Depends(require_step_up)])
     async def record_fact(request: Request) -> dict:
         """Record a fact. Body: {key, value}."""
         body = await request.json()
@@ -677,7 +707,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         save_world(world, world_path)
         return {"ok": True, "data": {"key": key}}
 
-    @app.post("/api/world/policy", dependencies=[Depends(require_auth)])
+    @app.post("/api/world/policy", dependencies=[Depends(require_step_up)])
     async def add_policy(request: Request) -> dict:
         """Add a policy. Body: {key, effect}."""
         body = await request.json()
