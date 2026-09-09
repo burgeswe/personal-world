@@ -1146,14 +1146,16 @@ document.getElementById('go').addEventListener('click', async () => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Personal World — Login</title>
 <style>
+@font-face { font-family: "Instrument Sans"; src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2"); }
+@font-face { font-family: "Young Serif"; src: url("/fonts/young-serif-latin.woff2") format("woff2"); }
 :root { color-scheme: dark; --bg: #0a0810; --panel: #12101a; --border: #2a2538;
   --text: #f0eaff; --muted: #6b5f82; --accent: #72b1b1; }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif;
+body { background: var(--bg); color: var(--text); font-family: "Instrument Sans", system-ui, sans-serif;
   margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 .login { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
   padding: 2rem; max-width: 400px; width: 100%; text-align: center; }
-h1 { font-size: 1.25rem; margin: 0 0 1rem; color: var(--accent); }
+h1 { font-family: "Young Serif", system-ui, serif; font-size: 1.25rem; margin: 0 0 1rem; color: var(--accent); }
 input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: 6px; padding: 0.55rem; font-size: 1rem; min-height: 44px; margin: 0.5rem 0; }
 button { background: var(--accent); color: var(--bg); border: none; border-radius: 6px;
