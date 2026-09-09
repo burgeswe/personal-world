@@ -49,8 +49,8 @@ Strongly relevant, clearly scoped, not started:
   needs a Traefik capability provider; the semantic seam is recorded
   in the design handoff.
 - **"Last observed" age display** for stale surfacing.
-- **Quick actions** — the write path plus step-up-auth groundwork.
-- **Apps/Services launcher** — needs an apps registry concept.
+- Quick actions — DONE 2026-09-09: "Add a note" composer (POST /api/journal) + step-up writes; more verbs can follow.
+- Apps/Services launcher — DONE 2026-09-09: GET/PUT /api/apps registry (data/apps.json, step-up gated, journal-audited) + dashboard Services card.
 
 ## Exploring
 

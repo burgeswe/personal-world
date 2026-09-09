@@ -1,3 +1,8 @@
+## [Unreleased]
+- Services launcher: /api/apps registry (step-up PUT, journal-audited) + dashboard "Services" card.
+- Note composer: POST /api/journal + "Add a note" panel on Today.
+- Login deep-links fresh installs to /setup-wizard (data-setup-needed).
+- Nightly encrypted vault copy to NAS (VM cron 03:15, no-op until vault exists).
 # Changelog
 
 ## 2026-09-09 — first-run wizard /setup-wizard shipped
