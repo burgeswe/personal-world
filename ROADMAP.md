@@ -66,6 +66,11 @@ Preserved ideas, no commitment:
 
 ## Completed
 
+- 2026-09-09 late: per-user preferences / journal paths behind
+  PW_IDENTITY_MODE (issue #8 phase 1), /api/identity/principal
+  read surface, step-up auth on prefs PUT, /api/journal pair
+  route the caller's own tree. Tests: 335 passed.
+
 - 2026-09-09 evening: subscription-usage card on Today (real Kilo
   data via the lab adapter); ChatContract.health seam; Wired the
   reminder scheduler to a single fastapi app; first-run runbook

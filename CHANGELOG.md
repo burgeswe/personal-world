@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased (2026-09-09 late)
+
+### Added
+
+- **Per-user preferences and journal isolation behind
+  PW_IDENTITY_MODE.** Phase 1 of issue #8: /api/prefs and
+  /api/journal pair route to the caller-person's own tree in
+  multi mode; single mode returns the bootstrap-shared paths
+  byte-identically. prefs PUT now requires step-up auth (same
+  contract as journal write). Tests cover per-user isolation
+  (alpha's scale never leaks to beta) and lazy-init absence
+  as isolation proof.
+
 Notable changes to Personal World. Entries are curated project
 milestones, not a git-log dump. The project has no formal releases yet;
 until a tagged release exists, the changelog tracks the evolving 0.1
