@@ -104,14 +104,14 @@ class IdentityStore:
                 return
         raise ValueError(f"no such user: {user_id}")
 
-    def disable_user(self, user_id: str) -> None:
+    def disable_user(self, user_id: str) -> bool:
         payload = self._load()
         for u in payload["users"]:
             if u.get("user_id") == user_id:
                 u["enabled"] = False
                 self._save(payload)
-                return
-        raise ValueError(f"no such user: {user_id}")
+                return True
+        return False
 
     def list_users(self) -> list[dict]:
         return self._load().get("users", [])
@@ -123,15 +123,56 @@ class IdentityStore:
 
     # -- resolution -------------------------------------------------------
     def match_token(self, token: str) -> dict | None:
-        """Find the enabled user whose hashed token matches `token`."""
+        """Find the enabled user or agent whose hashed token matches."""
         fp = _token_fingerprint(token)
         payload = self._load()
-        for u in payload.get("users", []):
+        for u in payload.get("users", []) + payload.get("agents", []):
             if not u.get("enabled", False):
                 continue
             if any(hmac.compare_digest(fp, h) for h in u.get("hashed_tokens", [])):
                 return u
         return None
+
+    # -- agent principals (phase 3) --------------------------------------
+    def create_agent(self, agent_id: str, owner_id: str,
+                     scopes: tuple[str, ...],
+                     plain_token: str | None = None,
+                     display_name: str | None = None) -> dict:
+        """An agent is a first-class principal owned by a person.
+
+        Scopes are a subset language from the owner: "read", "write",
+        "journal", "apps". Agents never inherit owner rights beyond
+        the listed scopes.
+        """
+        payload = self._load()
+        if any(a.get("user_id") == agent_id for a in payload.get("agents", [])):
+            raise ValueError(f"agent exists: {agent_id}")
+        a = {"user_id": agent_id, "kind": "agent", "owner_id": owner_id,
+             "display_name": display_name or agent_id,
+             "scopes": list(scopes), "hashed_tokens": [],
+             "token_prefixes": [], "enabled": True,
+             "created_at": time.time()}
+        if plain_token:
+            self._attach_token(a, plain_token)
+        payload.setdefault("agents", []).append(a)
+        self._save(payload)
+        return a
+
+    def list_agents(self, owner_id: str | None = None) -> list[dict]:
+        payload = self._load()
+        agents = [a for a in payload.get("agents", []) if a.get("enabled")]
+        if owner_id:
+            agents = [a for a in agents if a.get("owner_id") == owner_id]
+        return agents
+
+    def disable_agent(self, agent_id: str, owner_id: str) -> bool:
+        payload = self._load()
+        for a in payload.get("agents", []):
+            if a.get("user_id") == agent_id and a.get("owner_id") == owner_id:
+                a["enabled"] = False
+                self._save(payload)
+                return True
+        return False
 
     def legacy_primary(self, instance_token: str) -> dict:
         """The bootstrap person in single mode (id "primary")."""
@@ -154,6 +195,12 @@ def resolve_principal(token: str | None,
         found = store.match_token(token or "")
         if not found:
             raise NoPrincipalError("no principal for token")
+        if found.get("kind") == "agent":
+            return Principal(id=found["user_id"], kind="agent",
+                             owner_id=found.get("owner_id"),
+                             display_name=found.get("display_name"),
+                             scopes=tuple(found.get("scopes") or ()),
+                             auth_level=1, source="token")
         return Principal(id=found["user_id"], kind="person",
                          display_name=found.get("display_name"),
                          auth_level=1, source="token")

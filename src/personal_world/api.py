@@ -7,6 +7,7 @@ compared with hmac.compare_digest and never logged.
 
 import hmac
 import json
+import secrets
 import os
 import time
 from pathlib import Path
@@ -333,6 +334,15 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     # issue #8, phase 0: the identity seam state lives on app.state so
     # single-mode behavior is byte-identical and multi-mode lights up
     # without changing how the client calls the API.
+    # Multi-mode bootstrap: the instance token remains the primary
+    # person's credential so enabling multi mode never locks the
+    # operator out. First-run in multi continues to work.
+    if _identity_mode == "multi":
+        try:
+            _identity_store.legacy_primary(_token())
+        except Exception:
+            pass
+
     app.state.identity = {"mode": _identity_mode,
                           "store": _identity_store,
                           "instance_token": _app_instance_token}
@@ -432,6 +442,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     @app.get("/api/journal", dependencies=[Depends(require_auth)])
     async def journal_view(request: Request, n: int = 20) -> dict:
+        _require_person(getattr(request.state, "principal", None))
         _, _, uj = _state_for(request)
         target = journal if uj == journal.path else Journal(uj)
         events = target.recent(n)
@@ -440,6 +451,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     @app.post("/api/journal", dependencies=[Depends(require_auth)])
     async def journal_note(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
         """Write a personal note to the caller's own journal.
 
         Body: {"text": "<1-2000 chars>"}. Stored when the user is in
@@ -640,11 +652,13 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     @app.get("/api/prefs", dependencies=[Depends(require_auth)])
     async def prefs_get(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
         world, _, _ = _state_for(request)
         return {"ok": True, "data": prefs.get_prefs(world)}
 
     @app.put("/api/prefs", dependencies=[Depends(require_step_up)])
     async def prefs_put(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
         world, _, uj = _state_for(request)
         try:
             updates = await request.json()
@@ -907,6 +921,127 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     @app.on_event("shutdown")
     async def stop_scheduler() -> None:
         _reminders.stop()
+
+    # -- identity admin (issue #8 phase 2/3) -----------------------------
+    def _is_admin(principal) -> bool:
+        """Admin = the bootstrap principal (primary), or a person
+        explicitly carrying the admin scope record. Kept deliberately
+        small: no roles tree, just this gate."""
+        return principal is not None and principal.kind == "person" \
+            and (principal.id == "primary" or "admin" in principal.scopes)
+
+    def _require_person(principal) -> None:
+        """Person-only surfaces: prefs, journal, notes. Agents are
+        refused even with valid tokens — narrow scope model, fail
+        closed."""
+        if principal is not None and principal.kind == "agent":
+            raise HTTPException(status_code=403, detail="person-only surface")
+
+    @app.get("/api/identity/users", dependencies=[Depends(require_auth)])
+    async def users_list(request: Request) -> dict:
+        principal = getattr(request.state, "principal", None)
+        if not _is_admin(principal):
+            raise HTTPException(status_code=403, detail="admin only")
+        return {"ok": True,
+                "data": _identity_store.list_users()}
+
+    @app.post("/api/identity/users", dependencies=[Depends(require_step_up)])
+    async def users_create(request: Request) -> dict:
+        """Provision a person without touching internals.
+
+        Body: {"user_id", "display_name"?, "token"?"}. Token is
+        optional; if omitted the server generates one and returns it
+        exactly once. Never stored in the clear.
+        """
+        principal = getattr(request.state, "principal", None)
+        if not _is_admin(principal):
+            raise HTTPException(status_code=403, detail="admin only")
+        body = await request.json()
+        user_id = ((body or {}).get("user_id") or "").strip()
+        if not user_id or len(user_id) > 64 or not user_id.replace("-", "").replace("_", "").isalnum():
+            raise HTTPException(status_code=422, detail="user_id invalid")
+        display = (body or {}).get("display_name") or user_id
+        plain = (body or {}).get("token") or secrets.token_urlsafe(24)
+        try:
+            u = _identity_store.create_user(user_id, display,
+                                            initial_plain_token=plain)
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        journal.record(kind=JournalKind.SETTINGS_CHANGE,
+                       summary=f"user provisioned: {user_id}",
+                       source="admin")
+        return {"ok": True,
+                "data": {"user_id": u["user_id"],
+                         "display_name": u.get("display_name"),
+                         "token": plain}}
+
+    @app.delete("/api/identity/users/{user_id}",
+                dependencies=[Depends(require_step_up)])
+    async def users_disable(request: Request, user_id: str) -> dict:
+        """Revoke access (disable). Data is preserved, not deleted."""
+        principal = getattr(request.state, "principal", None)
+        if not _is_admin(principal):
+            raise HTTPException(status_code=403, detail="admin only")
+        ok = _identity_store.disable_user(user_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="no such user")
+        journal.record(kind=JournalKind.SETTINGS_CHANGE,
+                       summary=f"user disabled: {user_id}",
+                       source="admin")
+        return {"ok": True, "data": {"user_id": user_id, "disabled": True}}
+
+    @app.get("/api/identity/agents", dependencies=[Depends(require_auth)])
+    async def agents_list(request: Request) -> dict:
+        """Mine (list) — agents owned by the caller; admins see all."""
+        principal = getattr(request.state, "principal", None)
+        if principal and _is_admin(principal):
+            return {"ok": True, "data": _identity_store.list_agents()}
+        owner = principal.owner_id if (principal and principal.kind == "agent") else (principal.id if principal else None)
+        return {"ok": True, "data": _identity_store.list_agents(owner_id=owner)}
+
+    @app.post("/api/identity/agents", dependencies=[Depends(require_step_up)])
+    async def agents_create(request: Request) -> dict:
+        """Register an agent principal owned by the caller.
+
+        Body: {"agent_id", "display_name"?, "scopes"?}. Scopes subset
+        of read/write/journal/apps. Returns the token exactly once.
+        """
+        ALLOWED = {"read", "write", "journal", "apps"}
+        principal = getattr(request.state, "principal", None)
+        if principal is None:
+            raise HTTPException(status_code=403, detail="principal required")
+        body = await request.json()
+        agent_id = ((body or {}).get("agent_id") or "").strip()
+        if not agent_id or len(agent_id) > 64 or not agent_id.replace("-", "").replace("_", "").isalnum():
+            raise HTTPException(status_code=422, detail="agent_id invalid")
+        scopes = [s for s in
+                  ((body or {}).get("scopes") or ["read"])
+                  if s in ALLOWED] or ["read"]
+        plain = secrets.token_urlsafe(24)
+        try:
+            a = _identity_store.create_agent(agent_id, principal.id,
+                                             tuple(scopes),
+                                             plain_token=plain)
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        journal.record(kind=JournalKind.SETTINGS_CHANGE,
+                       summary="agent registered: " + agent_id + " scopes=" + ",".join(scopes),
+                       source="admin")
+        return {"ok": True,
+                "data": {"agent_id": a["user_id"], "owner_id": principal.id,
+                         "scopes": scopes, "token": plain}}
+
+    @app.delete("/api/identity/agents/{agent_id}",
+                dependencies=[Depends(require_step_up)])
+    async def agents_disable(request: Request, agent_id: str) -> dict:
+        principal = getattr(request.state, "principal", None)
+        ok = _identity_store.disable_agent(agent_id, principal.id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="no such agent")
+        journal.record(kind=JournalKind.SETTINGS_CHANGE,
+                       summary=f"agent disabled: {agent_id}",
+                       source="admin")
+        return {"ok": True, "data": {"agent_id": agent_id, "disabled": True}}
 
     @app.get("/api/apps", dependencies=[Depends(require_auth)])
     async def apps_list(request: Request) -> dict:
