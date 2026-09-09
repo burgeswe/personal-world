@@ -1520,6 +1520,16 @@ function renderToday() {
   const healthDiv = $('today-health'); clear(healthDiv);
   healthDiv.appendChild(el('p', 'Worst capability status: ' + worst + '. ' +
     healthy + ' healthy of ' + total + ' declared.'));
+  const obs = capKeys.map(k => caps[k].last_observed).filter(Boolean).sort().pop();
+  if (obs) {
+    const dt = new Date(obs);
+    const mins = Math.floor((Date.now() - dt.getTime()) / 60000);
+    const age = mins < 60 ? mins + ' min ago'
+      : mins < 1440 ? Math.floor(mins/60) + ' hours ago'
+      : Math.floor(mins/1440) + ' days ago';
+    healthDiv.appendChild(el('p', 'Last observed: ' + age + '.');
+    healthDiv.appendChild(document.createElement('br'));
+  }
   const att = $('today-attention'); clear(att);
   const items = (state.daily && state.daily.data && state.daily.data.attention) || [];
   if (items.length === 0) {

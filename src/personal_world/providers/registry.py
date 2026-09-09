@@ -133,9 +133,17 @@ class Registry:
 
     def status_map(self) -> dict[str, Any]:
         out = {}
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
         for cap in self._contracts:
             r = self.observe(cap)
-            out[cap] = {"ok": r.ok, "status": r.status, "warnings": r.warnings}
+            out[cap] = {
+                "ok": r.ok, "status": r.status, "warnings": r.warnings,
+                # "last observed" timestamp the dashboard renders as a
+                # relative "age" hint (ROADMAP: stale-surfacing item).
+                "last_observed": now,
+            }
         return out
 
     def manifest(self) -> dict[str, Any]:
