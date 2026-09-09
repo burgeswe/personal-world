@@ -38,6 +38,10 @@ class TestDashboardStructure:
     def test_main_landmark_present(self):
         assert "<main" in DASHBOARD_HTML
 
+    def test_each_view_owns_a_page_heading(self):
+        for route in ("today", "chat", "world", "journal", "vault", "settings"):
+            assert f'<h1 id="{route}-h1">' in DASHBOARD_HTML
+
     def test_nav_with_aria_label(self):
         assert '<nav aria-label="Main"' in DASHBOARD_HTML
 
@@ -169,17 +173,66 @@ class TestDashboardLoadStates:
     """Live-verified 2026-09-07: after a successful load, the login row
     must actually disappear (#login[hidden] must beat display:flex)."""
 
-    def test_hidden_login_beats_flex_display(self):
-        # CSS cascade: the [hidden] escape hatch must exist alongside
-        # the display:flex rule or the UA default is overridden.
-        assert "#login { display: flex" in DASHBOARD_HTML
-        assert "#login[hidden] { display: none; }" in DASHBOARD_HTML
+    def test_auth_form_uses_one_current_id(self):
+        assert '<form id="auth-box">' in DASHBOARD_HTML
+        assert "#auth-box[hidden] { display: none; }" in DASHBOARD_HTML
+        assert "$('login')" not in DASHBOARD_HTML
+
+    def test_fresh_session_enters_load_flow(self):
+        assert "syncRoute();\nload();" in DASHBOARD_HTML
+
+    def test_capability_age_uses_row_scoped_value(self):
+        assert "ageText(caps[k].last_observed)" in DASHBOARD_HTML
+
+    def test_primary_today_actions_are_bound(self):
+        assert "$('note-save').addEventListener('click', saveNote)" in DASHBOARD_HTML
+        assert "$('svc-add').addEventListener('click'" in DASHBOARD_HTML
+
+    def test_chat_keyboard_and_session_continuity_are_bound(self):
+        assert "event.key === 'Enter' && !event.shiftKey" in DASHBOARD_HTML
+        assert "sessionStorage.setItem(state.chatStorageKey" in DASHBOARD_HTML
+        assert "restoreChat(token)" in DASHBOARD_HTML
+        assert "'pw_chat_history_' + chatTokenScope(token)" in DASHBOARD_HTML
+        assert "]).slice(-6)" in DASHBOARD_HTML
+
+    def test_unknown_state_is_not_reported_as_quietly_healthy(self):
+        assert "Some details are still unknown" in DASHBOARD_HTML
+
+    def test_chat_uses_one_restrained_live_region(self):
+        chat_log = DASHBOARD_HTML.split('id="chat-log"', 1)[1].split(">", 1)[0]
+        assert "aria-live" not in chat_log
+        assert 'role="region" aria-label="Conversation"' in DASHBOARD_HTML
+        assert 'id="chat-status" role="status" aria-live="polite"' in DASHBOARD_HTML
+        assert "setChatStatus('Thinking… You can keep reading while your world checks its sources.', false, false)" in DASHBOARD_HTML
+        assert "setMsg('Opening your world…', false, false)" in DASHBOARD_HTML
+
+    def test_note_save_has_concurrency_and_composition_guards(self):
+        assert "if (state.noteBusy) return" in DASHBOARD_HTML
+        assert "!event.isComposing" in DASHBOARD_HTML
+
+    def test_lazy_routes_clear_busy_marker_for_retry(self):
+        assert "state.routeLoads[route] = false" in DASHBOARD_HTML
+
+    def test_auth_loads_cannot_overlap(self):
+        assert "if (state.authBusy) return" in DASHBOARD_HTML
+        assert "releaseAuth();" in DASHBOARD_HTML
+
+    def test_authenticated_preferences_reapply_root_state(self):
+        assert "function applyPreferences(saved)" in DASHBOARD_HTML
+        assert "applyPreferences(state.prefs);" in DASHBOARD_HTML
+
+    def test_phone_chat_composer_clears_bottom_navigation(self):
+        assert ".chat-form { bottom: calc(61px + env(safe-area-inset-bottom, 0px)); }" in DASHBOARD_HTML
+
+    def test_chat_companion_is_decorative(self):
+        assert 'data-pw-companion-slot="chat" aria-hidden="true"' in DASHBOARD_HTML
+        assert 'alt="" width="48" height="48"' in DASHBOARD_HTML
 
     def test_no_bare_loading_state_after_error_paths(self):
-        # Every error path sets an explicit message; the initial shell
-        # may say Loading… but the script must replace it on every exit
-        # path (verified by msg setter coverage).
-        assert "setMsg('Personal World is unreachable" in DASHBOARD_HTML
-        assert "setMsg('That token did not unlock your world" in DASHBOARD_HTML
-        assert "setMsg('Auth not configured" in DASHBOARD_HTML
-        assert "setMsg('Loaded '" in DASHBOARD_HTML
+        # Every exit path sets an explicit human message; the shell never
+        # leaves a generic loading label as the only explanation.
+        assert "setMsg('Opening your world" in DASHBOARD_HTML
+        assert "setMsg('Personal World could not be reached" in DASHBOARD_HTML
+        assert "setMsg('That access code did not unlock your world" in DASHBOARD_HTML
+        assert "setMsg('Personal World is not ready for access yet" in DASHBOARD_HTML
+        assert "setMsg('Your world is ready.', true)" in DASHBOARD_HTML

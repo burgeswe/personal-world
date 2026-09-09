@@ -15,6 +15,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import export, prefs
 from .app import build_registry, load_world, save_world
@@ -528,10 +529,11 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
                 ],
             }
         impl = registry.impl(provider.name)
-        context = build_world_context(world, registry, journal,
-                                      config_dir=config_dir)
+        context = await run_in_threadpool(
+            build_world_context, world, registry, journal, True, config_dir
+        )
         messages = build_chat_messages(message, context, history)
-        result = chat_once(impl, messages)
+        result = await run_in_threadpool(chat_once, impl, messages)
         if not result.ok:
             return result.model_dump(mode="json")
         journal.record(
@@ -542,7 +544,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         return result.model_dump(mode="json")
 
     @app.get("/api/chat/providers", dependencies=[Depends(require_auth)])
-    async def chat_providers() -> dict:
+    def chat_providers() -> dict:
         """List available chat providers and which is active."""
         _, registry = _state()
         providers = []
@@ -1515,6 +1517,7 @@ DASHBOARD_HTML = """<!doctype html>
   --text-muted: #6b5f82;
   --accent-primary: #72b1b1;
   --accent-secondary: #b57f8b;
+  --focus-ring: var(--accent-primary);
   /* Figma rylee-theme surface additions (inset + badge ring) */
   --surface-inset: #13111c;
   --bg: var(--surface-canvas); --text: var(--text-primary);
@@ -1545,10 +1548,17 @@ DASHBOARD_HTML = """<!doctype html>
      own rose, not an invented pastel */
   --accent-secondary: #b57f8b;
 }
+[data-pw-contrast="high"] {
+  --bg: #000000; --panel: #0a0a0a; --border: #444444;
+  --surface-inset: #1a1a1a; --surface-elevated: #1a1a1a;
+  --text: #ffffff; --muted: #cccccc;
+  --accent-primary: #8dcfcf; --accent-secondary: #d4969f;
+  --focus-ring: #ffffff;
+}
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text);
        font-family: var(--font-interface); margin: 0;
-       line-height: 1.6; max-width: 100%;
+       line-height: 1.6; max-width: 100%; overflow-x: hidden;
        font-size: calc(1rem * var(--pw-text-scale, 1)); }
 
 /* Layout: app shell = sidebar rail + reading column (Figma
@@ -1568,23 +1578,22 @@ body { background: var(--bg); color: var(--text);
                   background: var(--surface-inset); border-radius: 12px;
                   font-family: var(--font-expressive); font-size: 1.25rem;
                   color: var(--accent-primary); }
-.rail nav[aria-label="Main"] { display: flex; flex-direction: column;
-                               gap: 0; }
-.rail nav[aria-label="Main"] a { width: 44px; height: 44px;
+.rail[aria-label="Main"] a { width: var(--pw-target-size, 44px);
+        height: var(--pw-target-size, 44px);
         display: inline-flex; align-items: center; justify-content: center;
         color: var(--text-secondary); text-decoration: none;
         border-radius: 8px; }
-.rail nav[aria-label="Main"] a svg { width: 24px; height: 24px; }
-.rail nav[aria-label="Main"] a:hover { background: var(--surface-inset); }
-.rail nav[aria-label="Main"] a[aria-current="page"] {
+.rail[aria-label="Main"] a svg { width: 24px; height: 24px; }
+.rail[aria-label="Main"] a:hover { background: var(--surface-inset); }
+.rail[aria-label="Main"] a[aria-current="page"] {
         background: var(--surface-inset); color: var(--accent-primary); }
 .rail .brand-companion { width: 32px; height: 32px; flex: 0 0 32px;
                          border-radius: 6px; overflow: hidden; }
 .rail .brand-companion img { width: 100%; height: 100%; display: block; }
 
 h1, h2, h3 { font-family: var(--font-interface); }
-h1 { font-family: var(--font-expressive); font-size: 1.25rem; margin: 0;
-     font-weight: 400; }
+h1 { font-family: var(--font-expressive); font-size: var(--size-display);
+     margin: 0; font-weight: 400; }
 h2 { font-size: var(--size-section); margin: 1.5rem 0 0.5rem;
      color: var(--text); font-weight: 500; }
 h3 { font-size: 0.95rem; margin: 1rem 0 0.25rem; color: var(--muted);
@@ -1601,6 +1610,8 @@ th { color: var(--muted); font-weight: 500; }
 .scroll { overflow-x: auto; }
 code { background: var(--panel); padding: 0.1rem 0.3rem; border-radius: 4px;
        overflow-wrap: anywhere; }
+main a { display: inline-flex; align-items: center;
+         min-height: var(--pw-target-size, 44px); }
 
 /* Reading column (Figma: padding 64px 120px 80px, gap 56px between
    top-level sections; collapses at the 900px narrow design) */
@@ -1609,9 +1620,9 @@ main { padding: 4rem 7.5rem 5rem; display: flex;
 main > section { margin-bottom: 0; padding-bottom: 1rem; }
 .greeting { display: flex; flex-wrap: wrap; align-items: flex-start;
             justify-content: space-between; gap: 1rem; }
-.greeting h2 { font-family: var(--font-expressive);
-               font-size: var(--size-display); font-weight: 400;
-               margin: 0; color: var(--text); }
+.greeting h1 { font-family: var(--font-expressive);
+                font-size: var(--size-display); font-weight: 400;
+                margin: 0; color: var(--text); }
 .greeting .meta-row { display: flex; align-items: center; gap: 0.5rem;
                       color: var(--text-secondary);
                       font-size: var(--size-meta); }
@@ -1629,6 +1640,8 @@ header.banner { display: none; flex-wrap: wrap; align-items: center;
                 gap: 1rem; padding-bottom: 1rem;
                 border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
 .brand-lockup { display: flex; align-items: center; gap: 0.75rem; }
+.brand-title { font-family: var(--font-expressive); font-size: 1.25rem;
+               margin: 0; }
 .brand-companion { width: 32px; height: 32px; flex: 0 0 32px;
                    border-radius: 50%; }
 .brand-companion img { width: 100%; height: 100%; display: block;
@@ -1646,11 +1659,10 @@ header.banner nav[aria-label="Main"] a {
         background: var(--panel); }
 header.banner nav[aria-label="Main"] a[aria-current="page"] {
         border-color: var(--text); }
-#login { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
-/* The load flow sets [hidden] after a successful token check; without
-   this rule display:flex would override the UA's [hidden] and the
-   login form would never leave the screen. */
-#login[hidden] { display: none; }
+#auth-box { display: flex; align-items: center; gap: 0.5rem;
+            margin: 1rem 7.5rem; flex-wrap: wrap; }
+#auth-box .hint { flex-basis: 100%; color: var(--muted); }
+#auth-box[hidden] { display: none; }
 input, textarea, select { background: var(--panel); color: var(--text);
         border: 1px solid var(--border); border-radius: 6px;
         padding: 0.55rem; font-size: 1rem; font-family: inherit;
@@ -1668,9 +1680,12 @@ button[aria-pressed="true"] { border-color: var(--text); }
 .skip { position: absolute; left: -9999px; top: auto; z-index: 20; }
 .skip:focus { left: 5.5rem; top: 1rem; background: var(--panel);
               padding: 0.5rem; border: 1px solid var(--text); z-index: 20; }
-:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .muted { color: var(--muted); }
 #msg { color: var(--muted); padding: 0 7.5rem; }
+#msg.quiet { position: absolute; width: 1px; height: 1px; padding: 0;
+             margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+             white-space: nowrap; border: 0; }
 .view { display: none; }
 .view.active { display: block; }
 /* Status chips: luminance + text word, never color-only */
@@ -1685,6 +1700,22 @@ button[aria-pressed="true"] { border-color: var(--text); }
 .card { background: var(--panel); border: 1px solid var(--border);
         border-radius: 8px; padding: 0.75rem 1rem; }
 .card h3 { margin-top: 0; }
+.cards > li { list-style: none; background: var(--panel);
+              border: 1px solid var(--border); border-radius: 8px;
+              padding: 0.75rem 1rem; }
+.composer { display: flex; gap: 0.5rem; align-items: center;
+            flex-wrap: wrap; }
+.composer input { flex: 1 1 16rem; }
+.composer-templates { display: flex; gap: 0.5rem; flex-wrap: wrap;
+                      flex-basis: 100%; }
+.composer .chip-btn { min-width: 44px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0;
+           margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+           white-space: nowrap; border: 0; }
+.more-world > summary { min-height: var(--pw-target-size, 44px);
+                        display: flex; align-items: center; cursor: pointer;
+                        color: var(--text-secondary); }
+.more-world[open] > summary { color: var(--text); }
 /* Attention rows (Figma: 40px inset icon tile + two-line label) */
 .attention-item { display: flex; align-items: center; gap: 1rem;
                   padding: 0.75rem 0; }
@@ -1699,45 +1730,93 @@ button[aria-pressed="true"] { border-color: var(--text); }
                                  font-size: var(--size-meta); }
 /* Chat surface */
 #chat-log { display: flex; flex-direction: column; gap: 0.75rem;
-            min-height: 8rem; }
+            min-height: 12rem; max-height: calc(100dvh - 24rem);
+            overflow-y: auto; overscroll-behavior: contain;
+            padding: 0.25rem; flex: 1; }
+#view-chat.active { min-height: calc(100dvh - 9rem); }
+#view-chat > section { display: flex; flex-direction: column;
+                       min-height: 0; flex: 1; }
 .chat-msg { border-radius: 8px; padding: 0.6rem 0.9rem; max-width: 90%; }
 .chat-msg.user { align-self: flex-end; background: var(--surface-elevated);
                  border: 1px solid var(--border); }
 .chat-msg.assistant { align-self: flex-start; background: var(--panel);
-                      border: 1px solid var(--border); white-space: pre-wrap; }
+                       border: 1px solid var(--border); white-space: pre-wrap;
+                       overflow-wrap: anywhere; }
 .chat-msg.error { align-self: stretch; background: var(--panel);
                   border: 1px dashed var(--accent-secondary); }
 .chat-form { display: flex; gap: 0.5rem; margin-top: 0.75rem;
-             align-items: flex-start; }
+             align-items: flex-end; position: sticky; bottom: 0;
+             background: var(--bg); padding-top: 0.5rem; }
 .chat-form textarea { flex: 1; min-height: 44px; }
-.chat-companion { display: flex; align-items: flex-end; gap: 0.5rem; }
+.chat-companion { display: flex; align-items: flex-start; gap: 0.75rem;
+                  min-height: 0; flex: 1; }
 .chat-companion img { width: 48px; height: 48px; }
+.chat-companion:has(#chat-empty) { max-width: 45rem; margin: 1.5rem auto;
+                                   align-items: center; flex-direction: column; }
+.chat-companion:has(#chat-empty) > span img { width: 64px; height: 64px; }
+.chat-empty { display: flex; flex-direction: column; gap: 0.75rem;
+              align-items: center; padding: 1rem 0; text-align: center; }
+.chat-empty[hidden] { display: none; }
+.chat-suggestions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.chat-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.chat-form button, #note-save { background: var(--accent-primary);
+                                border-color: var(--accent-primary);
+                                color: var(--surface-canvas); font-weight: 600; }
 .prefs-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
              margin: 0.5rem 0; }
 .prefs-row label { min-width: 10rem; }
 details.provenance { margin: 0.25rem 0; }
-details.provenance summary { cursor: pointer; color: var(--muted); }
+details.provenance summary { cursor: pointer; color: var(--muted);
+                             min-height: var(--pw-target-size, 44px);
+                             display: flex; align-items: center; }
 .journal-filters { display: flex; flex-wrap: wrap; gap: 0.25rem;
                    margin-bottom: 0.5rem; }
 /* Narrow design (Figma today-hybrid-narrow-900 + responsive cascade):
    rail collapses to a top banner under 900px */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .app-shell { flex-direction: column; }
   .rail { position: static; width: auto; flex-direction: row;
           padding: 0.75rem 1rem; border-right: 0;
           border-bottom: 1px solid var(--border); }
   .wrap { margin-left: 0; }
-  .rail nav[aria-label="Main"] { flex-direction: row; }
   header.banner { display: flex; }
   .rail-only { display: none; }
   main { padding: 1.5rem 1rem 2rem; }
+  #auth-box { margin: 1rem; }
   #msg { padding: 0 1rem; }
 }
-@media (max-width: 640px) {
+@media (max-width: 599px) {
   body { padding: 0; }
+  .rail.rail-only { position: fixed; display: flex; z-index: 10;
+                    top: auto; right: 0; bottom: 0; width: 100%;
+                    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
+                    padding: 0.5rem max(0.5rem, env(safe-area-inset-right, 0px))
+                             calc(0.5rem + env(safe-area-inset-bottom, 0px))
+                             max(0.5rem, env(safe-area-inset-left, 0px));
+                    justify-content: center; border: 0;
+                    border-top: 1px solid var(--border); background: var(--bg); }
+  .rail.rail-only > .rail-group,
+  .rail.rail-only .rail-group.nav-gap { display: contents; }
+  .rail.rail-only .appliance-logo,
+  .rail.rail-only .brand-companion { display: none; }
+  header.banner nav[aria-label="Main"] { display: none; }
+  .wrap { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
   .chat-msg { max-width: 100%; }
   main { padding: 1rem 0.75rem 2rem; }
+  #auth-box { margin: 0.75rem; }
   #msg { padding: 0 0.75rem; }
+  [data-pw-target-size="56"] .rail.rail-only {
+    display: grid; grid-template-columns: repeat(3, 56px);
+    min-height: calc(128px + env(safe-area-inset-bottom, 0px));
+    align-content: center;
+  }
+  [data-pw-target-size="56"] .wrap {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-form { bottom: calc(61px + env(safe-area-inset-bottom, 0px)); }
+  [data-pw-target-size="56"] .chat-form {
+    bottom: calc(129px + env(safe-area-inset-bottom, 0px));
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
@@ -1769,7 +1848,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <div class="brand-lockup">
 <span class="brand-companion" data-pw-companion-slot="brand"><img
  src="/companions/personal-world.svg" alt="" width="32" height="32"></span>
-<h1 id="brand">Personal World</h1>
+<p id="brand" class="brand-title">Personal World</p>
 </div>
 <nav aria-label="Main">
 <a href="#today" data-route="today">Today</a>
@@ -1780,113 +1859,121 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <a href="#settings" data-route="settings">Settings</a>
 </nav>
 </header>
-<div id="auth-box">
+<form id="auth-box">
+<input type="text" name="username" autocomplete="username" value="personal-world" hidden>
 <label for="token" class="muted" style="display:none">API token</label>
-<input id="token" type="password" placeholder="Access code" aria-label="Access code">
-<button id="go" aria-label="Show my world">Show my world</button>
+<input id="token" type="password" placeholder="Access code" aria-label="Access code" autocomplete="current-password">
+<button id="go" type="submit" aria-label="Show my world">Show my world</button>
 <p class="hint">Your access code stays in this browser only.</p>
-</div>
+</form>
 <p id="msg" role="status" aria-live="polite"></p>
 <main id="main-content">
 <section id="view-today" class="view active" aria-labelledby="today-h1">
 <div class="greeting">
 <div>
-<h2 id="today-h1">Today</h2>
+<h1 id="today-h1">Today</h1>
 <div class="meta-row"><span id="today-date">{TODAY}</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Personal World Appliance active</span></div>
 </div>
-<span class="motif-badge"><span class="motif-planet" aria-hidden="true"></span>Local Node 01</span>
+<span class="motif-badge"><span class="motif-planet" aria-hidden="true"></span>Home world</span>
 </div>
 <hr class="hr">
 <section aria-labelledby="today-health-h2">
 <h2 id="today-health-h2">World health</h2>
-<div id="today-health" class="muted">Loading…</div>
-</section>
-<hr class="hr">
-<section aria-labelledby="today-quota-h2">
-<h2 id="today-quota-h2">Subscription usage</h2>
-<div id="today-quota" class="muted">Loading…</div>
-</section>
-<hr class="hr">
-<section aria-labelledby="today-services-h2">
-<h2 id="today-services-h2">Services</h2>
-<ul id="today-services" class="cards"><li class="muted">No services configured yet.</li></ul>
-<div class="composer svc-editor">
-  <label for="svc-name" class="sr-only">Service name</label>
-  <input id="svc-name" type="text" placeholder="Name (e.g. Gitea)" autocomplete="off">
-  <label for="svc-url" class="sr-only">Service URL</label>
-  <input id="svc-url" type="text" placeholder="URL (https://…)" autocomplete="off">
-  <button id="svc-add" type="button">Add</button>
-  <span id="svc-status" class="muted" role="status"></span>
-</div>
+<div id="today-health" class="muted">Checking your world…</div>
 </section>
 <hr class="hr">
 <section aria-labelledby="today-attention-h2">
 <h2 id="today-attention-h2">Needs attention</h2>
-<ul id="today-attention" class="cards"><li class="muted">Loading…</li></ul>
+<ul id="today-attention" class="cards"><li class="muted">Checking what needs you…</li></ul>
 </section>
 <hr class="hr">
-<section aria-labelledby="today-composer-h2">
-<h2 id="today-composer-h2">Add a note</h2>
+<section aria-labelledby="today-changes-h2">
+<h2 id="today-changes-h2">Recent changes</h2>
+<div id="today-changes" class="muted">Checking recent changes…</div>
+</section>
+<hr class="hr">
+<section aria-labelledby="today-rollups-h2">
+<h2 id="today-rollups-h2">Discovery</h2>
+<div id="today-rollups" class="muted">Looking for recent activity…</div>
+</section>
+<hr class="hr">
+<section aria-labelledby="today-journal-h2">
+<h2 id="today-journal-h2">Journal</h2>
 <div class="composer">
-  <label for="note-text" class="sr-only">Note text</label>
+  <label for="note-text" class="sr-only">Quick journal entry</label>
   <input id="note-text" type="text" maxlength="2000" placeholder="A thought, a win, something to remember…" autocomplete="off">
-  <button id="note-save" type="button">Save</button>
+  <button id="note-save" type="button">Save entry</button>
   <span id="note-status" class="muted" role="status"></span>
   <div class="composer-templates" role="group" aria-label="Quick templates">
     <button type="button" class="chip-btn" data-prefill="win: ">win:</button>
     <button type="button" class="chip-btn" data-prefill="blocker: ">blocker:</button>
     <button type="button" class="chip-btn" data-prefill="remember: ">remember:</button>
   </div>
-
+</div>
+<h3>Recent entries</h3>
+<ul id="today-journal"><li class="muted">Opening your journal…</li></ul>
+<p><a href="#journal">View all</a></p>
+</section>
+<hr class="hr">
+<details class="more-world">
+<summary>More from your world</summary>
+<section aria-labelledby="today-services-h2">
+<h2 id="today-services-h2">Services</h2>
+<ul id="today-services" class="cards"><li class="muted">Opening your services…</li></ul>
+<div class="composer svc-editor">
+  <label for="svc-name" class="sr-only">Service name</label>
+  <input id="svc-name" type="text" placeholder="Service name" autocomplete="off">
+  <label for="svc-url" class="sr-only">Service URL</label>
+  <input id="svc-url" type="url" placeholder="https://…" autocomplete="off">
+  <button id="svc-add" type="button">Add service</button>
+  <span id="svc-status" class="muted" role="status"></span>
 </div>
 </section>
-<hr class="hr">
-<section aria-labelledby="today-changes-h2">
-<h2 id="today-changes-h2">Recent changes</h2>
-<div id="today-changes" class="muted">Loading…</div>
+<section aria-labelledby="today-quota-h2">
+<h2 id="today-quota-h2">Subscription usage</h2>
+<div id="today-quota" class="muted">Checking usage…</div>
 </section>
-<hr class="hr">
-<section aria-labelledby="today-rollups-h2">
-<h2 id="today-rollups-h2">Repo activity</h2>
-<div id="today-rollups" class="muted">Loading…</div>
-</section>
-<hr class="hr">
 <section aria-labelledby="today-caps-h2">
 <h2 id="today-caps-h2">Capabilities</h2>
 <div class="scroll" role="region" aria-label="Capabilities table" tabindex="0">
 <table id="today-caps"><thead><tr><th>Area</th><th>Status</th></tr></thead>
-<tbody><tr><td colspan="2" class="muted">Loading…</td></tr></tbody></table>
+<tbody><tr><td colspan="2" class="muted">Checking capabilities…</td></tr></tbody></table>
 </div>
 </section>
-<hr class="hr">
-<section aria-labelledby="today-journal-h2">
-<h2 id="today-journal-h2">Recent journal</h2>
-<ul id="today-journal"><li class="muted">Loading…</li></ul>
-<p><a href="#journal">View all</a></p>
-</section>
+</details>
 </section>
 <section id="view-chat" class="view" aria-labelledby="chat-h1">
-<h2 id="chat-h1">Chat</h2>
+<h1 id="chat-h1">Chat</h1>
 <section aria-labelledby="chat-surface-h2">
 <h2 id="chat-surface-h2">Talk with your world</h2>
-<div id="chat-provider-info" class="muted" style="margin-bottom:0.75rem;font-size:0.82rem"></div>
+<details class="provenance" id="chat-provider-info">
+<summary>Conversation details</summary>
+<p id="chat-provider-text" class="muted">Checking the conversation connection…</p>
+</details>
 <div class="chat-companion">
-<span data-pw-companion-slot="chat"><img src="/companions/personal-world.svg"
- alt="Companion illustration" width="48" height="48"></span>
-<div id="chat-log" aria-live="polite" aria-label="Conversation">
-<p class="muted" id="chat-empty">Ask about your world — status, changes, capabilities, or history. Answers come from your local model using a read-only snapshot of Personal World.</p>
+<span data-pw-companion-slot="chat" aria-hidden="true"><img src="/companions/personal-world.svg"
+ alt="" width="48" height="48"></span>
+<div id="chat-log" role="region" aria-label="Conversation">
+<div class="chat-empty" id="chat-empty">
+<p class="muted">Ask about today, your journal, or what needs you. Chat can look, but it cannot change your world.</p>
+<div class="chat-suggestions" role="group" aria-label="Conversation starters">
+<button type="button" data-chat-prompt="How is my world today?">How is my world?</button>
+<button type="button" data-chat-prompt="What changed today?">What changed today?</button>
+<button type="button" data-chat-prompt="Does anything need me?">Anything need me?</button>
+</div>
+</div>
 </div>
 </div>
 <form class="chat-form" id="chat-form">
-<label for="chat-input" class="muted" style="display:none">Message</label>
-<textarea id="chat-input" rows="2" placeholder="Ask your world…"></textarea>
+<label for="chat-input" class="sr-only">Message</label>
+<textarea id="chat-input" rows="2" maxlength="4000" placeholder="Ask your world…" aria-describedby="chat-status"></textarea>
 <button id="chat-send" type="submit">Send</button>
 </form>
-<p class="muted" id="chat-status"></p>
+<p class="muted" id="chat-status" role="status" aria-live="polite"></p>
 </section>
 </section>
 <section id="view-world" class="view" aria-labelledby="world-h1">
-<h2 id="world-h1">World</h2>
+<h1 id="world-h1">World</h1>
 <section aria-labelledby="world-facts-h2">
 <h2 id="world-facts-h2">Intent &amp; policies</h2>
 <div id="world-facts" class="muted">Loading…</div>
@@ -1917,7 +2004,7 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 </section>
 </section>
 <section id="view-journal" class="view" aria-labelledby="journal-h1">
-<h2 id="journal-h1">Journal</h2>
+<h1 id="journal-h1">Journal</h1>
 <div class="journal-filters" role="group" aria-label="Filter by kind">
 <button type="button" class="jfilter" data-kind="" aria-pressed="true">All</button>
 <button type="button" class="jfilter" data-kind="observation" aria-pressed="false">Observations</button>
@@ -1929,10 +2016,10 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 <p><button id="journal-more" type="button">Load more</button></p>
 </section>
 <section id="view-settings" class="view" aria-labelledby="settings-h1">
-<h2 id="settings-h1">Settings</h2>
+<h1 id="settings-h1">Settings</h1>
 <section aria-labelledby="settings-appearance-h2">
 <h2 id="settings-appearance-h2">Reading &amp; interaction</h2>
-<p class="muted">Preferences apply immediately and are saved to your world. The accessibility floor (44px targets, reduced motion, high contrast) can never be lowered.</p>
+<p class="muted">Preferences apply immediately and are saved to your world. The accessibility floor (44px targets, reduced motion, readable contrast) can never be lowered.</p>
 <div id="settings-prefs" class="muted">Loading…</div>
 </section>
 <section aria-labelledby="settings-themes-h2">
@@ -1961,25 +2048,27 @@ details.provenance summary { cursor: pointer; color: var(--muted); }
 </section>
 </section>
 <section id="view-vault" class="view" aria-labelledby="vault-h1">
-<h2 id="vault-h1">Vault</h2>
+<h1 id="vault-h1">Vault</h1>
 <p class="muted">Encrypted secret store. Secrets are encrypted at rest and decrypted only in memory when unlocked.</p>
 <div id="vault-status" class="muted">Loading…</div>
-<div id="vault-unlock" style="margin:1rem 0;display:none">
+<form id="vault-unlock" style="margin:1rem 0;display:none">
+<input type="text" name="username" autocomplete="username" value="personal-world" hidden>
 <label for="vault-pass" class="muted">Master passphrase</label>
 <div style="display:flex;gap:0.5rem;align-items:flex-start">
-<input id="vault-pass" type="password" placeholder="Passphrase" style="width:60%">
+<input id="vault-pass" type="password" placeholder="Passphrase" autocomplete="current-password" style="width:60%">
 <button id="vault-unlock-btn" type="button">Unlock</button>
 </div>
-</div>
-<div id="vault-content" style="display:none">
+</form>
+<form id="vault-content" style="display:none">
+<input type="text" name="username" autocomplete="username" value="personal-world" hidden>
 <div id="vault-list" class="muted">Loading…</div>
 <div style="margin-top:1rem;display:flex;gap:0.5rem;align-items:flex-start">
-<input id="vault-name" placeholder="Secret name" style="width:30%">
-<input id="vault-value" type="password" placeholder="Secret value" style="width:40%">
+<input id="vault-name" placeholder="Secret name" autocomplete="off" style="width:30%">
+<input id="vault-value" type="password" placeholder="Secret value" autocomplete="new-password" style="width:40%">
 <button id="vault-set-btn" type="button">Store</button>
 </div>
 <p class="muted" style="margin-top:0.5rem">Values are never displayed after storage. Only names are shown.</p>
-</div>
+</form>
 </section>
 </main>
 </div>
@@ -1994,7 +2083,11 @@ function el(tag, text, attrs) {
   return n;
 }
 function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
-function setMsg(t) { $('msg').textContent = t; }
+function setMsg(t, quiet, announce = true) {
+  $('msg').setAttribute('aria-live', announce ? 'polite' : 'off');
+  $('msg').textContent = t;
+  $('msg').classList.toggle('quiet', Boolean(quiet));
+}
 function nowHHMM() {
   const d = new Date();
   const p = x => String(x).padStart(2, '0');
@@ -2018,7 +2111,8 @@ function chip(status) {
   return span;
 }
 async function api(token, path, opts) {
-  const headers = {'Authorization': 'Bearer ' + token};
+  const headers = Object.assign({'Authorization': 'Bearer ' + token},
+    (opts && opts.headers) || {});
   if (opts && opts.body) headers['Content-Type'] = 'application/json';
   const r = await fetch(path, Object.assign({}, opts, {headers}));
   if (r.status === 401) return {error: 'unauthorized'};
@@ -2027,6 +2121,39 @@ async function api(token, path, opts) {
     return {error: j.detail || 'bad_request'}; }
   if (!r.ok) return {error: 'http_' + r.status};
   return {data: await r.json()};
+}
+function unavailable(reason) {
+  return {ok: false, status: 'unavailable', warnings: [reason]};
+}
+function ageText(value) {
+  const dt = new Date(value);
+  if (!value || Number.isNaN(dt.getTime())) return 'unknown';
+  const mins = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000));
+  if (mins < 60) return mins + ' min';
+  if (mins < 1440) return Math.floor(mins / 60) + ' h';
+  return Math.floor(mins / 1440) + ' d';
+}
+function eventTime(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return 'Unknown time';
+  return date.toLocaleString([], {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+function eventSummary(event) {
+  const summary = String(event.summary || 'Journal entry');
+  if (summary.toLowerCase().startsWith('chat exchange with ')) {
+    return 'A conversation with Personal World';
+  }
+  return summary;
+}
+function humanizeAttention(value) {
+  const text = String(value || '');
+  const available = text.match(/^available: .+ \\(([^)]+)\\) — not enabled for writes$/);
+  const human = available
+    ? available[1].replaceAll('_', ' ') + ' is ready for looking, not changing things.'
+    : text.replaceAll('_', ' ');
+  return human.charAt(0).toUpperCase() + human.slice(1);
 }
 function rankStatus(s) {
   const order = {'unavailable': 3, 'unhealthy': 2, 'needs attention': 2,
@@ -2037,7 +2164,9 @@ function rankStatus(s) {
 /* ---- prefs: immediate apply + persistence ---- */
 const PREF_SPEC = [
   {key: 'text_scale', label: 'Text size', type: 'select',
-   options: [['1.0', 'Normal'], ['1.25', 'Large'], ['1.5', 'Largest']]},
+    options: [['1.0', 'Normal'], ['1.25', 'Large'], ['1.5', 'Largest']]},
+  {key: 'contrast', label: 'Contrast', type: 'select',
+   options: [['comfortable', 'Comfortable'], ['high', 'High']]},
   {key: 'density', label: 'Density', type: 'select',
    options: [['comfortable', 'Comfortable'], ['compact', 'Compact']]},
   {key: 'target_size', label: 'Touch targets', type: 'select',
@@ -2057,6 +2186,18 @@ function applyCompanion(key) {
     const img = s.querySelector('img');
     if (img) { img.src = url; }
   }
+}
+function applyPreferences(saved) {
+  const root = document.documentElement;
+  for (const spec of PREF_SPEC) {
+    const value = saved[spec.key];
+    if (value == null) continue;
+    root.setAttribute('data-pw-' + spec.key.replace('_', '-'),
+      String(value).replace('_', '-'));
+  }
+  if (saved.text_scale != null) root.style.setProperty('--pw-text-scale', saved.text_scale);
+  if (saved.target_size != null) root.style.setProperty('--pw-target-size', saved.target_size + 'px');
+  if (saved.companion) applyCompanion(saved.companion);
 }
 function buildSettingsPrefs(saved) {
   const host = $('settings-prefs'); clear(host);
@@ -2078,96 +2219,181 @@ function buildSettingsPrefs(saved) {
       const res = await api(state.token, '/api/prefs', {
         method: 'PUT', body: JSON.stringify(upd)});
       if (res.error) { setMsg('Preference rejected: ' + res.error); return; }
-      document.documentElement.setAttribute('data-pw-' +
-        spec.key.replace('_', '-'), String(sel.value).replace('_', '-'));
-      if (spec.key === 'text_scale')
-        document.documentElement.style.setProperty('--pw-text-scale', sel.value);
-      if (spec.key === 'target_size')
-        document.documentElement.style.setProperty('--pw-target-size', sel.value + 'px');
-      if (spec.key === 'companion') applyCompanion(sel.value);
-      if (spec.key === 'accent')
-        document.documentElement.setAttribute('data-pw-accent', sel.value);
+      state.prefs = (res.data && res.data.data) || Object.assign({}, state.prefs, upd);
+      applyPreferences(state.prefs);
       setMsg('Saved ' + spec.label.toLowerCase() + ' — ' + nowHHMM());
     });
     row.appendChild(label); row.appendChild(sel); host.appendChild(row);
   }
-  const note = el('p', 'Motion stays reduced and contrast stays high by design; the accessibility floor is not user-lowerable.', 'muted');
+  const note = el('p', 'Motion stays reduced. Both contrast choices keep the accessibility floor.', 'muted');
   host.appendChild(note);
 }
 /* ---- Today ---- */
 function renderToday() {
-  const caps = (state.status && state.status.data && state.status.data.capabilities) || {};
-  const capKeys = Object.keys(caps);
-  const healthy = capKeys.filter(k => caps[k].status === 'healthy').length;
-  const total = capKeys.length;
-  const worst = capKeys.map(k => statusWord(caps[k].status))
-    .sort((a, b) => rankStatus(b) - rankStatus(a))[0] || 'unknown';
-  const healthDiv = $('today-health'); clear(healthDiv);
-  healthDiv.appendChild(el('p', 'Worst capability status: ' + worst + '. ' +
-    healthy + ' healthy of ' + total + ' declared.'));
-  const obs = capKeys.map(k => caps[k].last_observed).filter(Boolean).sort().pop();
-  if (obs) {
-    const dt = new Date(obs);
-    const mins = Math.floor((Date.now() - dt.getTime()) / 60000);
-    const age = mins < 60 ? mins + ' min ago'
-      : mins < 1440 ? Math.floor(mins/60) + ' hours ago'
-      : Math.floor(mins/1440) + ' days ago';
-    healthDiv.appendChild(el('p', 'Last observed: ' + age + '.'));
-    healthDiv.appendChild(document.createElement('br'));
-  }
-  const att = $('today-attention'); clear(att);
-  const items = (state.daily && state.daily.data && state.daily.data.attention) || [];
-  if (items.length === 0) {
-    att.appendChild(el('li', 'Nothing needs your attention.'));
-  } else {
-    for (const a of items) att.appendChild(el('li', a));
-  }
-  const ch = $('today-changes'); clear(ch);
-  const changed = (state.daily && state.daily.data && state.daily.data.actions) || [];
-  if (changed.length === 0) {
-    ch.appendChild(el('p', 'No recorded changes in the latest daily pass.'));
-  } else {
-    const ul = el('ul');
-    for (const c of changed.slice(0, 8)) ul.appendChild(el('li', c));
-    ch.appendChild(ul);
-  }
-  const tbody = $('today-caps').querySelector('tbody'); clear(tbody);
-  if (capKeys.length === 0) {
-    const tr = el('tr'); const td = el('td', 'No capabilities defined.');
-    td.setAttribute('colspan', '2'); tr.appendChild(td); tbody.appendChild(tr);
-  } else {
-    for (const k of capKeys) {
-      const tr = el('tr');
-      tr.appendChild(el('td', k));
-      const td = el('td'); td.appendChild(chip(caps[k].status));
-      if (caps[k].last_observed) {
-        dt = new Date(caps[k].last_observed);
-        const mins_o = Math.floor((Date.now() - dt.getTime()) / 60000);
-        const age_o = mins_o < 60 ? mins_o + ' min'
-          : mins_o < 1440 ? Math.floor(mins_o/60) + ' h'
-          : Math.floor(mins_o/1440) + ' d';
-        td.appendChild(document.createTextNode(' — observed ' + age + ' ago'));
+  if (state.status) {
+    const healthDiv = $('today-health'); clear(healthDiv);
+    if (!state.status.ok) {
+      healthDiv.appendChild(el('p', 'Current health could not be checked. Your journal and saved world are still available.'));
+      $('today-state-line').textContent = 'Some current details are unavailable';
+    } else {
+    const caps = (state.status.data && state.status.data.capabilities) || {};
+    const capKeys = Object.keys(caps);
+    const healthy = capKeys.filter(k => caps[k].status === 'healthy').length;
+    const total = capKeys.length;
+    const vacant = capKeys.filter(k => caps[k].status === 'not_configured').length;
+    const uncertain = capKeys.filter(k => caps[k].status === 'unknown').length;
+    const actionable = capKeys.filter(k => ['warning', 'unhealthy', 'needs_attention',
+      'unavailable', 'stale'].includes(caps[k].status)).length;
+    if (total === 0) {
+      healthDiv.appendChild(el('p', 'Your world is ready. Nothing is connected yet.'));
+      $('today-state-line').textContent = 'Ready when you are';
+    } else if (actionable === 0 && uncertain > 0) {
+      healthDiv.appendChild(el('p', 'Nothing urgent, but ' + uncertain +
+        (uncertain === 1 ? ' capability has' : ' capabilities have') +
+        ' not been checked yet. ' + healthy + ' are healthy.'));
+      $('today-state-line').textContent = 'Some details are still unknown';
+    } else if (actionable === 0) {
+      healthDiv.appendChild(el('p', 'Nothing urgent. ' + healthy + ' capabilities are healthy' +
+        (vacant ? ', and ' + vacant + ' are waiting until you need them.' : '.')));
+      $('today-state-line').textContent = 'Your world is quietly humming';
+    } else {
+      healthDiv.appendChild(el('p', actionable + ' ' + (actionable === 1 ? 'thing needs' : 'things need') +
+        ' a look. ' + healthy + ' capabilities are healthy.'));
+      $('today-state-line').textContent = 'A few things may need a look';
+    }
+    const obs = capKeys.map(k => caps[k].last_observed).filter(Boolean).sort().pop();
+    if (obs) healthDiv.appendChild(el('p', 'Last observed ' + ageText(obs) + ' ago.'));
+    const tbody = $('today-caps').querySelector('tbody'); clear(tbody);
+    if (capKeys.length === 0) {
+      const tr = el('tr'); const td = el('td', 'No capabilities defined.');
+      td.setAttribute('colspan', '2'); tr.appendChild(td); tbody.appendChild(tr);
+    } else {
+      for (const k of capKeys) {
+        const tr = el('tr'); tr.appendChild(el('td', k.replaceAll('_', ' ')));
+        const td = el('td'); td.appendChild(chip(caps[k].status));
+        if (caps[k].last_observed) {
+          td.appendChild(document.createTextNode(' — observed ' + ageText(caps[k].last_observed) + ' ago'));
+        }
+        if (caps[k].warnings && caps[k].warnings.length) {
+          td.appendChild(document.createTextNode(' — ' + caps[k].warnings[0]));
+        }
+        tr.appendChild(td); tbody.appendChild(tr);
       }
-      if (caps[k].warnings && caps[k].warnings.length) {
-        td.appendChild(document.createTextNode(' — ' + caps[k].warnings[0]));
-      }
-      tr.appendChild(td); tbody.appendChild(tr);
+    }
     }
   }
-  const jl = $('today-journal'); clear(jl);
-  const events = (state.journal && state.journal.data) || [];
-  const last5 = events.slice(-5).reverse();
-  if (last5.length === 0) {
-    jl.appendChild(el('li', 'No journal entries yet.'));
-  } else {
-    for (const e of last5) {
+  if (state.daily) {
+    const att = $('today-attention'); clear(att);
+    const items = (state.daily.data && state.daily.data.attention) || [];
+    if (!state.daily.ok) att.appendChild(el('li', 'Attention could not be checked. The rest of your world remains available.'));
+    else if (items.length === 0) att.appendChild(el('li', 'Nothing needs your attention.'));
+    else for (const item of items.slice(0, 5)) att.appendChild(el('li', humanizeAttention(item)));
+    const ch = $('today-changes'); clear(ch);
+    const changed = (state.daily.data && state.daily.data.actions) || [];
+    if (!state.daily.ok) ch.appendChild(el('p', 'Recent changes could not be checked.'));
+    else if (changed.length === 0) ch.appendChild(el('p', 'No recorded changes today.'));
+    else {
+      const ul = el('ul');
+      for (const item of changed.slice(0, 5)) ul.appendChild(el('li', item));
+      ch.appendChild(ul);
+    }
+  }
+  if (state.journal) {
+    const jl = $('today-journal'); clear(jl);
+    const events = state.journal.data || [];
+    const source = events.filter(event =>
+      !String(event.summary || '').toLowerCase().startsWith('capability '));
+    const recent = []; const seen = new Set();
+    for (const event of source.slice().reverse()) {
+      const summary = eventSummary(event);
+      if (seen.has(summary)) continue;
+      seen.add(summary); recent.push(event);
+      if (recent.length === 5) break;
+    }
+    const last5 = recent;
+    if (!state.journal.ok) jl.appendChild(el('li', 'Your journal could not be opened just now. Your note box is unchanged.'));
+    else if (last5.length === 0) jl.appendChild(el('li', 'No journal entries yet. This is a gentle place to begin.'));
+    else for (const event of last5) {
       const li = el('li');
-      const t = el('time', (e.ts || '').toString().slice(0, 16).replace('T', ' '));
+      const t = el('time', eventTime(event.ts)); t.dateTime = event.ts || '';
       li.appendChild(t); li.appendChild(document.createTextNode(' — '));
-      li.appendChild(document.createTextNode(e.kind + ': ' + e.summary));
-      jl.appendChild(li);
+      li.appendChild(document.createTextNode(eventSummary(event))); jl.appendChild(li);
     }
   }
+  renderServices(); renderQuota(); renderRollups();
+}
+
+function renderServices() {
+  if (!state.apps) return;
+  const host = $('today-services'); clear(host);
+  if (!state.apps.ok) {
+    host.appendChild(el('li', 'Saved services could not be opened. You can try again later.'));
+    return;
+  }
+  const apps = Array.isArray(state.apps.data) ? state.apps.data : [];
+  if (apps.length === 0) {
+    host.appendChild(el('li', 'No services saved here yet. Add one when it would be useful.'));
+    return;
+  }
+  for (const app of apps) {
+    const li = el('li');
+    const link = el('a', app.name || app.id || 'Service');
+    link.href = app.url || '#'; link.rel = 'noopener';
+    li.appendChild(link);
+    if (app.category) li.appendChild(document.createTextNode(' — ' + app.category));
+    host.appendChild(li);
+  }
+}
+
+function renderQuota() {
+  if (!state.lab) return;
+  const host = $('today-quota'); clear(host);
+  if (!state.lab.ok) {
+    host.appendChild(el('p', 'Usage details are unavailable right now. Everything else still works.'));
+    return;
+  }
+  const observations = [...((state.lab.data && state.lab.data.rows) || [])
+    .flatMap(row => row.observations || [])];
+  const quota = observations.filter(observation => {
+    const detail = String(observation.detail || '');
+    return detail.includes('credit balance') || detail.includes('/used ') ||
+      (detail.includes('window') && detail.includes('%') && detail.includes('resets'));
+  });
+  if (quota.length === 0) {
+    host.appendChild(el('p', 'No current subscription limits need your attention.'));
+    return;
+  }
+  const ul = el('ul'); ul.className = 'cards';
+  for (const observation of quota) ul.appendChild(el('li', observation.detail || 'Usage observation'));
+  host.appendChild(ul);
+}
+
+function renderRollups() {
+  if (!state.srcRollups) return;
+  const host = $('today-rollups'); clear(host);
+  const rows = state.srcRollups.ok && state.srcRollups.data
+    ? state.srcRollups.data.rollups || [] : [];
+  if (!state.srcRollups.ok) {
+    host.appendChild(el('p', 'Discovery is quiet because current source activity could not be checked.'));
+    return;
+  }
+  if (rows.length === 0) {
+    host.appendChild(el('p', 'Nothing new surfaced here today.'));
+    return;
+  }
+  const ul = el('ul'); ul.className = 'cards';
+  for (const row of rows.slice(0, 5)) {
+    const li = el('li');
+    li.appendChild(el('strong', row.repo || 'Source work'));
+    li.appendChild(document.createTextNode(' — ' + row.commit_count + ' recent changes'));
+    if (row.last_commit) {
+      const details = el('details', null, {class: 'provenance'});
+      details.appendChild(el('summary', 'What changed'));
+      details.appendChild(el('p', row.last_commit)); li.appendChild(details);
+    }
+    ul.appendChild(li);
+  }
+  host.appendChild(ul);
 }
 /* ---- World ---- */
 function renderWorld() {
@@ -2357,10 +2583,19 @@ function renderJournal() {
   }
   for (const e of filtered.slice().reverse()) {
     const li = el('li');
-    const t = el('time', (e.ts || '').toString().slice(0, 16).replace('T', ' '));
+    const t = el('time', eventTime(e.ts)); t.dateTime = e.ts || '';
     li.appendChild(t); li.appendChild(document.createTextNode(' — '));
     li.appendChild(el('strong', e.kind));
-    li.appendChild(document.createTextNode(': ' + e.summary));
+    li.appendChild(document.createTextNode(': ' + eventSummary(e)));
+    if (e.provenance || eventSummary(e) !== e.summary) {
+      const details = el('details', null, {class: 'provenance'});
+      details.appendChild(el('summary', 'Source'));
+      if (e.provenance && e.provenance.source) {
+        details.appendChild(el('p', 'Recorded by ' + e.provenance.source + '.'));
+      }
+      if (eventSummary(e) !== e.summary) details.appendChild(el('p', e.summary));
+      li.appendChild(details);
+    }
     ul.appendChild(li);
   }
 }
@@ -2397,54 +2632,142 @@ function renderSettings() {
   tbl.appendChild(tbody); scroll.appendChild(tbl); body.appendChild(scroll);
 }
 /* ---- Chat ---- */
-async function sendChat() {
+function chatNearBottom() {
+  const log = $('chat-log');
+  return log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+}
+function appendChatMessage(role, text, source) {
+  const log = $('chat-log');
+  const message = el('div', null, {class: 'chat-msg ' + role});
+  message.appendChild(el('div', text));
+  if (role === 'assistant' && source) {
+    const details = el('details', null, {class: 'provenance'});
+    details.appendChild(el('summary', 'Sources'));
+    details.appendChild(el('p', 'Read-only Personal World snapshot'));
+    if (source.model) details.appendChild(el('p', 'Conversation model: ' + source.model));
+    message.appendChild(details);
+  }
+  log.appendChild(message);
+  return message;
+}
+function persistChat() {
+  if (!state.chatStorageKey) return;
+  try { sessionStorage.setItem(state.chatStorageKey, JSON.stringify(state.chatHistory || [])); }
+  catch (error) { /* Conversation remains available in this page. */ }
+}
+function chatTokenScope(token) {
+  let first = 2166136261; let second = 2246822507;
+  for (let index = 0; index < token.length; index += 1) {
+    const code = token.charCodeAt(index);
+    first = Math.imul(first ^ code, 16777619);
+    second = Math.imul(second ^ code, 3266489917);
+  }
+  return (first >>> 0).toString(16).padStart(8, '0') +
+    (second >>> 0).toString(16).padStart(8, '0');
+}
+async function restoreChat(token) {
+  const nextKey = 'pw_chat_history_' + chatTokenScope(token);
+  if (state.chatStorageKey && state.chatStorageKey !== nextKey) {
+    state.chatHistory = [];
+    for (const message of document.querySelectorAll('#chat-log .chat-msg')) message.remove();
+    const empty = $('chat-empty'); if (empty) empty.hidden = false;
+  }
+  state.chatStorageKey = nextKey;
+  let history = [];
+  try { history = JSON.parse(sessionStorage.getItem(state.chatStorageKey) || '[]'); }
+  catch (error) { history = []; }
+  if (!Array.isArray(history) || history.length === 0) return;
+  state.chatHistory = history.filter(turn => turn && ['user', 'assistant'].includes(turn.role)
+    && typeof turn.content === 'string').slice(-6);
+  if (state.chatHistory.length === 0) return;
+  const empty = $('chat-empty'); if (empty) empty.hidden = true;
+  for (const turn of state.chatHistory) appendChatMessage(turn.role, turn.content, turn.source);
+  $('chat-log').scrollTop = $('chat-log').scrollHeight;
+}
+function setChatBusy(busy) {
+  state.chatBusy = busy;
+  $('chat-send').disabled = busy;
+  $('chat-input').disabled = busy;
+}
+function appendChatError(text, retryText) {
+  const card = el('div', null, {class: 'chat-msg error'});
+  card.appendChild(el('strong', 'Conversation paused'));
+  card.appendChild(el('p', text));
+  const actions = el('div', null, {class: 'chat-actions'});
+  const retry = el('button', 'Retry'); retry.type = 'button';
+  retry.addEventListener('click', () => { card.remove(); sendChat(retryText, false); });
+  const keep = el('button', 'Keep writing'); keep.type = 'button';
+  keep.addEventListener('click', () => $('chat-input').focus());
+  actions.appendChild(retry); actions.appendChild(keep); card.appendChild(actions);
+  $('chat-log').appendChild(card);
+}
+async function sendChat(textOverride, showUser = true) {
   const input = $('chat-input');
-  const text = (input.value || '').trim();
-  if (!text) return;
-  if (!state.token) { setChatStatus('Enter your token first.', true); return; }
+  const text = String(textOverride || input.value || '').trim();
+  if (!text || state.chatBusy) return;
+  if (!state.token) { setChatStatus('Open your world before starting a conversation.', true); return; }
   const log = $('chat-log');
   const empty = $('chat-empty');
-  if (empty) empty.remove();
-  log.appendChild(el('div', text, {class: 'chat-msg user'}));
+  if (empty) empty.hidden = true;
+  if (showUser) appendChatMessage('user', text);
   input.value = '';
-  $('chat-send').disabled = true;
-  setChatStatus('Thinking… (local model — this can take a while on first reply)');
+  setChatBusy(true);
+  setChatStatus('Thinking… You can keep reading while your world checks its sources.', false, false);
   const thinking = el('div', 'Checking your world…', {class: 'chat-msg assistant'});
   log.appendChild(thinking); log.scrollTop = log.scrollHeight;
-  const res = await api(state.token, '/api/chat', {
-    method: 'POST',
-    body: JSON.stringify({message: text, history: state.chatHistory || []}),
-  });
-  $('chat-send').disabled = false;
-  if (res.error) { thinking.remove(); setChatStatus('Chat failed: ' + res.error, true); return; }
+  let res;
+  try {
+    res = await api(state.token, '/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({message: text, history: state.chatHistory || []}),
+    });
+  } catch (error) { res = {error: 'unreachable'}; }
+  const follow = chatNearBottom();
+  setChatBusy(false); thinking.remove();
+  if (res.error) {
+    appendChatError('The conversation connection did not answer. Your world and journal still work.', text);
+    setChatStatus('Conversation unavailable. Nothing else was interrupted.', true);
+    input.focus(); return;
+  }
   if (res.data && res.data.ok === false) {
-    thinking.remove();
-    const why = (res.data.warnings || []).join(' ');
-    const err = el('div', 'AI is ' + statusWord(res.data.status) + '. ' + why +
-      ' Everything else keeps working without it.', {class: 'chat-msg error'});
-    log.appendChild(err);
-    setChatStatus('AI unavailable — Personal World itself is unaffected.');
-    return;
+    appendChatError('Conversation is ' + statusWord(res.data.status) +
+      ' right now. Your world and journal still work.', text);
+    setChatStatus('Conversation paused. Nothing else was interrupted.', true);
+    input.focus(); return;
   }
   const reply = (res.data && res.data.data && res.data.data.reply) || '';
-  thinking.remove();
-  log.appendChild(el('div', reply, {class: 'chat-msg assistant'}));
+  const source = res.data.data || {};
+  appendChatMessage('assistant', reply || 'I did not receive a readable reply.', source);
   state.chatHistory = (state.chatHistory || []).concat(
-    [{role: 'user', content: text}, {role: 'assistant', content: reply}]).slice(-6);
-  setChatStatus('Replied ' + nowHHMM() + ' — from your local model with a read-only world snapshot.');
-  log.scrollTop = log.scrollHeight;
+    [{role: 'user', content: text},
+     {role: 'assistant', content: reply, source: {model: source.model || ''}}]).slice(-6);
+  persistChat();
+  setChatStatus('Reply received ' + nowHHMM() + '.');
+  if (follow) log.scrollTop = log.scrollHeight;
+  input.focus();
 }
-function setChatStatus(t, isErr) {
+function setChatStatus(t, isErr, announce = true) {
   const s = $('chat-status');
+  s.setAttribute('aria-live', announce ? 'polite' : 'off');
   s.textContent = t;
   s.className = isErr ? '' : 'muted';
 }
 function renderAll() {
-  renderToday(); renderWorld(); renderJournal(); renderSettings();
+  renderToday();
+  if (state.world && state.actors && state.sourceControl && state.updates) renderWorld();
+  if (state.journal) renderJournal();
+  if (state.settings) renderSettings();
   buildSettingsPrefs(state.prefs || {});
-  renderVault(); renderThemes(); renderReminders(); renderQuickActions();
-  renderChatProvider(); renderChatProviders();
   syncRoute();
+}
+async function loadPart(key, path, render) {
+  try {
+    const result = await api(state.token, path);
+    state[key] = result.error ? unavailable(result.error) : result.data;
+  } catch (error) {
+    state[key] = unavailable('could not reach this part of your world');
+  }
+  if (render) render();
 }
 async function load() {
   const dEl = document.getElementById('today-date');
@@ -2453,169 +2776,97 @@ async function load() {
   let token = $('token').value;
   if (!token) token = localStorage.getItem('pw-token') || localStorage.getItem('pw_token') || '';
   const authBox = document.getElementById('auth-box');
-  if (token && authBox) authBox.style.display = 'none';
   if (!token) {
-    setMsg('Waiting for your access token — paste it below to show your world.');
+    if (authBox) authBox.hidden = false;
+    setMsg('Waiting for your access code — paste it below to show your world.');
     return;
   }
-  setMsg('Loading…');
-  let status, journal, daily, world, actors, settings, prefsRes, srcCtl, updates, lab;
+  if (state.authBusy) return;
+  state.authBusy = true;
+  $('go').disabled = true; $('token').disabled = true;
+  const releaseAuth = () => {
+    state.authBusy = false;
+    $('go').disabled = false; $('token').disabled = false;
+  };
+  setMsg('Opening your world…', false, false);
+  let prefsRes;
   try {
-    // Promise.all needs an iterable; key the requests then reassemble.
-    const requests = {
-      status: api(token, '/api/status'),
-      journal: api(token, '/api/journal?n=100'),
-      daily: api(token, '/api/daily'),
-      world: api(token, '/api/exports/world'),
-      actors: api(token, '/api/actors'),
-      settings: api(token, '/api/exports/settings'),
-      prefsRes: api(token, '/api/prefs'),
-      srcCtl: api(token, '/api/source-control/status'),
-      srcRollups: api(token, '/api/source-control/rollups'),
-      updates: api(token, '/api/updates'),
-      lab: api(token, '/api/lab/state'),
-      apps: api(token, '/api/apps'),
-      labx: api(token, '/api/lab/state').then(r => r.clone ? r.clone() : r),
-    };
-    const keys = Object.keys(requests);
-    const settled = await Promise.all(keys.map(k => requests[k]));
-    const results = Object.fromEntries(keys.map((k, i) => [k, settled[i]]));
-    try {
-      const rollEl = document.getElementById('today-rollups');
-      if (rollEl) {
-        const res = results.srcRollups;
-        const rows = (res && res.ok && res.data && res.data.rollups) ? res.data.rollups : [];
-        if (!rows.length) {
-          rollEl.textContent = 'No repo activity rollups yet.';
-        } else {
-          const ul = document.createElement('ul'); ul.className='cards';
-          for (const row of rows.slice(0, 6)) {
-            const li = document.createElement('li');
-            const d = row.last_date ? new Date(row.last_date) : null;
-            const ago = d ? Math.ceil((Date.now() - d.getTime()) / 86400000) : null;
-                        const a = document.createElement('a');
-            a.href = '/#source-history-' + encodeURIComponent(row.repo);
-            a.textContent = `${row.repo} — ${row.commit_count} commits, last ${ago ?? '?'}d ago`;
-            li.appendChild(a);
-            const span = document.createElement('span');
-            span.className = 'muted';
-            span.textContent = ` ${row.last_commit}`;
-            li.appendChild(span);
-            ul.appendChild(li);
-            ul.appendChild(li);
-          }
-          rollEl.replaceChildren(ul);
-        }
-      }
-    } catch (e) { if (window.console) console.warn('rollups widget render failed', e); }
-
-    status = results.status; journal = results.journal; daily = results.daily;
-    world = results.world; actors = results.actors; settings = results.settings;
-    try {
-      const labEnv = results.lab && results.lab.ok ? results.lab.data : null;
-      const svcEl = document.getElementById('today-services');
-      if (svcEl) {
-        const apps = (results.apps && results.apps.ok && results.apps.data) || [];
-        if (!apps.length) {
-          const li = document.createElement('li');
-          li.className = 'muted';
-          li.textContent = 'No services configured yet — add them in Settings or data/apps.json.';
-          svcEl.appendChild(li);
-        } else {
-          svcEl.replaceChildren();
-          for (const a of apps) {
-            const li = document.createElement('li');
-            const aEl = document.createElement('a');
-            aEl.href = a.url || '#';
-            aEl.textContent = a.name || a.id || 'service';
-            aEl.rel = 'noopener';
-            li.appendChild(aEl);
-            if (a.category) { const c = document.createElement('span'); c.className='muted'; c.textContent = ' — ' + a.category; li.appendChild(c); }
-            svcEl.appendChild(li);
-          }
-        }
-      }
-      // chip prefill
-      document.querySelectorAll('.chip-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const inp = document.getElementById('note-text');
-          if (inp && !inp.value) inp.value = btn.getAttribute('data-prefill');
-          if (inp) inp.focus();
-        });
-      });
-      // services inline add
-      const svcAdd = document.getElementById('svc-add');
-      if (svcAdd && !svcAdd.dataset.bound) {
-        svcAdd.dataset.bound = '1';
-        svcAdd.addEventListener('click', async () => {
-          const name = document.getElementById('svc-name').value.trim();
-          const url = document.getElementById('svc-url').value.trim();
-          const stat = document.getElementById('svc-status');
-          if (!name || !url) { stat.textContent = 'Name and URL are both needed.'; return; }
-          svcAdd.disabled = true;
-          try {
-            const cur = (results.apps && results.apps.ok && results.apps.data) || [];
-            const next = cur.concat([{ id: name.toLowerCase().replace(/[^a-z0-9-]/g, '-'), name: name, url: url }]);
-            const r = await fetch('/api/apps', { method: 'PUT',
-              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, 'X-PW-StepUp': '1' },
-              body: JSON.stringify({ apps: next }) });
-            if (r.ok) { stat.textContent = 'Added.'; load(); }
-            else { stat.textContent = 'Add failed — try again.'; }
-          } catch { stat.textContent = 'Add failed — try again.'; }
-          svcAdd.disabled = false;
-        });
-      }
-      const quotaEl = document.getElementById('today-quota');
-      if (!quotaEl) return;
-      if (!labEnv) { quotaEl.textContent = 'Lab packet unavailable — usage view needs the lab CLI mount.'; }
-      else {
-        const obs = [...(labEnv.rows||[]).flatMap(r => r.observations||[])];
-        const quotaObs = obs.filter(o => {
-          const d = (o.detail||'') + '';
-          return d.includes('credit balance') || (/\/used \d/.test(d)) || (d.includes('window') && d.includes('%') && d.includes('resets'));
-        });
-        if (!quotaObs.length) { quotaEl.textContent = 'No subscription usage observations in the current packet.'; }
-        else {
-          const ul = document.createElement('ul'); ul.className='cards';
-          for (const o of quotaObs) {
-            const li = document.createElement('li');
-            li.textContent = (o.state||'') + ' — ' + (o.detail||'');
-            ul.appendChild(li);
-          }
-          quotaEl.replaceChildren(ul);
-        }
-      }
-    } catch (e) { if (window.console) console.warn('quota card render failed', e); }
-    prefsRes = results.prefsRes; srcCtl = results.srcCtl; updates = results.updates;
-    lab = results.lab;
+    prefsRes = await api(token, '/api/prefs');
   } catch (e) {
-    setMsg('Personal World is unreachable — the core may be down.');
+    if (authBox) authBox.hidden = false;
+    setMsg('Personal World could not be reached. Your access code is still safe here.');
+    releaseAuth();
     return;
   }
-  for (const v of [status, journal, daily, world, actors, settings]) {
-    if (v && v.error === 'unauthorized') {
-      setMsg('That token did not unlock your world — check it, or ask the admin to provision a fresh one.'); return; }
-    if (v && v.error === 'no_auth') {
-      setMsg('Auth not configured on the server.'); return; }
-    if (v && v.error) { setMsg('Personal World is unreachable — the core may be down.'); return; }
+  if (prefsRes.error === 'unauthorized') {
+    if (authBox) authBox.hidden = false;
+    setMsg('That access code did not unlock your world. Check it and try again.');
+    releaseAuth();
+    return;
+  }
+  if (prefsRes.error === 'no_auth') {
+    if (authBox) authBox.hidden = false;
+    setMsg('Personal World is not ready for access yet.');
+    releaseAuth();
+    return;
+  }
+  if (prefsRes.error) {
+    if (authBox) authBox.hidden = false;
+    setMsg('Personal World could not be reached. Everything you entered is still here.');
+    releaseAuth();
+    return;
   }
   state.token = token;
   localStorage.setItem('pw_token', token);
-  state.status = status.data;
-  state.journal = journal.data;
-  state.daily = daily.data;
-  state.world = world.data;
-  state.actors = actors.data;
-  state.settings = settings.data;
-  state.prefs = (prefsRes && prefsRes.data && prefsRes.data.data) || {};
-  state.sourceControl = srcCtl;
-  state.updates = updates;
-  state.lab = lab;
-  setMsg('Loaded ' + nowHHMM());
-  $('login').setAttribute('hidden', '');
+  state.prefs = (prefsRes.data && prefsRes.data.data) || {};
+  applyPreferences(state.prefs);
+  await restoreChat(token);
+  if (authBox) authBox.hidden = true;
   renderAll();
+  setMsg('Your world is open. Checking current details…', false, false);
+  await Promise.allSettled([
+    loadPart('journal', '/api/journal?n=100', () => { renderToday(); renderJournal(); }),
+    loadPart('apps', '/api/apps', renderToday),
+    loadPart('status', '/api/status', renderToday),
+    loadPart('daily', '/api/daily', renderToday),
+    loadPart('srcRollups', '/api/source-control/rollups', renderToday),
+    loadPart('lab', '/api/lab/state', () => {
+      renderToday();
+      if (state.world && state.actors && state.sourceControl && state.updates) renderWorld();
+    }),
+  ]);
+  setMsg('Your world is ready.', true);
+  releaseAuth();
 }
-const state = {};
+const state = {routeLoads: {}};
+async function loadRouteData(route) {
+  if (!state.token || route === 'today' || state.routeLoads[route]) return;
+  state.routeLoads[route] = true;
+  try {
+    if (route === 'world') {
+      await Promise.allSettled([
+        loadPart('world', '/api/exports/world'),
+        loadPart('actors', '/api/actors'),
+        loadPart('sourceControl', '/api/source-control/status'),
+        loadPart('updates', '/api/updates'),
+      ]);
+      renderWorld();
+    } else if (route === 'journal' && !state.journal) {
+      await loadPart('journal', '/api/journal?n=100', renderJournal);
+    } else if (route === 'settings') {
+      if (!state.settings) await loadPart('settings', '/api/exports/settings', renderSettings);
+      await Promise.allSettled([renderThemes(), renderReminders(), renderChatProviders()]);
+    } else if (route === 'chat') {
+      await renderChatProvider();
+    } else if (route === 'vault') {
+      await renderVault();
+    }
+  } catch (error) {
+    setMsg('This part of your world could not be opened. You can try it again.', false);
+  } finally {
+    state.routeLoads[route] = false;
+  }
+}
 function syncRoute() {
   const h = (location.hash || '#today').replace('#', '');
   const routes = ['today', 'chat', 'world', 'journal', 'vault', 'settings'];
@@ -2628,11 +2879,84 @@ function syncRoute() {
     if (a.getAttribute('data-route') === r) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
+  window.scrollTo(0, 0);
+  loadRouteData(r);
 }
 window.addEventListener('hashchange', syncRoute);
-$('go').addEventListener('click', load);
-$('token').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+$('auth-box').addEventListener('submit', e => { e.preventDefault(); load(); });
 $('chat-form').addEventListener('submit', e => { e.preventDefault(); sendChat(); });
+$('chat-input').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $('chat-form').requestSubmit();
+  }
+});
+for (const button of document.querySelectorAll('[data-chat-prompt]')) {
+  button.addEventListener('click', () => {
+    $('chat-input').value = button.getAttribute('data-chat-prompt') || '';
+    $('chat-input').focus();
+  });
+}
+async function saveNote() {
+  if (state.noteBusy) return;
+  const input = $('note-text');
+  const status = $('note-status');
+  const text = (input.value || '').trim();
+  if (!text) { status.textContent = 'Write a little something first.'; return; }
+  state.noteBusy = true; $('note-save').disabled = true; input.disabled = true;
+  $('note-save').textContent = 'Saving…';
+  const result = await api(state.token, '/api/journal', {
+    method: 'POST', body: JSON.stringify({text}),
+  }).catch(() => ({error: 'unreachable'}));
+  state.noteBusy = false; $('note-save').disabled = false; input.disabled = false;
+  $('note-save').textContent = 'Save entry';
+  if (result.error || !result.data || !result.data.ok) {
+    status.textContent = 'That note did not save. It is still in the box so you can try again.';
+    return;
+  }
+  input.value = '';
+  status.textContent = 'Saved to your journal.';
+  await loadPart('journal', '/api/journal?n=100', () => { renderToday(); renderJournal(); });
+}
+$('note-save').addEventListener('click', saveNote);
+$('note-text').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); saveNote(); }
+});
+for (const button of document.querySelectorAll('.chip-btn')) {
+  button.addEventListener('click', () => {
+    const input = $('note-text');
+    if (!input.value) input.value = button.getAttribute('data-prefill') || '';
+    input.focus();
+  });
+}
+$('svc-add').addEventListener('click', async () => {
+  const nameInput = $('svc-name'); const urlInput = $('svc-url');
+  const status = $('svc-status');
+  const name = nameInput.value.trim(); const url = urlInput.value.trim();
+  if (!name || !url) { status.textContent = 'Add both a name and an address.'; return; }
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('unsupported');
+  } catch (error) {
+    status.textContent = 'Use a complete http or https address.'; return;
+  }
+  const current = state.apps && Array.isArray(state.apps.data) ? state.apps.data : [];
+  const next = current.concat([{
+    id: name.toLowerCase().replace(/[^a-z0-9-]/g, '-'), name, url,
+  }]);
+  $('svc-add').disabled = true; $('svc-add').textContent = 'Adding…';
+  const result = await api(state.token, '/api/apps', {
+    method: 'PUT', headers: {'X-PW-StepUp': '1'}, body: JSON.stringify({apps: next}),
+  }).catch(() => ({error: 'unreachable'}));
+  $('svc-add').disabled = false; $('svc-add').textContent = 'Add service';
+  if (result.error || !result.data || !result.data.ok) {
+    status.textContent = 'That service was not added. Check the address and try again.';
+    return;
+  }
+  nameInput.value = ''; urlInput.value = '';
+  status.textContent = 'Service added.';
+  await loadPart('apps', '/api/apps', renderToday);
+});
 for (const b of document.querySelectorAll('.jfilter')) {
   b.addEventListener('click', () => {
     for (const x of document.querySelectorAll('.jfilter')) x.setAttribute('aria-pressed', 'false');
@@ -2651,12 +2975,12 @@ $('journal-more').addEventListener('click', async () => {
 const savedToken = localStorage.getItem('pw_token');
 if (savedToken) {
   $('token').value = savedToken;
-  load();
 }
 syncRoute();
+load();
 /* ---- Chat Provider ---- */
 async function renderChatProvider() {
-  const info = $('chat-provider-info');
+  const info = $('chat-provider-text');
   if (!info) return;
   const res = await api(state.token, '/api/chat/providers');
   if (res.error || !res.data || !res.data.ok) {

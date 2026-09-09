@@ -16,7 +16,7 @@ TARGET_SIZE_FLOOR = 44
 """Interactive targets >= 44x44 CSS px (WCAG 2.5.5 + Apple HIG)."""
 
 MOTION_FLOOR = "reduced"
-CONTRAST_FLOOR = "high"
+CONTRAST_FLOOR = "comfortable"
 TEXT_SCALE_FLOOR = 1.0
 DENSITY_FLOOR = "compact"
 
@@ -99,7 +99,8 @@ MOTION = EnumPref(
     css_var="--pw-motion", data_attr="data-pw-motion",
 )
 CONTRAST = EnumPref(
-    key="contrast", default="high", allowed=("high",), floor="high",
+    key="contrast", default="comfortable",
+    allowed=("comfortable", "high"), floor="comfortable",
     css_var="--pw-contrast", data_attr="data-pw-contrast",
 )
 TEXT_SCALE = NumberPref(
@@ -114,6 +115,7 @@ DENSITY = EnumPref(
 )
 TARGET_SIZE = NumberPref(
     key="target_size", default=44, floor=44, integer=True, unit="px",
+    allowed=(44, 56),
     css_var="--pw-target-size", data_attr="data-pw-target-size",
 )
 COMPANION = EnumPref(
