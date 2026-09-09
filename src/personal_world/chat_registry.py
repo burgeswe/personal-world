@@ -91,7 +91,13 @@ class OpenAICompatChat(ChatContract):
 
     def observe(self) -> Result:
         try:
-            req = urllib.request.Request(f"{self.base_url}/v1/models", headers=self._headers())
+            # Don't double-append /v1 if base_url already ends with it
+            base = self.base_url.rstrip("/")
+            if base.endswith("/v1"):
+                url = f"{base}/models"
+            else:
+                url = f"{base}/v1/models"
+            req = urllib.request.Request(url, headers=self._headers())
             with urllib.request.urlopen(req, timeout=5) as resp:
                 payload = json.loads(resp.read().decode())
             ids = [m.get("id", "") for m in payload.get("data", [])]
@@ -105,7 +111,12 @@ class OpenAICompatChat(ChatContract):
 
     def chat(self, messages: list[dict[str, str]]) -> Result:
         body = json.dumps({"model": self.model, "messages": messages, "stream": False}).encode()
-        req = urllib.request.Request(f"{self.base_url}/v1/chat/completions", data=body,
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
+            url = f"{base}/chat/completions"
+        else:
+            url = f"{base}/v1/chat/completions"
+        req = urllib.request.Request(url, data=body,
                                      headers=self._headers(), method="POST")
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
