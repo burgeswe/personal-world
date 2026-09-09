@@ -1,4 +1,5 @@
 ## [Unreleased]
+- Issue #8 phases 2-3: user provisioning API, multi-mode bootstrap keeps the instance token as primary, agent principals with owned narrow scopes, person-only guard on prefs/journal, revocation. 361 tests.
 - Services launcher: /api/apps registry (step-up PUT, journal-audited) + dashboard "Services" card.
 - Note composer: POST /api/journal + "Add a note" panel on Today.
 - Login deep-links fresh installs to /setup-wizard (data-setup-needed).
