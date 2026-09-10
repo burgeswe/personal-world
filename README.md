@@ -6,10 +6,11 @@ what is allowed, and what happened. Capabilities belong to the core; integration
 are optional providers.
 
 **Status:** 0.1, active development — [changelog](CHANGELOG.md) |
-[roadmap](ROADMAP.md). This public repository contains application
-source, design contracts and showcase artwork. Design screens describe intended
-experiences; they are not proof that every screen is implemented or deployed.
-Private deployment configuration and personal data belong outside this repository.
+[roadmap](ROADMAP.md) | [finish line](docs/PERSONAL-WORLD-FINISH-LINE.md).
+This public repository contains application source, design contracts and showcase
+artwork. Design screens describe intended experiences; they are not proof that
+every screen is implemented or deployed. Private deployment configuration and
+personal data belong outside this repository.
 
 ## Why it exists
 
@@ -35,6 +36,7 @@ on her own hardware, with portable state she owns.
 | Interest | Entry point |
 |---|---|
 | Understand the application | [Architecture](docs/ARCHITECTURE.md) and [native baseline](docs/NATIVE-BASELINE-AND-ENRICHMENT.md) |
+| Understand the target daily-use experience | [Personal World finish line](docs/PERSONAL-WORLD-FINISH-LINE.md) |
 | Explore the design | [Handoff index](design/handoff/README.md) and [frame index](design/handoff/FRAME_INDEX.md) |
 | Browse companions and animation | [Asset index](design/assets/README.md) and [companion collection](design/assets/companions/README.md) |
 | Everything, one page | [Documentation index](docs/INDEX.md) |
@@ -58,7 +60,10 @@ paths, and the framework validator.
 
 Designed, not yet implemented: theme-pack loading as a runtime system
 (companion selection and accent palettes are wired; full pack files
-are not loaded yet) — tracked in the [roadmap](ROADMAP.md).
+are not loaded yet) — tracked in the [roadmap](ROADMAP.md). The broader
+daily-use completion target is defined separately by the
+[finish line](docs/PERSONAL-WORLD-FINISH-LINE.md); it must not be read as
+a claim that those target capabilities already exist.
 
 ## Try the CLI locally
 
