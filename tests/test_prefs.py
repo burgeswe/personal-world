@@ -26,8 +26,8 @@ class TestDefaultsSatisfyFloor:
     def test_default_motion_reduced(self):
         assert prefs.PREFS["motion"].default == "reduced"
 
-    def test_default_contrast_high(self):
-        assert prefs.PREFS["contrast"].default == "high"
+    def test_default_contrast_comfortable(self):
+        assert prefs.PREFS["contrast"].default == "comfortable"
 
     def test_default_text_scale_never_shrinks(self):
         assert prefs.PREFS["text_scale"].default >= 1.0
@@ -35,7 +35,7 @@ class TestDefaultsSatisfyFloor:
     def test_get_prefs_on_empty_world(self):
         assert prefs.get_prefs(World()) == {
             "motion": "reduced",
-            "contrast": "high",
+            "contrast": "comfortable",
             "text_scale": 1.0,
             "density": "comfortable",
             "target_size": 44,
@@ -76,10 +76,15 @@ class TestFloorEnforcement:
         with pytest.raises(prefs.PrefsValueError, match="target_size"):
             prefs.set_prefs(w, {"target_size": 32})
 
-    def test_contrast_below_high_rejected(self):
+    def test_unknown_contrast_rejected(self):
         w = World()
         with pytest.raises(prefs.PrefsValueError, match="contrast"):
             prefs.set_prefs(w, {"contrast": "low"})
+
+    def test_high_contrast_accepted(self):
+        w = World()
+        data = prefs.set_prefs(w, {"contrast": "high"})
+        assert data["contrast"] == "high"
 
     def test_unknown_key_rejected(self):
         w = World()
@@ -112,9 +117,14 @@ class TestDensityTargetInvariant:
         assert css["--pw-target-size"] == "44px"
 
     def test_target_size_only_increases(self):
-        for size in (44, 48, 64):
+        for size in (44, 56):
             css = prefs.prefs_to_css_variables({"target_size": size})
             assert int(css["--pw-target-size"].removesuffix("px")) >= 44
+
+    @pytest.mark.parametrize("size", [45, 48, 64])
+    def test_off_vocabulary_target_sizes_rejected(self, size):
+        with pytest.raises(prefs.PrefsValueError, match="target_size"):
+            prefs.set_prefs(World(), {"target_size": size})
 
 
 class TestTextScaleVocabulary:
@@ -157,13 +167,13 @@ class TestRoundTrip:
 
     def test_set_then_read_round_trip(self):
         w = World()
-        prefs.set_prefs(w, {"text_scale": 1.5, "target_size": 48})
+        prefs.set_prefs(w, {"text_scale": 1.5, "target_size": 56})
         p = prefs.get_prefs(w)
         assert p["text_scale"] == 1.5
-        assert p["target_size"] == 48
+        assert p["target_size"] == 56
         attrs = prefs.prefs_to_data_attributes(p)
         assert attrs["data-pw-text-scale"] == "1.5"
-        assert attrs["data-pw-target-size"] == "48"
+        assert attrs["data-pw-target-size"] == "56"
 
     def test_below_floor_stored_value_falls_back_to_default(self):
         # A corrupt/legacy stored value never propagates below the floor.
@@ -266,7 +276,7 @@ class TestDashboardPrefsPlumbing:
         assert 'data-pw-motion="reduced"' in html
         assert 'data-pw-density="comfortable"' in html
         assert 'data-pw-target-size="44"' in html
-        assert 'data-pw-contrast="high"' in html
+        assert 'data-pw-contrast="comfortable"' in html
         assert 'data-pw-text-scale="1"' in html
         assert '<style id="pw-prefs">' in html
         assert "--pw-target-size: 44px;" in html
@@ -274,14 +284,14 @@ class TestDashboardPrefsPlumbing:
 
     def test_set_prefs_change_the_rendered_html(self, tmp_path):
         html = self._dashboard(
-            tmp_path, {"text_scale": 1.5, "target_size": 48,
+            tmp_path, {"text_scale": 1.5, "target_size": 56,
                        "density": "compact"}
         )
         assert 'data-pw-text-scale="1.5"' in html
-        assert 'data-pw-target-size="48"' in html
+        assert 'data-pw-target-size="56"' in html
         assert 'data-pw-density="compact"' in html
         assert "--pw-text-scale: 1.5;" in html
-        assert "--pw-target-size: 48px;" in html
+        assert "--pw-target-size: 56px;" in html
 
     def test_no_script_for_preference_application(self, tmp_path):
         # Zero-JS requirement: the only <script> in the shell is the
@@ -358,7 +368,7 @@ class TestCliPrefs:
         from personal_world.init import init_world
         init_world(tmp_path, tmp_path)
         rc = self._run(
-            tmp_path, ["prefs", "set", "target_size", "48", "--json"]
+            tmp_path, ["prefs", "set", "target_size", "56", "--json"]
         )
         assert rc == 0
-        assert self._read(tmp_path)["accessibility"]["target_size"] == 48
+        assert self._read(tmp_path)["accessibility"]["target_size"] == 56
