@@ -9,9 +9,14 @@ Grounding: every item below is recovered from the design handoff's
 engineering-requirements section, implemented-but-incomplete seams in
 the code, or explicit spec documents — not invention.
 
+For the current completion target, `docs/PERSONAL-WORLD-FINISH-LINE.md`
+is authoritative. This roadmap organizes direction; it does not redefine
+what "finished enough to live in every day" means.
+
 ## Now
 
-Work that completes or hardens what 0.1 already promises:
+Work that completes or hardens what 0.1 already promises or is required
+by the current finish line:
 
 - **Secret vault.** DONE (2026-09-09): Fernet-encrypted file vault
   (`/data/vault.enc`, PBKDF2-600k) behind real unlock/lock/set/
@@ -31,6 +36,14 @@ Work that completes or hardens what 0.1 already promises:
   Xiaomi MiMo cloud endpoint (2026-09-09); provider keys reach the
   core by env indirection. Remaining: streaming responses, richer
   per-surface context.
+- **Provider-neutral SSO / stronger authentication.** REQUIRED by the
+  current finish line, not yet complete. Preserve the existing
+  fail-closed bearer-token boundary while adding a provider-neutral
+  identity/SSO path that can integrate with existing systems, supports
+  step-up authentication for severe/destructive actions and sensitive
+  vault/secure-note access, and retains recoverable bootstrap/break-glass
+  access. The architecture must not depend on Authelia specifically and
+  should remain suitable for future non-browser clients.
 - **Theme Pack implementation.** Partially done (2026-09-07):
   companion selection and accent palettes are wired through the
   preference system with approved art served from the package. Still
@@ -59,7 +72,6 @@ Preserved ideas, no commitment:
 - Open design questions from the Figma stage (navigation style,
   density, mascot microcopy, personal-mode presentation) — see the
   design handoff's open-questions section.
-- OIDC/passkey auth as provider-aware work on the `require_auth` seam.
 - Mobile-specific responsive behavior (design screens deliberately
   stop at narrow-desktop).
 - Interview wizard / onboarding accessibility interview.
