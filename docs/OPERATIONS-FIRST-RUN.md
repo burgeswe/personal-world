@@ -4,6 +4,18 @@ Steps matching what was actually done to bring the appliance up.
 The public repo stays credential-free; all secrets are gitignored
 local files.
 
+> **Scope correction (2026-09-10):** this is a dated bring-up record, not a
+> universal current deployment recipe. Use [Operations](OPERATIONS.md) and
+> [Architecture](ARCHITECTURE.md) first. Tracked Compose includes host-specific
+> mounts; no container name, timezone, backup job, or external provider is
+> guaranteed on a fresh install. Confirm which configuration files
+> `app.py::build_registry` actually reads before adding provider wiring.
+> `/setup-wizard` now exists; optional depth-limited Git discovery also exists.
+> Vault reset loses secrets and requires an explicit recovery decision; the
+> historical reset command below is not a required installation step.
+> Accessibility defaults are `motion: reduced` and comfortable contrast;
+> OS requirements override application preferences.
+
 ## 1. Clone + install
 
 ```bash

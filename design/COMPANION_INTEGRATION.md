@@ -1,12 +1,21 @@
 # Companion System & Chat — Personal World UI Architecture
 
 **Date:** 2026-09-07
-**Status:** Companion system regen + Chat first-class surface — complete
+**Status:** Companion design reference with current implementation and target distinctions
 **Source:** Figma file `VATVojyJZT9HKx0CrDS0yr`
 
 ## Overview
 
-Personal World has five companion residents — real characters, not placeholders. Each companion maps to a domain/theme context within the product. Chat has been promoted to a first-class product surface alongside Today, World, and Journal.
+Personal World has five companion residents — real characters, not placeholders.
+The domain/theme mappings below describe design intent. Current runtime supports
+companion selection and a standalone Chat page; it does not implement all the
+contextual identities, tool workflows, or response treatments in the exported screens.
+
+The [Finish Line](../docs/PERSONAL-WORLD-FINISH-LINE.md) governs the target:
+chat is a contextual layer across sections, with global cross-system chat still
+available when authorized. A permanent standalone top-level Chat destination is
+not required. Preserve the useful current Chat implementation while extending
+context and navigation toward that target.
 
 This document supersedes the earlier Mermaid-centric integration pass.
 
@@ -57,7 +66,13 @@ Example: the operator selects Mermaid as her personal companion. When browsing V
 
 ## Primary Navigation
 
-Chat is now a first-class destination. The sidebar nav hierarchy is:
+Current dashboard navigation in `src/personal_world/api.py` is:
+
+`Today → Chat → World → Journal → Vault → Settings`.
+
+The icon rail names World as "Worlds". Companion artwork is decorative, not
+another destination. The following is the historical September 7 design hierarchy,
+not a mandatory finish-line navigation structure:
 
 ```
 [p] Appliance Logo
@@ -87,9 +102,15 @@ Chat is now a first-class destination. The sidebar nav hierarchy is:
 
 ## Chat Surface
 
-Chat is the conversational doorway into Personal World. It supports asking about and working with Today, journals, worlds, projects, memory/provenance, capabilities, and connected information.
+Current Chat answers from a read-only world snapshot through the optional reasoning
+provider. It displays text and source disclosure; it does not execute tools or
+mutate the world. The broader conversational doorway into projects, sections,
+and connected tools is target design. Per-section context and model routing,
+authorized actions, and global cross-system reach remain governed by the Finish Line.
 
 ### Chat Screens Produced
+
+These are design artifacts, not evidence that each depicted workflow is implemented.
 
 | Screen | Description |
 |---|---|
@@ -105,10 +126,13 @@ Chat is the conversational doorway into Personal World. It supports asking about
 
 ### Chat Design Principles
 
-1. Chat is NOT a modal, sidebar, or utility tucked behind World
+1. Current Chat has a dedicated reading surface. Target contextual chat may use
+   inline, drawer, or other accessible presentations appropriate to each section;
+   global chat remains reachable. No permanent top-level destination is mandated.
 2. Chat has sufficient reading width (~640-720px message column)
 3. Composer is obvious, accessible, full-width
-4. World/project context is always visible in the header
+4. Target world/project context should be visible; current conversation details
+   expose provider information rather than a complete project workspace
 5. Working state uses text status independent of companion animation
 6. Provenance/source is available without overwhelming content
 7. Error recovery is explicit with clear actions

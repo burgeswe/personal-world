@@ -31,8 +31,9 @@ class MyThing(StatusContract):
 Rules:
 
 - `observe()` is read-only. Writes need an explicit approval path.
-- Fail closed: catch your own errors and return `Result(ok=False,
-  status="unhealthy"|"unavailable")`. Never raise through the registry.
+- Fail closed: catch your own errors and return a failure envelope,
+  for example `fail("unavailable", warnings=["provider unreachable"])`.
+  Import `fail` from `personal_world.envelope`. Never raise through the registry.
 - Secrets come from env indirection (`token_env`), never literals.
 - Never return secret values in `data`.
 
@@ -73,8 +74,25 @@ tests and show the registry serves the contract through either
 
 ## Provider status vocabulary
 
-`healthy` / `unhealthy` / `unknown` / `unavailable` — neutral words,
-never traffic-light colors, in any rendered output.
+The canonical provider/capability vocabulary is `Status` in
+`src/personal_world/status.py`:
+
+| Status | Meaning |
+|---|---|
+| `healthy` | Successful observation, no reported problem |
+| `warning` | Degraded or cautionary condition |
+| `unknown` | Insufficient evidence to determine state |
+| `needs_attention` | Observed condition needs human attention |
+| `unavailable` | Provider cannot be reached or serve the capability |
+| `stale` | Observation is too old to present as current |
+| `disabled` | Explicitly disabled |
+| `not_configured` | No configured source for this capability |
+
+Use these semantic labels, never traffic-light colors alone. An unreachable
+provider is `unavailable`; a reachable provider reporting a problem may be
+`warning` or `needs_attention`. Do not introduce `unhealthy` as a status.
+`Result.ok` separately records operation success. Some command/action envelopes
+use operation-specific strings; those do not extend the canonical `Status` enum.
 
 ## source_control contract (native git baseline)
 
@@ -84,8 +102,10 @@ gives it useful local meaning with **zero providers connected**
 
 - Implementation: `src/personal_world/source_control.py`, registered
   in `build_registry` as provider `native-git` with
-  `ProviderMode.NATIVE`. It always ships; it is never a boot
-  dependency and never required.
+  `ProviderMode.NATIVE` when no source-control connection is configured.
+  The implementation always ships; an enrichment connection currently takes
+  the registry slot rather than composing with the native provider there.
+  Removing the connection restores the baseline on registry rebuild.
 - Canonical shape (enrichment may add richness, never alter it):
   `discover_repositories(paths)` → `{path, name, is_repository}`;
   `repository_status(path)` → `{path, name, branch, revision, dirty,
@@ -127,7 +147,7 @@ Suggested verbatim section:
 > source. This document is a design implementation handoff: it must
 > remain usable to brief another design tool without reconstructing
 > the product from source code. Navigation and presentation are
-> organized around World concepts and user tasks (Today / World /
-> Journal / Settings), never third-party product names; provider
+> organized around World concepts and user tasks (currently Today / Chat /
+> World / Journal / Vault / Settings), never third-party product names; provider
 > deep links are secondary navigation. A Figma-specific section may
 > exist within this handoff; Figma-as-architecture does not.

@@ -21,8 +21,10 @@ by the current finish line:
 - **Secret vault.** DONE (2026-09-09): Fernet-encrypted file vault
   (`/data/vault.enc`, PBKDF2-600k) behind real unlock/lock/set/
   delete/names endpoints; the image now installs `cryptography` so
-  the base64 fallback silently weakened it no longer. Values never
-  render; only names list.
+  container path includes encryption. Minimal installs without the crypto extra
+  still fall back to base64; native HTTP backend selection and stronger
+  re-authentication remain incomplete. See `docs/ARCHITECTURE.md` for the current
+  boundary. The UI lists names rather than redisplaying stored values.
 
 - **Accessibility-preference → dashboard wiring.** DONE (2026-09-07):
   preferences render server-side and apply live in the dashboard
@@ -47,20 +49,20 @@ by the current finish line:
 - **Theme Pack implementation.** Partially done (2026-09-07):
   companion selection and accent palettes are wired through the
   preference system with approved art served from the package. Still
-  open: loading full pack files (state poses, per-pack icon families)
-  from `design/THEME_PACK_FRAMEWORK.md`'s manifest format.
+  implemented: `ThemePackRegistry` loads manifest files and serves theme APIs.
+  Still open: full frontend application of pack assets/state poses and per-pack
+  icon families from `design/THEME_PACK_FRAMEWORK.md`'s manifest format.
 
 ## Next
 
-Strongly relevant, clearly scoped, not started:
+Relevant remaining work and partially implemented seams:
 
-- **Source-control enrichment.** The Gitea adapter is health-only
-  today; the native git baseline now feeds dashboard + chat context.
-  Concept rollups ("3 repositories changed today") can deepen with
-  commit-activity reads.
-- **Ingress rollups.** "14 routes healthy / 1 cert needs attention"
-  needs a Traefik capability provider; the semantic seam is recorded
-  in the design handoff.
+- **Source-control enrichment.** Native Git feeds dashboard/chat context;
+  `providers/gitea_enrichment.py` and `/api/source-control/rollups` now exist.
+  Broader project/repository mission control remains finish-line work.
+- **Ingress rollups.** `providers/traefik_ingress.py` and
+  `/api/ingress/rollups` now exist. Verify configured-provider behavior in the
+  deployment; implementation alone is not operational acceptance.
 - **"Last observed" age display** for stale surfacing.
 - Quick actions — DONE 2026-09-09: "Add a note" composer (POST /api/journal) + step-up writes; more verbs can follow.
 - Apps/Services launcher — DONE 2026-09-09: GET/PUT /api/apps registry (data/apps.json, step-up gated, journal-audited) + dashboard Services card.
@@ -72,9 +74,9 @@ Preserved ideas, no commitment:
 - Open design questions from the Figma stage (navigation style,
   density, mascot microcopy, personal-mode presentation) — see the
   design handoff's open-questions section.
-- Mobile-specific responsive behavior (design screens deliberately
-  stop at narrow-desktop).
-- Interview wizard / onboarding accessibility interview.
+- Further mobile refinement; the current CSS already has phone bottom navigation
+  and larger-target adaptations (see canonical responsive rules).
+- Capability/accessibility interview beyond the implemented five-step setup wizard.
 
 ## Completed
 

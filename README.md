@@ -48,22 +48,38 @@ on her own hardware, with portable state she owns.
 
 ## What works today
 
-Working and tested (CI-gated): the world model with classification and
-cemented policies, CLI (17 commands), API with bearer-token auth, the
-dashboard (Today, Chat, World, Journal, Settings) with real data
-wiring and server-rendered preferences, the Chat surface over a local
-model through a provider-neutral adapter (Ollama or any
-OpenAI-compatible endpoint), five companion characters with runtime
-selection, journal with kind filtering, source-repository status from
-the native git baseline, the safe update flow's read views, all export
-paths, and the framework validator.
+Implemented in the current source, with repository tests and CI gates:
 
-Designed, not yet implemented: theme-pack loading as a runtime system
-(companion selection and accent palettes are wired; full pack files
-are not loaded yet) — tracked in the [roadmap](ROADMAP.md). The broader
-daily-use completion target is defined separately by the
-[finish line](docs/PERSONAL-WORLD-FINISH-LINE.md); it must not be read as
-a claim that those target capabilities already exist.
+- World model, classification, cemented policies, CLI, daily loop, exports,
+  and the framework validator; core operation does not require a provider.
+- Dashboard pages **Today, Chat, World, Journal, Vault, Settings**, real data
+  loading, explicit partial/error states, journal notes and kind filtering.
+- Server-rendered and live presentation preferences with validated writes
+  behind the current step-up check; five selectable companions and accent palettes.
+- Optional read-only Chat over a world snapshot through Ollama or an
+  OpenAI-compatible provider. It returns conversation text, not tool execution.
+- Services launcher with an editable Apps registry, plus persistent reminders
+  that the background scheduler records in the journal.
+- Five-step first-run setup wizard, access-token login/bootstrap, and optional
+  Vault initialization through the setup API.
+- Native Vault UI/API for unlock/lock, names, storage, and deletion. Encrypted
+  storage requires the optional crypto dependency (included by the Dockerfile);
+  minimal installs otherwise use an unencrypted fallback. See the
+  [current secret boundary and limitations](docs/ARCHITECTURE.md#secrets-current-implementation-and-target).
+- Local identity foundations: principal resolution, hashed user/owned-agent
+  tokens, provisioning, and selected per-user state paths in optional multi mode.
+  This is not complete SSO, household isolation, or strong re-authentication.
+- Native Git status/history, optional forge and ingress rollups, Lab read
+  surfaces, and read-only update information; availability depends on configuration.
+- Theme manifest loading/registry APIs. Full custom-pack asset/state integration
+  in the frontend remains incomplete; built-in companion/palette choices work.
+
+Repository tests do not prove every external integration or deployed user
+journey. The [Architecture](docs/ARCHITECTURE.md) records current auth, Vault,
+state ownership, API, and backup limits. The [finish line](docs/PERSONAL-WORLD-FINISH-LINE.md)
+defines the broader target: contextual chat and tools across sections, verified
+SSO and stronger step-up, native daily-use workspaces, backend switching, and
+deeper customization. Those are not completed by the current foundations.
 
 ## Try the CLI locally
 

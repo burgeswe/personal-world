@@ -7,13 +7,27 @@ sanitized: no credentials, no tokens, no personal journal contents, no
 private lore, no real indexer/client names. All examples below are either
 real structural output or clearly synthetic.
 
-> **Target-state note:** this document remains the canonical V0.1/current-baseline
+> **Target-state note:** this document remains the canonical V0.1 design-stage
 > design reference. It is not the definition of the finished product.
 > [`PERSONAL-WORLD-FINISH-LINE.md`](PERSONAL-WORLD-FINISH-LINE.md) defines
 > the current target daily-use experience. When the two describe different
 > horizons, use this document to understand the baseline and the Finish Line
 > to understand the destination; architecture, security, accessibility, and
 > human-reliability contracts continue to govern both.
+
+> **Current implementation reconciliation (2026-09-10):** the inventories,
+> endpoint examples, auth experience, and "not implemented" labels below are
+> the dated V0.1 baseline, not today's feature inventory. Current navigation is
+> Today / Chat / World / Journal / Vault / Settings. Native Vault, editable
+> Services, journal notes, reminders, setup wizard, preference writes, identity
+> foundations, and forge/ingress rollups now have implementation. Theme manifest
+> loading exists, while complete frontend pack integration remains partial.
+> Current auth is token/principal-based; verified provider-neutral SSO is still
+> target work. Use [Architecture](ARCHITECTURE.md), [README](../README.md), and
+> the canonical [responsive rules](accessibility/RESPONSIVE_RULES.md) and
+> [walkthrough](accessibility/SCREEN_READER_WALKTHROUGH.md) for current behavior.
+> Historical screen proposals below do not supersede those sources or the
+> accessibility contract.
 
 Give this document plus the V0.1 final report to ChatGPT to produce
 the Figma implementation brief.
@@ -366,7 +380,8 @@ Implemented today (all verified in tests):
 - Targets ≥ 44x44 CSS px everywhere
 - Status = words, never color-only
 - `prefers-reduced-motion: reduce` honored globally (nothing animates
-  until opted in; motion OFF by default)
+  until opted in; the canonical preference defaults to `reduced`,
+  and the OS reduced-motion requirement overrides application preferences)
 - No text block > 3 lines outside disclosure/list; long strings
   wrap (`overflow-wrap: anywhere`); no horizontal page scroll
   (tables scroll inside labeled regions)

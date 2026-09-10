@@ -56,7 +56,8 @@ Separately, availability is honest state, never silent:
 `healthy / warning / unknown / needs_attention / unavailable / stale /
 disabled / not_configured` (`src/personal_world/status.py`). Absence
 of a provider is reported as `not_configured`; a dead provider as
-`unavailable` or `unhealthy`. Old observations are never re-shown as
+`unavailable`; a reachable but degraded provider may report `warning`
+or `needs_attention`. `unhealthy` is not a canonical status. Old observations are never re-shown as
 current (`World.stale_capabilities`).
 
 ## 4. Rules (enforced)
@@ -109,9 +110,15 @@ Each rule cites its enforcement path.
 
 Registration never contains inline secrets. Secret material is
 referenced symbolically (`token_env`, `api_key_env`, `secret_ref`) and
-resolved through env indirection at the adapter or the SopsBroker
-(values piped to consumers, never returned to callers, never in
-exports, logs, or model context). The validator rejects keys that
+resolved through env indirection at the adapter or a secret-management
+boundary. `SopsBroker` pipes values to consumers; native `Vault` and the
+read-through `SOPSVaultAdapter` expose the `VaultContract` operations.
+The HTTP Vault currently instantiates native `Vault` directly; configurable
+backend substitution and an OpenBao adapter remain target work. Secret values
+must stay out of ordinary exports, logs, and model context. See
+[Architecture](ARCHITECTURE.md#secrets-current-implementation-and-target)
+for current retrieval restrictions and encryption limitations.
+The validator rejects keys that
 look like inline secret material (`token`, `password`, `api_key`
 values) — only the `_env`/`_ref` indirection forms are allowed.
 
@@ -165,7 +172,7 @@ reinterpreted.
 ## 10. UI implications
 
 Personal World navigation and presentation are organized around World
-concepts and user tasks (Today / World / Journal / Settings), never
+concepts and user tasks (currently Today / Chat / World / Journal / Vault / Settings), never
 third-party product names. An Apps/Services view and provider deep
 links are secondary navigation. The generic capability contract is
 what the dashboard renders; vendor vocabulary lives only in
@@ -235,12 +242,19 @@ Run: `uv run pytest tests/test_framework.py` and
 `personal-world manifest` and `GET /api/manifest` answer, per
 capability: what exists, native baseline?, which providers can
 enrich, which is active, what happens if that provider disappears.
-CLI, dashboard, settings-export, and future onboarding read the same
-manifest instead of re-deriving it.
+The manifest is the shared capability-discovery surface for CLI/API clients
+and future capability-driven onboarding; do not assume every current UI
+consumes it.
 
-## 14. Future interview / onboarding
+## 14. Current setup and future capability interview
 
-The framework makes this flow possible (do not build it yet):
+`/setup-wizard` already provides a five-step first-run UI (welcome,
+world name, companion, access token, finish). `/api/setup` initializes
+the instance token and can initialize the native vault. These are not
+the complete capability/accessibility interview below. Zero-provider
+CLI initialization remains supported without completing a wizard.
+
+The framework supports this richer target flow:
 
 ```text
 What would you like Personal World to help with?

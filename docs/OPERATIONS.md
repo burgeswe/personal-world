@@ -40,6 +40,17 @@ Do not publish tokens in URLs, screenshots, shell transcripts or public issues.
 The core rejects protected requests with no configured token and compares supplied
 tokens in constant time. Forwarded identity headers do not bypass this check.
 
+The browser also has `/setup-wizard`, `/setup`, and `/login` entry points.
+First-run setup and `/api/chat/test` are currently public routes; protected-route
+authentication does not cover them. See [Architecture](ARCHITECTURE.md) for the
+route inventory and the limits of the current extra write check called step-up.
+It is not verified SSO/MFA re-authentication.
+
+Native Vault needs `uv sync --frozen --extra test --extra crypto` for encrypted
+storage in a local install. The Dockerfile already installs the crypto extra.
+Without it, current Vault code falls back to base64 while its status endpoint
+still reports encrypted; do not use that response alone as encryption evidence.
+
 ## Containers
 
 The provided Compose file builds the API/dashboard appliance and persists state
@@ -60,6 +71,12 @@ should bind to `127.0.0.1` and mount your private configuration directory at
 assume the supplied Compose file is an internet deployment security boundary.
 Remote use needs TLS, access controls and a reviewed authentication setup.
 
+The tracked Compose also contains host-specific Lab and credential-file bind
+mounts. It is not currently a fully portable zero-provider recipe despite its
+header. Inspect those paths privately and adapt a local deployment copy before
+running elsewhere; do not publish deployment paths or credentials. The framework
+validator and Compose parsing do not prove those mounts are available or safe.
+
 ## Health, failures and state
 
 `GET /healthz` is a public health endpoint; successful protected API access is a
@@ -68,10 +85,13 @@ status alone does not restart an unhealthy running container.
 
 Unavailable providers must degrade honestly while core capabilities remain
 usable. Missing providers are `not_configured`, not falsely healthy. The daily
-loop is on request; it is not a background scheduler.
+loop is on request. A separate reminder scheduler now runs with the API process;
+it does not turn the daily loop into a scheduled job.
 
 Back up the data volume securely before deployment changes. It contains world
-state and the journal; deleting it can lose user-authored state and history.
+state, journal, Vault, identities, Apps registry, reminders, and optional per-user
+state; deleting it can lose user-authored state and history. `/api/backup` exports
+world/journal data only, not a full data-volume backup.
 Do not put backups, journal exports or diagnostic dumps in this public repo.
 
 ## Chat (optional local AI)

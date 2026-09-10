@@ -123,8 +123,9 @@ If two applicable instructions genuinely conflict:
 4. do not silently discard either;
 5. escalate when the conflict cannot be resolved safely.
 
-`design/handoff/` other than the four accessibility files above is an
-archived spec package — historical, never edit it to change design.
+`design/handoff/` is an archived spec package — historical, never edit
+it to change design. The four canonical accessibility files above live
+under `docs/accessibility/`, outside that archive.
 
 ## Loading Discipline
 

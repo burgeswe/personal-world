@@ -45,8 +45,9 @@ agent's WIP into its commit. The rules:
 - **Accessibility is non-negotiable and canonical at
   `docs/accessibility/ACCESSIBILITY_CONTRACT.md`.** Any UI change —
   screens, components, CSS, tokens — answers that contract first
-  (44px targets, luminance-only rank encoding, motion off by
-  default, dark-mode default). The screen-reader walkthrough,
+  (44px targets, luminance-only rank encoding, motion reduced by
+  default, dark-mode default; OS `prefers-reduced-motion` overrides
+  application motion preferences). The screen-reader walkthrough,
   responsive rules, and the preference schema floor live alongside
   it in `docs/accessibility/`. Do not edit files under
   `design/handoff/` to change accessibility truth; the canonical
