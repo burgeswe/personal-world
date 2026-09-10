@@ -36,8 +36,10 @@ agent's WIP into its commit. The rules:
   it outranks speculative roadmap items but does not override architecture,
   security, accessibility, or human-reliability contracts.
 - **Design truth:** `design/tokens.json` and
-  `docs/DESIGN-HANDOFF.md` are canonical. `design/handoff/` is an
-  archived spec package — historical, never edit it to change design.
+  `docs/DESIGN-HANDOFF.md` are canonical for the V0.1/current-baseline
+  design. `docs/PERSONAL-WORLD-FINISH-LINE.md` defines the target
+  completion experience. `design/handoff/` is an archived spec package —
+  historical, never edit it to change design.
   `design/COMPANION_INTEGRATION.md` is the current companion/chat
   architecture.
 - **Accessibility is non-negotiable and canonical at
@@ -53,11 +55,11 @@ agent's WIP into its commit. The rules:
   (`design/assets/mermaid-companion-master.lottie` — byte-identical
   by decision), all companion source rigs, the icon library, and the
   screen SVGs. They are deliberate artwork, not generated output.
-- **Specs are not implementations.** Theme packs, the Chat surface,
-  and preference-driven customization are designed (see
-  `ROADMAP.md`) but not implemented. Do not wire them as if they
-  exist; the design handoff's future-requirements section says the
-  same.
+- **Specs are not implementations.** Check `README.md`, `ROADMAP.md`,
+  the current code, and live behavior before deciding whether a designed
+  feature exists. Chat and preference-driven customization already have
+  implemented portions; do not regress them or assume the Finish Line's
+  richer target behavior is already complete.
 - **Security boundary:** no private endpoints, credentials, personal
   data or deployment topology in any tracked file.
   `tests/test_public_safety.py` is the regression gate; read
@@ -67,4 +69,5 @@ agent's WIP into its commit. The rules:
   root. CI runs the same.
 - **Where future plans live:** `ROADMAP.md` (direction, not
   promises). Do not treat roadmap items as commitments or
-  authorization.
+  authorization. The Finish Line defines the desired completion target;
+  current implementation evidence determines what remains to be built.
