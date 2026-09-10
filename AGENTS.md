@@ -31,6 +31,10 @@ agent's WIP into its commit. The rules:
 - **Current architecture:** `docs/ARCHITECTURE.md`. World model and
   invariants: `docs/NATIVE-BASELINE-AND-ENRICHMENT.md` (normative,
   enforced by `personal-world framework validate`).
+- **Current product finish line:** `docs/PERSONAL-WORLD-FINISH-LINE.md`.
+  Use it to determine what “finished enough to live in every day” means;
+  it outranks speculative roadmap items but does not override architecture,
+  security, accessibility, or human-reliability contracts.
 - **Design truth:** `design/tokens.json` and
   `docs/DESIGN-HANDOFF.md` are canonical. `design/handoff/` is an
   archived spec package — historical, never edit it to change design.
