@@ -23,6 +23,7 @@ copy of that state — one fact should be maintained once.
 | Question | Answer here |
 |---|---|
 | What does this product do today? | `README.md` ("What works today") |
+| What does “finished enough to live in every day” mean? | `docs/PERSONAL-WORLD-FINISH-LINE.md` |
 | What is designed but not implemented? | `ROADMAP.md` (direction, not promises) |
 | What changed, when? | `CHANGELOG.md` (Keep-a-Changelog) |
 | What governs UI work? | `docs/accessibility/ACCESSIBILITY_CONTRACT.md` (non-negotiable) |
@@ -36,5 +37,7 @@ copy of that state — one fact should be maintained once.
 
 This file is a pointer, not a source. If the rows above ever disagree
 with the homelab CHECKOFF, the CHECKOFF (plus live runtime evidence)
-wins — repository and runtime evidence outrank any handoff, including
-this one.
+wins for current operational state — repository and runtime evidence
+outrank any handoff. The Finish Line remains the product-intent source
+for the target experience; it does not claim unfinished features are
+already implemented.
