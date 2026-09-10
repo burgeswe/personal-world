@@ -7,6 +7,14 @@ sanitized: no credentials, no tokens, no personal journal contents, no
 private lore, no real indexer/client names. All examples below are either
 real structural output or clearly synthetic.
 
+> **Target-state note:** this document remains the canonical V0.1/current-baseline
+> design reference. It is not the definition of the finished product.
+> [`PERSONAL-WORLD-FINISH-LINE.md`](PERSONAL-WORLD-FINISH-LINE.md) defines
+> the current target daily-use experience. When the two describe different
+> horizons, use this document to understand the baseline and the Finish Line
+> to understand the destination; architecture, security, accessibility, and
+> human-reliability contracts continue to govern both.
+
 Give this document plus the V0.1 final report to ChatGPT to produce
 the Figma implementation brief.
 
