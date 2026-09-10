@@ -24,6 +24,20 @@ existing tool. Those are providers behind adapters.
 | Journal | One append-oriented event stream | records |
 | Pack | Recipe: structure, never personal data | installs defaults only |
 
+## Durable memory and retrieval
+
+Durable, human-readable files — especially Markdown — are preferred as
+the canonical memory/lore truth where practical. They remain inspectable,
+portable, versionable, and recoverable without a particular database or
+provider.
+
+Semantic-search indexes, vector stores, embedding stores, response caches,
+and similar retrieval machinery are acceleration layers. They may be
+implemented by replaceable providers and may be rebuilt from canonical
+sources; they must not silently become the only authority for durable
+memory. `/api/memory/search` is therefore a retrieval capability, not a
+statement that the active memory provider owns the underlying truth.
+
 ## Security classification
 
 - `world` — portable structured state (personal data, not public)
@@ -50,11 +64,22 @@ Classification is field metadata in the model
 
 ## Auth
 
-Bearer token boundary (fail-closed): no token configured → protected
-routes 503; wrong token → 401. In-lab deployments can instead put the
-whole thing behind Authelia forward-auth (one compose label) — the app
-does not care where the boundary lives. OIDC/passkeys are future
-provider-aware work; the seam is the single `require_auth` dependency.
+**Current implementation:** bearer token boundary (fail-closed): no token
+configured → protected routes 503; wrong token → 401. In-lab deployments
+may also put the application behind Authelia forward-auth. The inner
+application boundary remains authoritative rather than assuming the proxy
+is sufficient.
+
+**Finish-line target:** authentication becomes provider-neutral at the
+application seam. A real SSO/identity provider may supply normal sign-in,
+while Personal World retains its own authorization/ownership rules. The
+finished path must support step-up authentication for severe/destructive
+changes and sensitive vault/secure-note access, plus recoverable
+bootstrap/break-glass access when an external identity provider is
+unavailable. The boundary must not depend on Authelia specifically and
+should remain suitable for future non-browser clients. `require_auth`
+remains the architectural seam unless implementation evidence justifies a
+narrower refactor.
 
 ## API
 
