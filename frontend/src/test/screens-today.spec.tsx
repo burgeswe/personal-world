@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import TodayScreen from "../screens/TodayScreen";
 import {
@@ -19,7 +19,11 @@ import type { JournalEntry } from "../lib/api";
  * - a quiet day (no digest actions) renders NO "what changed" list;
  * - the services add flow goes through PUT /api/apps (step-up path);
  * - keyboard-only add flow works;
- * - axe: 0 violations (color-contrast disabled — tokens own contrast).
+ * - axe: 0 violations (color-contrast disabled — tokens own contrast);
+ * - T14 warmth: greeting + real h2 headings (no card chrome), the
+ *   "available:" shape humanized in What changed too, quiet
+ *   capability grouping (problems surfaced, healthy majority behind
+ *   one honest count), and the fresh-install health sentence.
  */
 
 expect.extend({ toHaveNoViolations });
@@ -55,6 +59,23 @@ const DAILY_QUIET = {
   data: {
     world: { facts: 3, intents: 1, policies: 1, cemented_policies: 0, capabilities: 3, providers: 2, packs: 0 },
     capabilities: CAPABILITIES_FIXTURE,
+    attention: [],
+  },
+};
+
+/** A fresh install: every capability not_configured (a valid,
+ * non-error state per NATIVE-BASELINE-AND-ENRICHMENT). */
+const DAILY_FRESH = {
+  ok: true,
+  status: "healthy",
+  warnings: [],
+  actions: [],
+  data: {
+    world: { facts: 0, intents: 0, policies: 0, cemented_policies: 0, capabilities: 2, providers: 0, packs: 0 },
+    capabilities: {
+      source_control: { ok: false, status: "not_configured", warnings: [], last_observed: "2026-09-11T05:00:00Z" },
+      media: { ok: false, status: "not_configured", warnings: [], last_observed: "2026-09-11T05:00:00Z" },
+    },
     attention: [],
   },
 };
@@ -153,9 +174,12 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
   it("renders the attention list from /api/daily attention", async () => {
     await bootToday(defaultHandlers());
     expect(screen.getByText("Attention")).toBeTruthy();
-    expect(screen.getByText(/Reasoning: unavailable/)).toBeTruthy();
+    // Scoped to the Attention region: the same humanized sentence now
+    // also appears in "What changed" (shared voice, task brief §3).
+    const attention = screen.getByRole("region", { name: "Attention" });
+    expect(within(attention).getByText(/Reasoning: unavailable/)).toBeTruthy();
     expect(
-      screen.getByText(/Source control is ready for looking, not changing things\./)
+      within(attention).getByText(/Source control is ready for looking, not changing things\./)
     ).toBeTruthy();
   });
 
@@ -363,6 +387,9 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
         .getAllByText("More from your world")
         .find((el) => el.tagName === "SPAN") as HTMLElement
     );
+    // The healthy/not_configured majority now sits behind the quiet
+    // disclosure — open it first (the real reachable path to those rows).
+    fireEvent.click(screen.getByText("Show the other 2"));
     const chips = screen.getAllByText("not configured");
     expect(chips.length).toBeGreaterThan(0);
     const chip = chips[0].closest(".chip");
@@ -372,6 +399,91 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Technical details").length).toBeGreaterThan(0);
     });
+  });
+
+  it("greets with time-of-day warmth, host-local date, and a decorative greeting companion", async () => {
+    const { container } = await bootToday(defaultHandlers());
+    const region = container.querySelector('section[aria-labelledby="today-health-heading"]');
+    expect(region).toBeTruthy();
+    expect(screen.getByText(/^Good (morning|afternoon|evening)\.$/)).toBeTruthy();
+    expect(region?.querySelector("h1")?.textContent).toBe("Today");
+    const date = region?.querySelector("time");
+    expect(date).toBeTruthy();
+    expect(date?.getAttribute("dateTime")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect((date?.textContent ?? "").length).toBeGreaterThan(0);
+    // the greeting companion is decorative only (COMPANION_INTEGRATION
+    // "Inline" 48px greeting-area placement): aria-hidden artwork with
+    // alt="", never a second trigger/button.
+    const slot = region?.querySelector("[data-pw-companion-slot]");
+    expect(slot).toBeTruthy();
+    expect(slot?.querySelector("button")).toBeNull();
+    const artwork = slot?.querySelector("img");
+    expect(artwork?.getAttribute("alt")).toBe("");
+    expect(Number(artwork?.getAttribute("width"))).toBe(48);
+    expect(artwork?.closest("[aria-hidden='true']")).toBeTruthy();
+  });
+
+  it("sections are real h2 headings with quiet dividers — no card chrome (A11y §4.1, DESIGN-HANDOFF N.7)", async () => {
+    const { container } = await bootToday(defaultHandlers());
+    const h1s = container.querySelectorAll("h1");
+    expect(h1s.length).toBe(1);
+    expect(h1s[0].textContent).toBe("Today");
+    for (const id of ["today-attention-heading", "today-changes-heading", "today-journal-heading"]) {
+      const h2 = container.querySelector(`h2#${id}`);
+      expect(h2, `missing real h2#${id}`).toBeTruthy();
+      expect(h2?.closest("section")?.getAttribute("aria-labelledby")).toBe(id);
+    }
+    expect(screen.getByRole("heading", { level: 2, name: "Recent entries" })).toBeTruthy();
+    // the bordered/shadowed Card boxes are gone from Today
+    // (transition-shadow is the Card chrome signature — buttons have
+    // shadow-sm/hover:shadow-md but never transition-shadow)
+    expect(container.querySelectorAll('[class*="transition-shadow"]').length).toBe(0);
+    // quiet dividers between the stacked sections
+    expect(container.querySelectorAll("section[class*='border-t']").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("what-changed reads the 'available:' shape in the same humanized voice as Attention", async () => {
+    await bootToday(defaultHandlers());
+    const changes = screen.getByRole("region", { name: "What changed" });
+    expect(
+      within(changes).getByText(/Source control is ready for looking, not changing things\./)
+    ).toBeTruthy();
+    // entries that do not match that shape keep their recorded content verbatim
+    expect(within(changes).getByText(/drift: focus: 'resting' != intent 'shipping'/)).toBeTruthy();
+    expect(within(changes).queryByText(/available: gitea/)).toBeNull();
+  });
+
+  it("quiets the healthy majority behind one honest count line; problems stay individual", async () => {
+    await bootToday(defaultHandlers());
+    fireEvent.click(
+      screen
+        .getAllByText("More from your world")
+        .find((el) => el.tagName === "SPAN") as HTMLElement
+    );
+    // reasoning (unavailable) is surfaced as its own row
+    expect(screen.getByText("reasoning")).toBeTruthy();
+    // the healthy/not_configured majority collapsed to one line (real count from the data)
+    expect(screen.getByText("2 other capabilities are healthy or not yet connected.")).toBeTruthy();
+    // progressive disclosure reveals complexity, it never erases it: the
+    // quiet rows are still reachable inside the disclosure
+    fireEvent.click(screen.getByText("Show the other 2"));
+    expect(screen.getAllByText("source control").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("media").length).toBeGreaterThan(0);
+  });
+
+  it("a fresh world (everything not yet connected) reads as ready, never '0 are healthy'", async () => {
+    await bootToday(defaultHandlers({ daily: DAILY_FRESH }));
+    expect(
+      screen.getByText(/Your world is ready\. Nothing is connected yet — capabilities will show up here as you add them\./)
+    ).toBeTruthy();
+    fireEvent.click(
+      screen
+        .getAllByText("More from your world")
+        .find((el) => el.tagName === "SPAN") as HTMLElement
+    );
+    // nothing surfaced (all quiet), so the count line carries the whole truth
+    expect(screen.getByText("2 capabilities are healthy or not yet connected.")).toBeTruthy();
+    expect(screen.getByText("Show the other 2")).toBeTruthy();
   });
 
   it("axe: 0 violations (color-contrast disabled)", async () => {
