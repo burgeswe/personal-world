@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from . import export, prefs
+from . import sections as sections_mod
 from .app import build_registry, load_world, save_world
 from .chat import chat_once, build_chat_messages
 from .chat_context import build_world_context
@@ -688,6 +689,74 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         uw, _uj = _user_paths(request)
         save_world(world, uw)
         return {"ok": True, "data": data}
+
+    @app.get("/api/prefs/schema", dependencies=[Depends(require_auth)])
+    async def prefs_schema() -> dict:
+        """Read-only preference vocabulary (spec §2.5): the Settings
+        surface can only offer values the server accepts."""
+        out: dict[str, dict] = {}
+        for key, spec in prefs.PREFS.items():
+            if isinstance(spec, prefs.NumberPref):
+                out[key] = {
+                    "type": "number",
+                    "default": spec.default,
+                    "floor": spec.floor,
+                    "allowed": (list(spec.allowed)
+                                if spec.allowed is not None else None),
+                    "integer": spec.integer,
+                    "unit": spec.unit,
+                }
+            else:
+                out[key] = {
+                    "type": "enum",
+                    "default": spec.default,
+                    "floor": spec.floor,
+                    "allowed": list(spec.allowed),
+                }
+        return {"ok": True, "data": out}
+
+    # -- sections: per-person navigation layout (spec §2) ---------------
+    def _sections_payload(world: World, registry: Registry) -> dict:
+        status_map = registry.status_map()
+        stored = world.layout.get(sections_mod.LAYOUT_KEY)
+        return {
+            "ok": True,
+            "data": {
+                "schema": sections_mod.SCHEMA,
+                "sections": sections_mod.resolve_sections(stored, status_map),
+            },
+        }
+
+    @app.get("/api/sections", dependencies=[Depends(require_auth)])
+    async def sections_get(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
+        world, registry, _ = _state_for(request)
+        return _sections_payload(world, registry)
+
+    @app.put("/api/sections", dependencies=[Depends(require_step_up)])
+    async def sections_put(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
+        world, registry, uj = _state_for(request)
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be an object")
+        current = world.layout.get(sections_mod.LAYOUT_KEY) or {}
+        new_layout, errors = sections_mod.validate_layout_update(body, current)
+        if errors:
+            raise HTTPException(status_code=400, detail="; ".join(errors))
+        world.layout[sections_mod.LAYOUT_KEY] = new_layout
+        uw, _uj = _user_paths(request)
+        save_world(world, uw)
+        # Whose state is this? The caller's. The event goes to the
+        # caller's own journal (shared journal in single mode).
+        target = journal if uj == journal.path else Journal(uj)
+        target.record(kind=JournalKind.SETTINGS_CHANGE,
+                      summary="sections layout updated", source="api")
+        return _sections_payload(world, registry)
+
     # -- source_control: native git baseline (zero providers required) --
     def _sc_paths() -> list[str]:
         from .source_control import configured_search_paths
