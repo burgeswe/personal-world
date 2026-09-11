@@ -20,6 +20,7 @@ import {
   fetchChatProviders,
   fetchLabState,
   fetchLabHealth,
+  type LabEnvelope,
   fetchMemorySearch,
   type WorldData,
   type WorldStatus,
@@ -207,13 +208,13 @@ export function useChatProviders() {
   return useApiQuery<ChatProvidersData>(() => fetchChatProviders());
 }
 
-// ── Lab hooks ──
+// ── Lab hooks (T13: envelopes preserved so ok:false degrades honestly) ──
 export function useLabState() {
-  return useApiQuery<unknown>(() => fetchLabState());
+  return useApiQuery<LabEnvelope>(() => fetchLabState());
 }
 
 export function useLabHealth() {
-  return useApiQuery<unknown>(() => fetchLabHealth());
+  return useApiQuery<LabEnvelope>(() => fetchLabHealth());
 }
 
 // ── Memory Search hook ──

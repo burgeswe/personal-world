@@ -123,7 +123,12 @@ describe("routes render with App shell (T9)", () => {
         },
         { timeout: 4000 }
       );
-      expect(screen.getByText(copy)).toBeTruthy();
+      // T13: /lab is a real data screen now (fetch → operator table or
+      // honest state), so its copy lands a tick after boot; the copy
+      // itself is the settled-state assertion for every case.
+      await waitFor(() => {
+        expect(screen.getByText(copy)).toBeTruthy();
+      }, { timeout: 4000 });
       unmount();
     }
     window.history.pushState({}, "", "/");
@@ -132,7 +137,16 @@ describe("routes render with App shell (T9)", () => {
   it("direct URL to a HIDDEN section still resolves (Lab hidden → still renders)", async () => {
     window.history.pushState({}, "", "/lab");
     const container = await boot();
-    expect(container.querySelector("[data-pw-state]")).not.toBeNull();
+    await waitFor(
+      () => {
+        // T13: Lab resolves to a state surface (table or honest
+        // empty/unknown state), never nothing.
+        expect(
+          container.querySelector("[data-pw-state], [data-pw-lab-table]")
+        ).not.toBeNull();
+      },
+      { timeout: 4000 }
+    );
     expect(await axeNoContrast(container)).toHaveNoViolations();
     window.history.pushState({}, "", "/");
   });
