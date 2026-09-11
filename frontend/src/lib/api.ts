@@ -519,12 +519,62 @@ export async function fetchChatProviders(): Promise<ChatProvidersData> {
   return apiFetch<ChatProvidersData>("/api/chat/providers");
 }
 
-export async function fetchLabState(): Promise<unknown> {
-  return apiFetch<unknown>("/api/lab/state");
+/**
+ * Lab envelopes (T13, parity row 3): the lab routes answer 200 with
+ * `ok:false` + `warnings` when the capability is absent or the CLI
+ * fails (api.py lab_state/lab_health). apiFetch's envelope unwrap
+ * would drop ok/status/warnings, and the Lab screen needs exactly
+ * those to degrade honestly, so these two reads keep the envelope.
+ */
+export interface LabEnvelope {
+  ok: boolean;
+  status?: string;
+  data?: unknown;
+  warnings?: string[];
 }
 
-export async function fetchLabHealth(): Promise<unknown> {
-  return apiFetch<unknown>("/api/lab/health");
+async function labEnvelope(path: string): Promise<LabEnvelope> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      headers: new Headers({ Authorization: `Bearer ${getAuthToken()}` }),
+    });
+  } catch {
+    throw new ApiError(0, "network", "Could not reach the server.");
+  }
+  if (response.status === 401) {
+    localStorage.removeItem("pw_token");
+    navigateToLogin("/login");
+    throw new ApiError(401, "unauthorized", "Sign-in required.");
+  }
+  if (!response.ok) {
+    const raw: unknown = await response.json().catch(() => null);
+    const detail = extractErrorDetail(raw);
+    throw new ApiError(
+      response.status,
+      "http_error",
+      detail ?? `Request failed (${response.status}).`,
+      { detail, body: raw }
+    );
+  }
+  const json: unknown = await response.json().catch(() => null);
+  if (!isRecord(json) || typeof json.ok !== "boolean") {
+    throw new ApiError(
+      500,
+      "http_error",
+      "Lab response was not the expected shape.",
+      { body: json }
+    );
+  }
+  return json as unknown as LabEnvelope;
+}
+
+export async function fetchLabState(): Promise<LabEnvelope> {
+  return labEnvelope("/api/lab/state");
+}
+
+export async function fetchLabHealth(): Promise<LabEnvelope> {
+  return labEnvelope("/api/lab/health");
 }
 
 export async function fetchMemorySearch(query: string): Promise<unknown> {
