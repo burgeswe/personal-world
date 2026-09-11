@@ -40,6 +40,16 @@ into settings, exports or chat context.
 Each path is checked directly — point `search_paths` at the repo
 directory itself, not its parent.
 
+## Ownership rule (public repository boundary)
+
+The tracked `config/` directory holds only schemas, examples and
+zero-provider defaults. Anything that is *yours* — provider endpoints,
+model routing, project selection, followed feeds, display name,
+environment-specific paths — lives in a private runtime location:
+`config/*.local.json`, `config.local/`, or `data/`. All of these are
+gitignored. `tests/test_public_safety.py` fails if the tracked
+`connections.json` ever ships a provider or secret-shaped value.
+
 ## Where data lives across rebuilds
 
 - Secrets: the `/data` named volume (`vault.enc`) — survives

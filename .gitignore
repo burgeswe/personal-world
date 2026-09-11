@@ -37,6 +37,15 @@ Thumbs.db
 config.local/
 config/connections.local.json
 config/connections.local.json.*
+config/*.local.json
+config/principal.json
+# Frontend: env files may be inlined into the browser bundle; never track them
+frontend/.env*
+frontend-v2/.env*
+frontend/dist/
+frontend-v2/dist/
+frontend/node_modules/
+frontend-v2/node_modules/
 *.pem
 *.p12
 *.pfx
