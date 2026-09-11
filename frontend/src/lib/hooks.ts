@@ -25,6 +25,8 @@ import {
   fetchLabState,
   fetchLabHealth,
   fetchMemorySearch,
+  fetchPrefsSchema,
+  type PrefsSchema,
   type WorldData,
   type WorldStatus,
   type Reminder,
@@ -260,4 +262,26 @@ export function useLabHealth() {
 // ── Memory Search hook ──
 export function useMemorySearch(query: string) {
   return useApiQuery<unknown>(() => fetchMemorySearch(query), [query]);
+}
+
+// ── T11 Settings additions (additive only; mirror the T6 pattern
+// above — plain useApiQuery on the typed client, refresh signals for
+// cross-screen re-fetch) ──
+
+/** GET /api/prefs/schema: the preference vocabulary Settings renders FROM. */
+export function usePrefsSchema() {
+  return useApiQuery<PrefsSchema>(() => fetchPrefsSchema());
+}
+
+/** GET /api/sections for the settings sections panel (nav shares the signal). */
+export function useSectionsForSettings() {
+  return useApiQuery<SectionData[]>(() => fetchSections(), [], ["sections"]);
+}
+
+/** PUT /api/sections: layout writes re-fetch the shared "sections" signal. */
+export function useSectionsWrite(): () => Promise<void> {
+  return () => {
+    emitRefresh("sections");
+    return Promise.resolve();
+  };
 }

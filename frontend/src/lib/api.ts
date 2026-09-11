@@ -569,6 +569,21 @@ export async function savePrefs(prefs: Prefs): Promise<Prefs> {
   });
 }
 
+/**
+ * PUT /api/prefs partial update (T11 Settings): the server merges the
+ * update into the stored prefs (api.py set_prefs validates every key,
+ * collecting errors as one 400), so a single-key change is legitimate.
+ */
+export async function savePrefsPartial(
+  updates: Partial<Prefs>
+): Promise<Prefs> {
+  return apiFetch<Prefs>("/api/prefs", {
+    method: "PUT",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify(updates),
+  });
+}
+
 export async function savePrincipalDisplayName(
   display_name: string
 ): Promise<unknown> {
@@ -654,6 +669,100 @@ export async function sendChatMessage(
     headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
     body: JSON.stringify({ message, history }),
   });
+}
+
+// ── T11 Settings additions (additive only; FOUNDATION-SPEC §7 row 6,
+// §2.5). Shapes mirror api.py + prefs.py + theme_pack.py + scheduler.py
+// exactly (tests/test_sections.py, tests/test_prefs.py,
+// tests/test_prefs_schema_parity.py). ──
+
+/**
+ * GET /api/prefs/schema (spec §2.5): the read-only preference
+ * vocabulary derived from prefs.PREFS. Settings renders its controls
+ * FROM this payload — options are never hard-coded client-side, so the
+ * UI can never offer a value the server would reject with 400.
+ */
+export interface PrefSchemaEntry {
+  type: "enum" | "number";
+  default: string | number;
+  floor: string | number;
+  /** enum: allowed values (most→least restrictive); number: allowed values or null (any ≥ floor). */
+  allowed: string[] | number[] | null;
+  /** number prefs only */
+  integer?: boolean;
+  unit?: string;
+}
+
+export type PrefsSchema = Record<string, PrefSchemaEntry>;
+
+export async function fetchPrefsSchema(): Promise<PrefsSchema> {
+  return apiFetch<PrefsSchema>("/api/prefs/schema");
+}
+
+/**
+ * PUT /api/sections (spec §2.4): either key optional (omitted keeps the
+ * stored value); `{"order": [], "hidden": []}` resets to server
+ * defaults. Validation failures (unknown id, duplicate in order, pinned
+ * id in hidden, non-list values) return one 400 whose detail carries
+ * every error; ApiError.detail surfaces it verbatim.
+ */
+export interface SectionsLayoutUpdate {
+  order?: string[];
+  hidden?: string[];
+}
+
+export async function saveSections(update: SectionsLayoutUpdate): Promise<SectionsPayload> {
+  return apiFetch<SectionsPayload>("/api/sections", {
+    method: "PUT",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify(update),
+  });
+}
+
+/**
+ * Reminder write ops (api.py /api/reminders POST/PATCH/DELETE, all
+ * require_step_up). POST body is `{text, cron_*}` (server generates the
+ * id when omitted); PATCH toggles `{enabled}`; DELETE removes.
+ */
+export async function addReminder(
+  text: string
+): Promise<{ ok: boolean; data?: Reminder; warnings?: string[] }> {
+  return apiFetch("/api/reminders", {
+    method: "POST",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function toggleReminder(
+  id: string,
+  enabled: boolean
+): Promise<{ ok: boolean; data?: Reminder; warnings?: string[] }> {
+  return apiFetch(`/api/reminders/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export async function deleteReminder(
+  id: string
+): Promise<{ ok: boolean; data?: unknown; warnings?: string[] }> {
+  return apiFetch(`/api/reminders/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: withStepUp(new Headers()),
+  });
+}
+
+/**
+ * GET /api/themes (api.py themes_list): theme-pack manifests; Settings
+ * uses them as companion-presets (legacy parity: a pack select PUTs
+ * `companion: pack.name`). Unknown shapes stay `unknown` until a task
+ * pins them.
+ */
+export interface ThemePackData {
+  name: string;
+  display_name: string;
 }
 
 // ── Setup (pre-auth; /api/setup and /api/setup/status are public

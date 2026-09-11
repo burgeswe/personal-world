@@ -151,3 +151,38 @@ export function prefsFromServer(d: Prefs | null | undefined): PrefsState {
     theme: "dark",
   };
 }
+
+/**
+ * T11 companion-off (FRONTEND-ONLY RENDERING MACHINERY — not server
+ * truth):
+ *
+ * The backend `companion` EnumPref (prefs.py COMPANION) has no "off"
+ * value; PUT /api/prefs would reject it with 400. The T8
+ * CompanionSlot primitive already treats companion === "off" as
+ * "remove the artwork, keep the assistant trigger" (A11y §7.4), and
+ * this task owns surfacing that convention as a real control.
+ *
+ * Decision (owned by T11, checkpoint): "off" is a frontend display
+ * value ONLY. When the person picks it, the companion context is set
+ * to "off" for the session so every CompanionSlot drops its artwork
+ * while the assistant trigger stays reachable. The server pref keeps
+ * the last real companion id — backend prefs remain the authoritative
+ * truth for the stored vocabulary, so a reload restores the last
+ * server-known companion artwork.
+ *
+ * Honest reconciliation note: P4 (assistant drawer) or T15 (cutover)
+ * must either add "off" to the server vocabulary or re-home this
+ * convention; until then this mapping is deliberately NOT persisted
+ * anywhere (no localStorage) — it dies with the page load by design.
+ */
+export const COMPANION_OFF = "off";
+
+/**
+ * The display vocabulary for the companion control: the server's
+ * allowed list (the authoritative stored vocabulary) plus the
+ * frontend-only "off" entry. Order matters in the UI only.
+ */
+export function companionChoices(serverAllowed: string[] | null | undefined): string[] {
+  const base = serverAllowed && serverAllowed.length > 0 ? serverAllowed : [];
+  return [COMPANION_OFF, ...base.filter((v) => v !== COMPANION_OFF)];
+}
