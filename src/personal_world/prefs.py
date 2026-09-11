@@ -6,6 +6,13 @@ and the floor itself. Values below the floor are rejected, never
 silently clamped. Application is native construction: the server
 renders preferences into CSS custom properties and data-* attributes
 so the dashboard honors them with JavaScript disabled.
+
+Motion vocabulary (owner decision 2, P1 spec §3): "off" = no
+nonessential animation, no ambient/idle movement, no decorative pose
+transitions; "reduced" (default) = no continuous/ambient animation,
+instant state/pose changes allowed; "subtle" = opt-in, transitions
+<=300ms, never infinite. The OS prefers-reduced-motion setting always
+overrides any application preference.
 """
 
 import json
@@ -15,7 +22,7 @@ from typing import Any
 TARGET_SIZE_FLOOR = 44
 """Interactive targets >= 44x44 CSS px (WCAG 2.5.5 + Apple HIG)."""
 
-MOTION_FLOOR = "reduced"
+MOTION_FLOOR = "off"
 CONTRAST_FLOOR = "comfortable"
 TEXT_SCALE_FLOOR = 1.0
 DENSITY_FLOOR = "compact"
@@ -95,9 +102,15 @@ class NumberPref:
 
 
 MOTION = EnumPref(
-    key="motion", default="reduced", allowed=("reduced",), floor="reduced",
+    key="motion", default="reduced",
+    allowed=("off", "reduced", "subtle"), floor="off",
     css_var="--pw-motion", data_attr="data-pw-motion",
 )
+MOTION_TIERS: dict[str, dict[str, str]] = {
+    "off":     {"duration": "0ms",   "ambient": "0"},
+    "reduced": {"duration": "0ms",   "ambient": "0"},
+    "subtle":  {"duration": "200ms", "ambient": "1"},
+}
 CONTRAST = EnumPref(
     key="contrast", default="comfortable",
     allowed=("comfortable", "high"), floor="comfortable",
@@ -217,6 +230,9 @@ def prefs_to_css_variables(prefs: dict[str, Any] | None = None) -> dict[str, str
             out[spec.css_var] = spec.format(value)
         else:
             out[spec.css_var] = str(p[key])
+    tier = MOTION_TIERS[p["motion"]]
+    out["--pw-motion-duration"] = tier["duration"]
+    out["--pw-motion-ambient"] = tier["ambient"]
     return out
 
 
@@ -234,21 +250,29 @@ def prefs_to_data_attributes(prefs: dict[str, Any] | None = None) -> dict[str, s
 
 def prefs_style_block(prefs: dict[str, Any] | None = None) -> str:
     """Server-rendered <style id="pw-prefs"> block: CSS custom
-    properties, the OS-level prefers-reduced-motion fallback, and the
-    one consumption rule the prefs own. No JavaScript anywhere."""
+    properties, one keyed rule per motion tier (only the tier matching
+    the effective data-pw-motion attribute applies), and the
+    unconditional OS-level prefers-reduced-motion override, last. No
+    JavaScript anywhere."""
     p = normalize_prefs(prefs)
     variables = prefs_to_css_variables(p)
     lines = "\n".join(f"  {k}: {v};" for k, v in variables.items())
-    motion = p["motion"]
     return (
         '<style id="pw-prefs">\n'
         ":root {\n"
         f"{lines}\n"
         "}\n"
+        '[data-pw-motion="off"] * {'
+        " animation: none !important; transition: none !important; }\n"
+        '[data-pw-motion="reduced"] * {'
+        " animation: none !important;"
+        " transition-duration: 0s !important; }\n"
+        '[data-pw-motion="subtle"] * {'
+        " transition-duration: var(--pw-motion-duration) !important;"
+        " animation-iteration-count: 1 !important; }\n"
         "@media (prefers-reduced-motion: reduce) {\n"
-        "  :root { --pw-motion: reduced; }\n"
+        "  :root { --pw-motion-duration: 0ms; --pw-motion-ambient: 0; }\n"
+        "  * { animation: none !important; transition: none !important; }\n"
         "}\n"
-        f'[data-pw-motion="{motion}"] * '
-        "{ animation: none !important; transition: none !important; }\n"
         "</style>"
     )

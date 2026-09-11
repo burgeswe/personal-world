@@ -1,0 +1,18 @@
+.git
+.venv
+venv
+**/__pycache__
+**/node_modules
+**/dist
+# recursive: a frontend/.env would be read by Vite at build time and
+# inlined into the public bundle — it must never enter the build context
+**/.env
+**/.env.*
+data/
+config/*.local.json
+config/principal.json
+config.local/
+frontend-v2/
+design/exports/
+*.log
+.pytest_cache

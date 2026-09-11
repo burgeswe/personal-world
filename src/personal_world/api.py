@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from . import export, prefs
+from . import sections as sections_mod
 from .app import build_registry, load_world, save_world
 from .chat import chat_once, build_chat_messages
 from .chat_context import build_world_context
@@ -323,6 +324,26 @@ async def require_auth(request: Request) -> None:
 def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> FastAPI:
     data_dir = Path(data_dir or os.environ.get("PW_DATA_DIR", "./data"))
     config_dir = Path(config_dir or os.environ.get("PW_CONFIG_DIR", "./config"))
+    # Serving boundary (P1 T3): "legacy" (default) serves the built-in
+    # HTML pages; "react" serves frontend/dist as an SPA. Dist is never
+    # echoed into a browser response — private paths stay private.
+    frontend_mode = os.environ.get("PW_FRONTEND", "legacy").strip().lower()
+    if frontend_mode not in ("legacy", "react"):
+        frontend_mode = "legacy"
+    frontend_dist = Path(os.environ.get("PW_FRONTEND_DIST") or
+                         (Path(__file__).resolve().parents[2] / "frontend" / "dist"))
+
+    def _spa_index() -> HTMLResponse:
+        index = frontend_dist / "index.html"
+        if index.is_file():
+            return HTMLResponse(index.read_text(encoding="utf-8"),
+                                headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(
+            SPA_NOT_BUILT_HTML,
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
+
     # Identity seam state (issue #8 phase 0/1, per multi-user review
     # 2026-09-09): local users as trust root, PW_IDENTITY_MODE picks
     # single (bootstrap-primary bypass) or multi (hashed-token users).
@@ -350,6 +371,8 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     app.state.identity = {"mode": _identity_mode,
                           "store": _identity_store,
                           "instance_token": _app_instance_token}
+    app.state.frontend_mode = frontend_mode
+    app.state.frontend_dist = frontend_dist
 
     # --- Setup & Login ---
 
@@ -688,6 +711,74 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         uw, _uj = _user_paths(request)
         save_world(world, uw)
         return {"ok": True, "data": data}
+
+    @app.get("/api/prefs/schema", dependencies=[Depends(require_auth)])
+    async def prefs_schema() -> dict:
+        """Read-only preference vocabulary (spec §2.5): the Settings
+        surface can only offer values the server accepts."""
+        out: dict[str, dict] = {}
+        for key, spec in prefs.PREFS.items():
+            if isinstance(spec, prefs.NumberPref):
+                out[key] = {
+                    "type": "number",
+                    "default": spec.default,
+                    "floor": spec.floor,
+                    "allowed": (list(spec.allowed)
+                                if spec.allowed is not None else None),
+                    "integer": spec.integer,
+                    "unit": spec.unit,
+                }
+            else:
+                out[key] = {
+                    "type": "enum",
+                    "default": spec.default,
+                    "floor": spec.floor,
+                    "allowed": list(spec.allowed),
+                }
+        return {"ok": True, "data": out}
+
+    # -- sections: per-person navigation layout (spec §2) ---------------
+    def _sections_payload(world: World, registry: Registry) -> dict:
+        status_map = registry.status_map()
+        stored = world.layout.get(sections_mod.LAYOUT_KEY)
+        return {
+            "ok": True,
+            "data": {
+                "schema": sections_mod.SCHEMA,
+                "sections": sections_mod.resolve_sections(stored, status_map),
+            },
+        }
+
+    @app.get("/api/sections", dependencies=[Depends(require_auth)])
+    async def sections_get(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
+        world, registry, _ = _state_for(request)
+        return _sections_payload(world, registry)
+
+    @app.put("/api/sections", dependencies=[Depends(require_step_up)])
+    async def sections_put(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
+        world, registry, uj = _state_for(request)
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be an object")
+        current = world.layout.get(sections_mod.LAYOUT_KEY) or {}
+        new_layout, errors = sections_mod.validate_layout_update(body, current)
+        if errors:
+            raise HTTPException(status_code=400, detail="; ".join(errors))
+        world.layout[sections_mod.LAYOUT_KEY] = new_layout
+        uw, _uj = _user_paths(request)
+        save_world(world, uw)
+        # Whose state is this? The caller's. The event goes to the
+        # caller's own journal (shared journal in single mode).
+        target = journal if uj == journal.path else Journal(uj)
+        target.record(kind=JournalKind.SETTINGS_CHANGE,
+                      summary="sections layout updated", source="api")
+        return _sections_payload(world, registry)
+
     # -- source_control: native git baseline (zero providers required) --
     def _sc_paths() -> list[str]:
         from .source_control import configured_search_paths
@@ -1332,12 +1423,16 @@ document.getElementById('go').addEventListener('click', async () => {
     @app.get("/setup-wizard", response_class=HTMLResponse)
     async def setup_wizard() -> HTMLResponse:
         """Step-by-step first-run wizard: friendly, low-cognition setup."""
+        if frontend_mode == "react":
+            return _spa_index()
         if (data_dir / "setup-complete").exists():
             return HTMLResponse(status_code=302, headers={"Location": "/"})
         return HTMLResponse(WIZARD_HTML)
 
     @app.get("/setup", response_class=HTMLResponse)
     async def setup_page() -> HTMLResponse:
+        if frontend_mode == "react":
+            return _spa_index()
         if (data_dir / "setup-complete").exists():
             return HTMLResponse(status_code=302, headers={"Location": "/"})
         return HTMLResponse(SETUP_HTML)
@@ -1345,6 +1440,8 @@ document.getElementById('go').addEventListener('click', async () => {
     @app.get("/login", response_class=HTMLResponse)
     async def login_page() -> HTMLResponse:
         """Login page — redirects to dashboard if token is in localStorage."""
+        if frontend_mode == "react":
+            return _spa_index()
         LOGIN_HTML = """<!doctype html>
 <html lang="en">
 <head>
@@ -1403,6 +1500,8 @@ document.getElementById('token').addEventListener('keydown', e => {
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
+        if frontend_mode == "react":
+            return _spa_index()
         # Redirect to setup if first-run not complete
         if not (data_dir / "setup-complete").exists():
             return HTMLResponse(status_code=302, headers={"Location": "/setup"})
@@ -1474,6 +1573,34 @@ document.getElementById('token').addEventListener('keydown', e => {
         return FileResponse(path, media_type=ctype, headers={
             "Cache-Control": "public, max-age=604800, immutable"})
 
+    # SPA fallback: registered LAST (react mode only) so /api/*,
+    # /healthz, /companions/*, /icons/* and /fonts/* keep winning by
+    # registration order. Legacy mode registers nothing; behaviour is
+    # byte-identical to before.
+    if frontend_mode == "react":
+        # Allowlist built once at app start: every file actually in the
+        # dist, keyed by relative POSIX path → resolved absolute Path.
+        # No user-controlled value ever constructs a filesystem path, so
+        # traversal simply misses the dict (CodeQL path-injection fix).
+        _spa_files: dict[str, Path] = {}
+        if frontend_dist.is_dir():
+            for candidate in frontend_dist.rglob("*"):
+                if candidate.is_file():
+                    _spa_files[candidate.relative_to(
+                        frontend_dist).as_posix()] = candidate.resolve()
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            if full_path == "healthz" or full_path.startswith("api/") or full_path == "api":
+                raise HTTPException(status_code=404, detail="not found")
+            allowed = _spa_files.get(full_path)
+            if allowed is not None and allowed.is_file():
+                headers = {}
+                if full_path.startswith("assets/"):
+                    headers["Cache-Control"] = "public, max-age=31536000, immutable"
+                return FileResponse(allowed, headers=headers)
+            return _spa_index()
+
     return app
 
 
@@ -1482,6 +1609,21 @@ document.getElementById('token').addEventListener('keydown', e => {
 # stylesheet's opening tag (that bug orphaned the whole dashboard CSS
 # as visible body text — see the dashboard regression tests).
 PREFS_STYLE_MARKER = "<!--PW-PREFS-STYLE-->"
+
+# 503 body for react mode when the dist directory has no index.html.
+# Static by design: no environment values, no filesystem paths — a
+# private dist path must never be echoed to a browser.
+SPA_NOT_BUILT_HTML = """<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Personal World — interface not built</title></head>
+<body>
+<main id="main-content">
+<h1>Personal World's interface is not built</h1>
+<p>The web interface files were not found. Build the frontend (<code>npm run build</code> in <code>frontend/</code>) or point <code>PW_FRONTEND_DIST</code> at a built <code>dist/</code> directory, then restart.</p>
+<p>The API is still available; nothing else is affected.</p>
+</main>
+</body>
+</html>"""
 DASHBOARD_HTML = """<!doctype html>
 <html lang="en">
 <head>

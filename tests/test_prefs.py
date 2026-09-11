@@ -6,6 +6,7 @@ below 44px; the dashboard applies preferences server-side with zero
 JavaScript.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -65,6 +66,19 @@ class TestFloorEnforcement:
         w = World()
         with pytest.raises(prefs.PrefsValueError, match="motion"):
             prefs.set_prefs(w, {"motion": "full"})
+
+    def test_motion_off_accepted(self):
+        w = World()
+        data = prefs.set_prefs(w, {"motion": "off"})
+        assert data["motion"] == "off"
+
+    def test_motion_subtle_accepted(self):
+        w = World()
+        data = prefs.set_prefs(w, {"motion": "subtle"})
+        assert data["motion"] == "subtle"
+
+    def test_default_motion_reduced(self):
+        assert prefs.normalize_prefs({})["motion"] == "reduced"
 
     def test_motion_reduced_accepted(self):
         w = World()
@@ -200,6 +214,68 @@ class TestStyleBlock:
         assert prefs.prefs_style_block({}).startswith('<style id="pw-prefs">')
 
 
+class TestMotionTiers:
+    """Motion vocabulary off|reduced|subtle with tiered CSS emission
+    (P1 spec §3): keyed per-tier rules plus the unconditional OS
+    override, last."""
+
+    @pytest.mark.parametrize("motion,duration,ambient", [
+        ("off", "0ms", "0"),
+        ("reduced", "0ms", "0"),
+        ("subtle", "200ms", "1"),
+    ])
+    def test_css_variables_per_tier(self, motion, duration, ambient):
+        css = prefs.prefs_to_css_variables({"motion": motion})
+        assert css["--pw-motion"] == motion
+        assert css["--pw-motion-duration"] == duration
+        assert css["--pw-motion-ambient"] == ambient
+
+    def test_style_block_contains_all_three_tier_rules(self):
+        block = prefs.prefs_style_block({})
+        for tier in ("off", "reduced", "subtle"):
+            assert f'[data-pw-motion="{tier}"] *' in block
+
+    def test_os_media_query_is_unconditional_and_last(self):
+        block = prefs.prefs_style_block({"motion": "subtle"})
+        media_at = block.index("@media (prefers-reduced-motion: reduce)")
+        subtle_at = block.index('[data-pw-motion="subtle"] *')
+        assert subtle_at < media_at
+        assert media_at > block.index('[data-pw-motion="reduced"] *')
+        assert block.rstrip().endswith("</style>")
+        assert "--pw-motion-duration: 0ms" in block[media_at:]
+        assert "--pw-motion-ambient: 0" in block[media_at:]
+
+    def test_subtle_rule_bounded_and_never_infinite(self):
+        block = prefs.prefs_style_block({"motion": "subtle"})
+        subtle = block[
+            block.index('[data-pw-motion="subtle"] *'):block.index(
+                "@media (prefers-reduced-motion: reduce)")
+        ]
+        assert "infinite" not in subtle
+        durations = re.findall(r"(\d+)ms", subtle)
+        assert all(int(d) <= 300 for d in durations)
+        assert "var(--pw-motion-duration)" in subtle
+        assert "animation-iteration-count: 1" in subtle
+
+    def test_whole_block_no_duration_over_300ms_and_no_infinite(self):
+        block = prefs.prefs_style_block({"motion": "subtle"})
+        assert "infinite" not in block
+        assert all(int(d) <= 300 for d in re.findall(r"(\d+)ms", block))
+
+    def test_off_rule_disables_transitions_reduced_zeros_them(self):
+        block = prefs.prefs_style_block({})
+        off = block[
+            block.index('[data-pw-motion="off"] *'):block.index(
+                '[data-pw-motion="reduced"] *')
+        ]
+        assert "transition: none !important" in off
+        reduced = block[
+            block.index('[data-pw-motion="reduced"] *'):block.index(
+                '[data-pw-motion="subtle"] *')
+        ]
+        assert "transition-duration: 0s !important" in reduced
+
+
 class TestApiPrefs:
     """GET/PUT /api/prefs follow the existing envelope conventions."""
 
@@ -240,6 +316,12 @@ class TestApiPrefs:
         r = client.put("/api/prefs", json={"motion": "full"})
         assert r.status_code == 400
         assert "motion" in r.json()["detail"]
+
+    @pytest.mark.parametrize("value", ["subtle", "off"])
+    def test_put_motion_tier_accepted_with_200(self, client, value):
+        r = client.put("/api/prefs", json={"motion": value})
+        assert r.status_code == 200
+        assert r.json()["data"]["motion"] == value
 
     def test_put_rejects_unknown_key_with_400(self, client):
         r = client.put("/api/prefs", json={"hue": "neon"})

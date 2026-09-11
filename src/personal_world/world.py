@@ -50,6 +50,9 @@ class World:
         self.providers: dict[str, list[model.Provider]] = {}
         self.packs: dict[str, Pack] = {}
         self.accessibility: dict[str, Any] = model.Accessibility().model_dump()
+        # Per-person presentation layout (sections order/hidden). World-
+        # classified private runtime state; additive, schema unchanged.
+        self.layout: dict[str, Any] = {}
 
     # -- facts -----------------------------------------------------------
     def record_fact(self, fact: Fact) -> Fact:

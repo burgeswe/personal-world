@@ -135,6 +135,7 @@ def world_export(world: World) -> dict[str, Any]:
         },
         "packs": [pack.key for pack in world.packs.values()],
         "accessibility": dict(world.accessibility),
+        "layout": dict(world.layout),
     }
 
 

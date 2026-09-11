@@ -92,6 +92,7 @@ def save_world(world: World, path: Path) -> None:
         },
         "packs": {k: p.model_dump(mode="json") for k, p in world.packs.items()},
         "accessibility": world.accessibility,
+        "layout": world.layout,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2))
@@ -125,6 +126,8 @@ def load_world(path: Path) -> World:
         world.packs[k] = Pack.model_validate(v)
     if payload.get("accessibility"):
         world.accessibility = payload["accessibility"]
+    if payload.get("layout"):
+        world.layout = payload["layout"]
     return world
 
 
