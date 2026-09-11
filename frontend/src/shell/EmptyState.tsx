@@ -37,10 +37,22 @@ export interface EmptyStateProps {
   knob: string;
   /** Canonical status from status.py, or null when not yet known. */
   status?: CanonicalStatus | null;
+  /** Heading level for the state title: 2 (default) beside an existing
+   *  page h1; 1 when this state carries the page's only heading
+   *  (A11y §4.1: one h1 per page, no skipped levels). */
+  headingLevel?: 1 | 2;
   className?: string;
 }
 
-export function EmptyState({ title, capability, knob, status = null, className }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  capability,
+  knob,
+  status = null,
+  headingLevel = 2,
+  className,
+}: EmptyStateProps) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
     <section
       className={cn("pw-state", className)}
@@ -52,7 +64,7 @@ export function EmptyState({ title, capability, knob, status = null, className }
           sentence names WHY it matters, the knob names WHAT to do
           next. Chip sits with the capability sentence as one flow;
           the knob is the closing next-action line. */}
-      <h2 id="pw-state-title">{title}</h2>
+      <Heading id="pw-state-title">{title}</Heading>
       {status ? <StatusChip status={status} /> : null}
       <p className="pw-state-summary">
         {capability}

@@ -100,9 +100,9 @@ export default function LabScreen() {
     const error = (lab.error ?? health.error) as Error | null;
     return (
       <div data-pw-lab="error">
-        <h1 id="lab-heading">Lab</h1>
         <ErrorState
           title="Lab"
+          headingLevel={1}
           failed="could not load the lab operator table"
           detail={error instanceof Error ? error.message : null}
           onRetry={() => {
@@ -124,17 +124,18 @@ export default function LabScreen() {
   // capability (registry.observe: "no provider for capability").
   // Mirror its language and name the PW_LAB_CLI knob. A present-but-
   // failing CLI is `unavailable` — the server's warning is the detail.
-  // The wrapper is a div: EmptyState/ErrorState carry the region.
+  // The wrapper is a div: EmptyState/ErrorState carry the region and
+  // (headingLevel 1) the page's single h1 — never a stacked duplicate.
   if (!state || state.ok === false) {
     const status = asCanonicalStatus(state?.status ?? "not_configured");
     const absent =
       status === "not_configured" || status === "disabled" || !state;
     return (
       <div data-pw-lab="absent">
-        <h1 id="lab-heading">Lab</h1>
         {absent ? (
           <EmptyState
             title="Lab"
+            headingLevel={1}
             capability="Lab watches the health of your homelab services."
             knob="Lab provider not configured — set the lab command-line path (PW_LAB_CLI) in your server settings to enable this section."
             status={status}
@@ -142,6 +143,7 @@ export default function LabScreen() {
         ) : (
           <ErrorState
             title="Lab"
+            headingLevel={1}
             failed="the lab command-line could not be reached"
             detail={state?.warnings?.[0] ?? null}
             onRetry={() => {
@@ -162,9 +164,9 @@ export default function LabScreen() {
   if (!stateData || !Array.isArray(stateData.rows)) {
     return (
       <div data-pw-lab="unknown">
-        <h1 id="lab-heading">Lab</h1>
         <EmptyState
           title="Lab"
+          headingLevel={1}
           capability="Lab watches the health of your homelab services."
           knob="Lab provider not configured — set the lab command-line path (PW_LAB_CLI) in your server settings to enable this section."
           status="unknown"

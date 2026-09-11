@@ -176,6 +176,7 @@ function VaultScreen() {
       <div>
         <ErrorState
           title="Vault"
+          headingLevel={1}
           failed="could not reach the vault"
           detail={status.error instanceof ApiError ? status.error.detail : null}
           onRetry={() => void status.refetch()}
