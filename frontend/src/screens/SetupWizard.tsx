@@ -1,18 +1,64 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchSetupStatus, postSetup } from "../lib/api";
-import { Card, CardContent } from "../components/ui/card";
+import {
+  fetchSetupStatus,
+  postSetup,
+  savePrefs,
+  saveWorldFact,
+  getAuthToken,
+  ApiError,
+} from "../lib/api";
+import { COMPANIONS } from "../lib/companion-context";
 import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { Loader2, Check, ChevronLeft, ChevronRight, Sparkles } from "../lib/icons";
+import { Check, Sparkles } from "../lib/icons";
+import "./setup-wizard.css";
 
-const COMPANIONS = [
-  { id: "personal-world", name: "World Keeper", icon: "/companions/personal-world.svg" },
-  { id: "mermaid", name: "Mermaid", icon: "/companions/mermaid.svg" },
-  { id: "robot", name: "Robot", icon: "/companions/robot.svg" },
-  { id: "squirrel", name: "Tree Squirrel", icon: "/companions/world-tree-squirrel.svg" },
-  { id: "tacos", name: "Taco Truck", icon: "/companions/taco-news-truck.svg" },
-];
+/**
+ * SetupWizard (P1 T12, FOUNDATION-SPEC §5 shell row + §7 row 8): ONE
+ * first-run flow, a separate page that is not a main-navigation
+ * destination. Steps, mirroring the legacy wizard (api.py WIZARD_HTML):
+ *   1. world name (a fact, default "My Personal World")
+ *   2. companion choice (saved as the companion pref)
+ *   3. login token (≥8 chars, generated option, shown once)
+ *   4. optional vault passphrase (skip is fine)
+ *   5. summary → finish: POST /api/setup, PUT companion pref,
+ *      POST /api/world/fact {"key": "world.name", …}, then sign in.
+ *
+ * Fresh-install deep-link (row 8): GET /api/setup/status says whether
+ * setup is already complete; a completed install is told honestly and
+ * deep-linked to /login instead of silently re-running setup.
+ *
+ * Honesty: the completion state names exactly what was configured
+ * (token set / vault initialized / name saved), including partial
+ * success — a failed companion-pref write never blocks signing in.
+ * The token is displayed ONCE (it is the person's only copy) and
+ * stored to pw_token by the login path, not stored behind their back.
+ */
+
+const WORLD_NAME_FACT_KEY = "world.name";
+const DEFAULT_WORLD_NAME = "My Personal World";
+const COMPANION_IDS = Object.keys(COMPANIONS);
+
+const COMPANION_CHOICES = COMPANION_IDS.map((id) => ({
+  id,
+  name: COMPANIONS[id].name,
+  icon: COMPANIONS[id].icon,
+}));
+
+function generateToken(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.";
+  let result = "";
+  const values = crypto.getRandomValues(new Uint32Array(32));
+  for (let i = 0; i < 32; i++) result += chars.charAt(values[i] % chars.length);
+  return result;
+}
+
+type Completion = {
+  tokenSet: boolean;
+  vaultInitialized: boolean;
+  nameSaved: boolean;
+  companionSaved: boolean;
+};
 
 function SetupWizard() {
   const navigate = useNavigate();
@@ -21,123 +67,302 @@ function SetupWizard() {
   const [companion, setCompanion] = useState("personal-world");
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
+  const [vaultPass, setVaultPass] = useState("");
+  const [vaultPass2, setVaultPass2] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alreadySetup, setAlreadySetup] = useState(false);
+  const [completion, setCompletion] = useState<Completion | null>(null);
 
   useEffect(() => {
     fetchSetupStatus()
       .then((d) => {
-        const complete =
-          typeof d === "object" && d !== null && "complete" in d
-            ? Boolean((d as { complete: unknown }).complete)
-            : false;
-        if (complete) setAlreadySetup(true);
+        if (d && typeof d === "object" && "complete" in d) {
+          setAlreadySetup(Boolean((d as { complete: unknown }).complete));
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Server unreachable: the wizard still renders — setup POST is
+        // the real gate, this check is only the deep-link hint.
+      });
   }, []);
 
-  const selectedCompanion = COMPANIONS.find((c) => c.id === companion);
-
-  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text).catch(() => {}); };
-
-  const generateToken = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.";
-    let result = "";
-    for (let i = 0; i < 32; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    setToken(result);
-  };
+  const selectedCompanion = COMPANION_CHOICES.find((c) => c.id === companion);
 
   const handleFinish = async () => {
     setIsSaving(true);
     setError(null);
+    const worldName = name.trim() || DEFAULT_WORLD_NAME;
+    const result: Completion = {
+      tokenSet: false,
+      vaultInitialized: false,
+      nameSaved: false,
+      companionSaved: false,
+    };
     try {
-      await postSetup({ token: token || "", companion });
-      localStorage.setItem("pw_token", token);
-      setStep(5);
+      const setup = await postSetup({
+        token,
+        companion,
+        ...(vaultPass ? { vault_passphrase: vaultPass } : {}),
+      });
+      result.tokenSet = setup.token_set !== false;
+      result.vaultInitialized = Boolean(setup.vault_initialized);
+    } catch (e) {
+      setError(
+        e instanceof ApiError && e.detail
+          ? `Setup failed: ${e.detail}`
+          : "Setup failed. Check the server and try again."
+      );
+      setIsSaving(false);
+      return;
+    }
+    // Sign in immediately so the follow-up writes are authenticated.
+    localStorage.setItem("pw_token", token);
+    try {
+      await savePrefs({
+        motion: "reduced",
+        contrast: "comfortable",
+        text_scale: 1,
+        density: "comfortable",
+        target_size: 44,
+        companion,
+        accent: "world-keeper",
+      });
+      result.companionSaved = true;
     } catch {
-      setError("Setup failed. Check the server and try again.");
-    } finally { setIsSaving(false); }
+      // Companion pref is cosmetic; never blocks setup.
+    }
+    try {
+      await saveWorldFact(WORLD_NAME_FACT_KEY, worldName);
+      result.nameSaved = true;
+    } catch {
+      // Name can be set again later; the world still works.
+    }
+    setCompletion(result);
+    setIsSaving(false);
+    setStep(5);
   };
 
   if (alreadySetup) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--pw-color-surface-canvas)] p-4">
-        <Card className="w-full max-w-lg"><CardContent className="p-6 text-center">
-          <img src="/companions/personal-world.svg" alt="" className="mx-auto mb-3 h-12 w-12" />
-          <h1 className="text-2xl font-bold text-[var(--pw-color-accent-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>Your Personal World is already set up!</h1>
-          <p className="mt-2 text-[var(--pw-color-text-muted)]">Redirecting to dashboard…</p>
-          <Button onClick={() => navigate("/")} className="mt-4">Go to Dashboard</Button>
-        </CardContent></Card>
-      </div>
+      <section aria-labelledby="setup-done-heading" className="pw-setup">
+        <div className="pw-setup-card">
+          <h1 id="setup-done-heading">Your Personal World is already set up</h1>
+          <p>
+            This world has been configured before. Open it with your access
+            code on the sign-in page.
+          </p>
+          <Button onClick={() => navigate("/login")}>Go to sign in</Button>
+        </div>
+      </section>
     );
   }
 
+  const canFinish = token.length >= 8 && (!vaultPass || vaultPass === vaultPass2);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--pw-color-surface-canvas)] p-4">
-      <Card className="w-full max-w-lg"><CardContent className="p-6">
-        <div className="mb-6 text-center">
-          <img src="/companions/personal-world.svg" alt="" className="mx-auto mb-3 h-12 w-12" />
-          <h1 className="text-2xl font-bold text-[var(--pw-color-accent-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>Welcome to your Personal World</h1>
-          <p className="mt-1 text-sm text-[var(--pw-color-text-muted)]">Step {step} of 4</p>
-        </div>
+    <section aria-labelledby="setup-heading" className="pw-setup">
+      <div className="pw-setup-card">
+        <h1 id="setup-heading">Welcome to your Personal World</h1>
+        <p className="pw-setup-step-label" aria-live="polite">
+          Step {step} of 5
+        </p>
 
-        {step === 1 && <div className="space-y-4">
-          <p className="text-[var(--pw-color-text-primary)]">What would you like to call this world?</p>
-          <p className="text-xs text-[var(--pw-color-text-muted)]">A friendly name you can change later.</p>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Personal World" maxLength={60} className="w-full rounded-xl border-2 border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-canvas)] px-4 py-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
-        </div>}
-
-        {step === 2 && <div className="space-y-4">
-          <p className="text-[var(--pw-color-text-primary)]">Pick your companion.</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {COMPANIONS.map((c) => (
-              <button key={c.id} onClick={() => setCompanion(c.id)} className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-colors ${companion === c.id ? "border-[var(--pw-color-accent-primary)] bg-[var(--pw-color-accent-primary)]/5" : "border-[var(--pw-color-border-subtle)] hover:border-[var(--pw-color-accent-primary)]/50"}`}>
-                <img src={c.icon} alt="" className="h-10 w-10" />
-                <span className="text-xs text-[var(--pw-color-text-primary)]">{c.name}</span>
-                {companion === c.id && <Badge variant="default" className="text-[10px]">Selected</Badge>}
-              </button>
-            ))}
+        {step === 1 && (
+          <div className="pw-setup-step">
+            <p className="pw-setup-question">What would you like to call this world?</p>
+            <p className="pw-setup-hint">
+              A friendly name you can change later. Leave it blank and we'll
+              use “{DEFAULT_WORLD_NAME}”.
+            </p>
+            <label htmlFor="setup-name">World name</label>
+            <input
+              id="setup-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={DEFAULT_WORLD_NAME}
+              maxLength={60}
+            />
           </div>
-        </div>}
+        )}
 
-        {step === 3 && <div className="space-y-4">
-          <p className="text-[var(--pw-color-text-primary)]">Choose your login token.</p>
-          <p className="text-xs text-[var(--pw-color-text-muted)]">Generate a strong one and save it somewhere safe.</p>
-          <div className="relative">
-            <input type={showToken ? "text" : "password"} value={token} onChange={(e) => setToken(e.target.value)} placeholder="Enter or generate a token" className="w-full rounded-xl border-2 border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-canvas)] px-4 py-3 pr-20 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
-            <button onClick={() => setShowToken(!showToken)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]">{showToken ? "Hide" : "Show"}</button>
+        {step === 2 && (
+          <div className="pw-setup-step">
+            <p className="pw-setup-question">Pick your companion.</p>
+            <p className="pw-setup-hint">
+              A little face that lives in your world with you. You can change
+              it any time in Settings.
+            </p>
+            <div className="pw-setup-companions" role="radiogroup" aria-label="Companion">
+              {COMPANION_CHOICES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={companion === c.id}
+                  onClick={() => setCompanion(c.id)}
+                  className={`pw-setup-comp-btn${companion === c.id ? " selected" : ""}`}
+                >
+                  <img src={c.icon} alt="" aria-hidden="true" />
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <Button variant="outline" onClick={generateToken} className="w-full"><Sparkles className="mr-2 h-4 w-4" /> Generate Strong Token</Button>
-          {token && <div className="rounded-lg bg-[var(--pw-color-surface-elevated)] p-3">
-            <p className="text-xs text-[var(--pw-color-text-muted)]">Your token:</p>
-            <p className="mt-1 break-all font-mono text-sm text-[var(--pw-color-accent-primary)]">{token}</p>
-            <Button variant="outline" size="sm" onClick={() => copyToClipboard(token)} className="mt-2">Copy to Clipboard</Button>
-          </div>}
-        </div>}
+        )}
 
-        {step === 4 && <div className="space-y-4">
-          <p className="text-[var(--pw-color-text-primary)]">You're all set!</p>
-          <div className="space-y-2 rounded-xl bg-[var(--pw-color-surface-elevated)] p-4">
-            <div className="flex justify-between text-sm"><span className="text-[var(--pw-color-text-muted)]">World name</span><span className="text-[var(--pw-color-text-primary)]">{name || "My Personal World"}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-[var(--pw-color-text-muted)]">Companion</span><span className="text-[var(--pw-color-text-primary)]">{selectedCompanion?.name}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-[var(--pw-color-text-muted)]">Token</span><span className="font-mono text-[var(--pw-color-accent-primary)]">{token ? "••••••••" : "None set"}</span></div>
+        {step === 3 && (
+          <div className="pw-setup-step">
+            <p className="pw-setup-question">Choose your login token.</p>
+            <p className="pw-setup-hint">
+              This is the access code for your world — at least 8 characters.
+              Generate a strong one and save it somewhere safe, like a
+              password manager. It is shown once here.
+            </p>
+            <label htmlFor="setup-token">Login token</label>
+            <input
+              id="setup-token"
+              type={showToken ? "text" : "password"}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              autoComplete="new-password"
+            />
+            <div className="pw-setup-token-actions">
+              <Button variant="outline" onClick={() => setToken(generateToken())}>
+                <Sparkles aria-hidden={true} /> Generate strong token
+              </Button>
+              <Button variant="outline" onClick={() => setShowToken(!showToken)}>
+                {showToken ? "Hide" : "Show"}
+              </Button>
+            </div>
+            {token && token.length < 8 ? (
+              <p className="pw-setup-warning" role="alert">
+                At least 8 characters, or press Generate.
+              </p>
+            ) : null}
           </div>
-          {error && <p className="text-xs text-[var(--pw-color-text-primary)]">{error}</p>}
-        </div>}
+        )}
 
-        {step === 5 && <div className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--pw-color-accent-secondary)]/10"><Check className="h-8 w-8 text-[var(--pw-color-accent-secondary)]" /></div>
-          <p className="text-[var(--pw-color-text-primary)]">Your Personal World is ready!</p>
-          <Button onClick={() => navigate("/")} className="w-full">Go to Dashboard</Button>
-        </div>}
+        {step === 4 && (
+          <div className="pw-setup-step">
+            <p className="pw-setup-question">Optional: vault passphrase.</p>
+            <p className="pw-setup-hint">
+              The vault keeps secrets encrypted. A passphrase here works like
+              a second key — you'd use it every time you open the vault.
+              Totally fine to skip this now and add it later in Settings.
+            </p>
+            <label htmlFor="setup-vault1">Vault passphrase (optional)</label>
+            <input
+              id="setup-vault1"
+              type="password"
+              value={vaultPass}
+              onChange={(e) => setVaultPass(e.target.value)}
+              autoComplete="new-password"
+            />
+            <label htmlFor="setup-vault2">Confirm</label>
+            <input
+              id="setup-vault2"
+              type="password"
+              value={vaultPass2}
+              onChange={(e) => setVaultPass2(e.target.value)}
+              autoComplete="new-password"
+            />
+            {vaultPass && vaultPass2 && vaultPass !== vaultPass2 ? (
+              <p className="pw-setup-warning" role="alert">
+                Passphrases do not match.
+              </p>
+            ) : null}
+          </div>
+        )}
 
-        {step < 5 && <div className="mt-6 flex gap-3">
-          {step > 1 && <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1"><ChevronLeft className="mr-1 h-4 w-4" /> Back</Button>}
-          {step < 4 ? <Button onClick={() => setStep(step + 1)} className="flex-1">Next <ChevronRight className="ml-1 h-4 w-4" /></Button> : <Button onClick={handleFinish} disabled={isSaving} className="flex-1">{isSaving ? <Loader2 className="h-4 w-4 loader-static" /> : "Finish Setup"}</Button>}
-        </div>}
-      </CardContent></Card>
-    </div>
+        {step === 4 && (
+          <div className="pw-setup-summary" aria-label="Setup summary">
+            <div className="pw-setup-summary-row">
+              <span>World name</span>
+              <span>{name.trim() || DEFAULT_WORLD_NAME}</span>
+            </div>
+            <div className="pw-setup-summary-row">
+              <span>Companion</span>
+              <span>{selectedCompanion?.name ?? companion}</span>
+            </div>
+            <div className="pw-setup-summary-row">
+              <span>Login token</span>
+              <span>{token ? `${token.length} characters` : "None set"}</span>
+            </div>
+            <div className="pw-setup-summary-row">
+              <span>Vault passphrase</span>
+              <span>{vaultPass ? "set" : "skipped for now"}</span>
+            </div>
+          </div>
+        )}
+
+        {step === 5 && completion && (
+          <div className="pw-setup-step pw-setup-done">
+            <Check aria-hidden={true} />
+            <p>Your world is ready. Opening sign-in…</p>
+            <ul className="pw-setup-completion">
+              <li>{completion.tokenSet ? "Access code set" : "Access code NOT set"}</li>
+              <li>
+                {completion.vaultInitialized
+                  ? "Vault initialized with your passphrase"
+                  : "Vault left locked for later"}
+              </li>
+              <li>
+                {completion.nameSaved
+                  ? "World name saved"
+                  : "World name could not be saved — set it again in Settings"}
+              </li>
+              <li>
+                {completion.companionSaved
+                  ? "Companion saved"
+                  : "Companion will use the default for now"}
+              </li>
+            </ul>
+            <Button
+              onClick={() => {
+                // The token is already the person's (stored at finish);
+                // the login deep-link lands on an authenticated /.
+                if (getAuthToken()) navigate("/", { replace: true });
+                else navigate("/login");
+              }}
+            >
+              Open your world
+            </Button>
+          </div>
+        )}
+
+        {error ? (
+          <p className="pw-setup-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {step < 5 && (
+          <div className="pw-setup-nav">
+            {step > 1 ? (
+              <Button variant="outline" onClick={() => setStep(step - 1)}>
+                Back
+              </Button>
+            ) : (
+              <span />
+            )}
+            {step < 4 ? (
+              <Button
+                onClick={() => setStep(step + 1)}
+                disabled={step === 3 && token.length < 8}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button onClick={() => void handleFinish()} disabled={!canFinish || isSaving}>
+                {isSaving ? "Setting up your world…" : "Finish setup"}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

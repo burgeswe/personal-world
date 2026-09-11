@@ -1,0 +1,179 @@
+/* SetupWizard styles (P1 T12). Component-scoped; token vars only;
+   44px targets (A11y §2.1); the companion artwork is decorative
+   (aria-hidden in markup, A11y §7.2). */
+
+.pw-setup {
+  display: flex;
+  justify-content: center;
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+}
+
+.pw-setup-card {
+  width: 100%;
+  max-width: 32rem;
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--pw-color-surface-panel);
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-loose);
+}
+
+.pw-setup-card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.4rem;
+}
+
+.pw-setup-step-label {
+  margin: 0;
+  text-align: center;
+  color: var(--pw-color-text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.pw-setup-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+}
+
+.pw-setup-question {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-setup-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--pw-color-text-muted);
+}
+
+.pw-setup label {
+  font-weight: 600;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-setup input {
+  min-height: var(--pw-target-minimum);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--pw-color-surface-canvas);
+  color: var(--pw-color-text-primary);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  font-size: 1rem;
+}
+.pw-setup input:focus-visible {
+  outline: var(--pw-focus-ring);
+  outline-offset: 2px;
+}
+
+.pw-setup-companions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--pw-spacing-normal);
+}
+.pw-setup-comp-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pw-spacing-compact);
+  min-height: var(--pw-target-large);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-compact);
+  border: 2px solid var(--pw-color-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--pw-color-surface-canvas);
+  color: var(--pw-color-text-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pw-setup-comp-btn img {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.pw-setup-comp-btn.selected {
+  border-color: var(--pw-color-accent-primary);
+}
+.pw-setup-comp-btn:focus-visible {
+  outline: var(--pw-focus-ring);
+  outline-offset: 2px;
+}
+
+.pw-setup-token-actions {
+  display: flex;
+  gap: var(--pw-spacing-compact);
+  flex-wrap: wrap;
+}
+
+.pw-setup-warning,
+.pw-setup-error {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+  font-size: 0.9rem;
+}
+
+.pw-setup-summary {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--pw-color-surface-canvas);
+}
+.pw-setup-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pw-spacing-loose);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  border-bottom: 1px solid var(--pw-color-border-subtle);
+  font-size: 0.95rem;
+  color: var(--pw-color-text-primary);
+}
+.pw-setup-summary-row:last-child {
+  border-bottom: none;
+}
+.pw-setup-summary-row > span:first-child {
+  color: var(--pw-color-text-muted);
+}
+
+.pw-setup-done {
+  align-items: center;
+  text-align: center;
+}
+.pw-setup-done svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--pw-color-accent-primary);
+}
+.pw-setup-done p {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+}
+.pw-setup-completion {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-compact);
+  color: var(--pw-color-text-secondary);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.pw-setup-error {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+  font-size: 0.9rem;
+}
+
+.pw-setup-nav {
+  display: flex;
+  gap: var(--pw-spacing-normal);
+}
+.pw-setup-nav > * {
+  flex: 1 1 0;
+}

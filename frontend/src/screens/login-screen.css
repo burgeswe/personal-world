@@ -1,0 +1,82 @@
+/* LoginScreen styles (P1 T12). Component-scoped: shared index.css
+   blocks are not this task's surface. Token vars only; 44px targets
+   (A11y §2.1); focus ring from the token layer (A11y §2.4). */
+
+.pw-login {
+  max-width: 24rem;
+  margin: 0 auto;
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-loose);
+}
+
+.pw-login h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.pw-login-lede {
+  margin: 0;
+  text-align: center;
+  color: var(--pw-color-text-muted);
+}
+
+.pw-login form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+}
+
+.pw-login label {
+  font-weight: 600;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-login input {
+  min-height: var(--pw-target-minimum);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--pw-color-surface-panel);
+  color: var(--pw-color-text-primary);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  font-size: 1rem;
+}
+.pw-login input:focus-visible {
+  outline: var(--pw-focus-ring);
+  outline-offset: 2px;
+}
+
+.pw-login-submit {
+  min-height: var(--pw-target-minimum);
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--pw-color-accent-primary);
+  color: var(--pw-color-surface-canvas);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.pw-login-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.pw-login-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pw-login-error {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-login-alt {
+  margin: 0;
+  text-align: center;
+  color: var(--pw-color-text-secondary);
+  font-size: 0.9rem;
+}
+.pw-login-alt a {
+  color: var(--pw-color-accent-primary);
+}
