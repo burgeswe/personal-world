@@ -6,9 +6,9 @@ import { useAnnounce } from "../primitives/LiveRegion";
 import { useStepUp } from "../primitives/StepUpPrompt";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
 import { StatusChip, type CanonicalStatus } from "../primitives/StatusChip";
+import { CompanionSlot } from "../primitives/CompanionSlot";
 import { ErrorState } from "../shell/ErrorState";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Loader2, AlertCircle, BookOpen, Plus } from "../lib/icons";
 
 /**
@@ -28,6 +28,14 @@ import { Loader2, AlertCircle, BookOpen, Plus } from "../lib/icons";
  * The shell owns <main#main-content> — this screen renders bare inside
  * it. Dates render from the host (toLocaleDateString); no hard-coded
  * version/timezone/host strings anywhere (row 15).
+ *
+ * Composition (T14 warmth, DESIGN-HANDOFF N.7/N.8): no Card chrome —
+ * sections are real <h2> headings (A11y §4.1) separated by quiet
+ * --pw-color-border-subtle dividers, a time-of-day greeting with the
+ * decorative 48px greeting-area companion (COMPANION_INTEGRATION
+ * "Inline"), and the healthy/not-yet-connected capability majority
+ * collapsed behind one honest count line (Finish Line: "healthy
+ * systems stay quiet") — never removed from the DOM.
  */
 
 /** "chat exchange with …" is humanized like the legacy journal (api.py
@@ -70,6 +78,49 @@ function asCanonicalStatus(status: string): CanonicalStatus | null {
     : null;
 }
 
+/** Time-of-day greeting (design/screens greeting-block pattern). No
+ * name is fabricated: no personal-name field is sent to this screen,
+ * so the greeting stays generic and honest. */
+function greetingForNow(now: Date): string {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return "Good morning.";
+  if (hour >= 12 && hour < 18) return "Good afternoon.";
+  return "Good evening.";
+}
+
+function localIsoDate(now: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** The greeting area: warm greeting + decorative 48px companion
+ * (COMPANION_INTEGRATION "Inline" — aria-hidden artwork, never a
+ * second trigger), the h1, and the host-local date (no hard-coded
+ * locale/timezone, same toLocale* pattern as eventTime). */
+function TodayHeading() {
+  const now = new Date();
+  return (
+    <div className="space-y-2">
+      <p className="flex items-center gap-[var(--pw-spacing-loose)] text-lg text-[var(--pw-color-text-secondary)]">
+        <CompanionSlot size="inline" />
+        {greetingForNow(now)}
+      </p>
+      <h1
+        id="today-health-heading"
+        className="text-3xl font-bold"
+        style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+      >
+        Today
+      </h1>
+      <p className="text-sm text-[var(--pw-color-text-muted)]">
+        <time dateTime={localIsoDate(now)}>
+          {now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+        </time>
+      </p>
+    </div>
+  );
+}
+
 function TodayScreen() {
   const daily = useDaily();
   const journal = useJournalPage(20);
@@ -103,10 +154,8 @@ type DailyState = ReturnType<typeof useDaily>;
 function HealthSection({ daily }: { daily: DailyState }) {
   if (daily.isLoading) {
     return (
-      <section aria-labelledby="today-health-heading" className="space-y-2">
-        <h1 id="today-health-heading" className="text-3xl font-bold" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>
-          Today
-        </h1>
+      <section aria-labelledby="today-health-heading" className="space-y-3">
+        <TodayHeading />
         <p className="flex items-center gap-2 text-[var(--pw-color-text-muted)]">
           <Loader2 size={16} aria-hidden={true} className="loader-static" />
           Checking your world…
@@ -128,10 +177,8 @@ function HealthSection({ daily }: { daily: DailyState }) {
   if (!result) return null;
   if (!result.ok) {
     return (
-      <section aria-labelledby="today-health-heading" className="space-y-2">
-        <h1 id="today-health-heading" className="text-3xl font-bold" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>
-          Today
-        </h1>
+      <section aria-labelledby="today-health-heading" className="space-y-3">
+        <TodayHeading />
         <p className="text-[var(--pw-color-text-primary)]">
           Some current details are unavailable. Your journal and saved world are still here.
         </p>
@@ -150,6 +197,12 @@ function HealthSection({ daily }: { daily: DailyState }) {
   let sentence: string;
   if (caps.length === 0) {
     sentence = "Your world is ready. Nothing is connected yet.";
+  } else if (vacant === caps.length) {
+    // A fresh install where nothing is connected is a valid, non-error
+    // state (NATIVE-BASELINE-AND-ENRICHMENT) — it is "ready", not "0
+    // are healthy".
+    sentence =
+      "Your world is ready. Nothing is connected yet — capabilities will show up here as you add them.";
   } else if (actionable > 0) {
     sentence =
       `${actionable} ${actionable === 1 ? "thing needs" : "things need"} a look. ` +
@@ -166,14 +219,8 @@ function HealthSection({ daily }: { daily: DailyState }) {
   }
 
   return (
-    <section aria-labelledby="today-health-heading" className="space-y-2">
-      <h1
-        id="today-health-heading"
-        className="text-3xl font-bold"
-        style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
-      >
-        Today
-      </h1>
+    <section aria-labelledby="today-health-heading" className="space-y-3">
+      <TodayHeading />
       <p className="text-lg text-[var(--pw-color-text-primary)]">{sentence}</p>
     </section>
   );
@@ -185,44 +232,58 @@ function AttentionSection({ daily }: { daily: DailyState }) {
   if (daily.isLoading || daily.isError || !daily.data?.ok) return null;
   const items = daily.data.data?.attention ?? [];
   return (
-    <section aria-labelledby="today-attention-heading">
-      <Card>
-        <CardHeader>
-          <CardTitle id="today-attention-heading" className="flex items-center gap-2">
-            <AlertCircle size={18} aria-hidden={true} />
-            Attention
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {items.length === 0 ? (
-            <p className="text-[var(--pw-color-text-secondary)]">
-              Nothing needs your attention.
-            </p>
-          ) : (
-            <ul className="space-y-2" role="list">
-              {items.slice(0, 5).map((item, i) => (
-                <li key={`${i}-${item}`} className="text-[var(--pw-color-text-primary)]">
-                  {humanizeAttention(item)}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+    <section
+      aria-labelledby="today-attention-heading"
+      className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+    >
+      <h2
+        id="today-attention-heading"
+        className="flex items-center gap-2 text-lg font-semibold"
+        style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+      >
+        <AlertCircle size={18} aria-hidden={true} />
+        Attention
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-[var(--pw-color-text-secondary)]">
+          Nothing needs your attention.
+        </p>
+      ) : (
+        <ul className="space-y-2" role="list">
+          {items.slice(0, 5).map((item, i) => (
+            <li key={`${i}-${item}`} className="text-[var(--pw-color-text-primary)]">
+              {humanizeAttention(item)}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
 
-/** The daily loop's attention strings are capability-speak; mirror the
- * legacy humanizing (api.py humanizeAttention) so "available:" actions
- * read as opportunities, not faults. */
+/** The daily loop's "available: X (Y) — not enabled for writes"
+ * strings are capability-speak; this is the one shape both Attention
+ * and What changed humanize (mirroring legacy api.py
+ * humanizeAttention) so the same data reads the same way everywhere. */
+const AVAILABLE_NOT_ENABLED_FOR_WRITES =
+  /^available: .+ \(([^)]+)\) — not enabled for writes$/;
+
+/** Attention strings run through the humanizing voice: "available:"
+ * actions read as opportunities, not faults. */
 function humanizeAttention(value: string): string {
   const text = String(value || "");
-  const available = text.match(/^available: .+ \(([^)]+)\) — not enabled for writes$/);
+  const available = text.match(AVAILABLE_NOT_ENABLED_FOR_WRITES);
   const human = available
     ? `${available[1].replaceAll("_", " ")} is ready for looking, not changing things.`
     : text.replaceAll("_", " ");
   return human.charAt(0).toUpperCase() + human.slice(1);
+}
+
+/** What changed renders the "available:" shape through the same voice
+ * as Attention; every other recorded line keeps its exact content. */
+function humanizeWhatChanged(value: string): string {
+  const text = String(value || "");
+  return AVAILABLE_NOT_ENABLED_FOR_WRITES.test(text) ? humanizeAttention(text) : text;
 }
 
 // ── What changed (/api/daily actions; ABSENT on a quiet day) ──
@@ -236,22 +297,27 @@ function WhatChangedSection({ daily }: { daily: DailyState }) {
     return null;
   }
   return (
-    <section aria-labelledby="today-changes-heading">
-      <Card>
-        <CardHeader>
-          <CardTitle id="today-changes-heading">What changed</CardTitle>
-          <CardDescription>Recorded by your world today</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2" role="list">
-            {changed.slice(0, 5).map((item, i) => (
-              <li key={`${i}-${item}`} className="text-[var(--pw-color-text-primary)]">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+    <section
+      aria-labelledby="today-changes-heading"
+      className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+    >
+      <div className="space-y-1">
+        <h2
+          id="today-changes-heading"
+          className="text-lg font-semibold"
+          style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+        >
+          What changed
+        </h2>
+        <p className="text-sm text-[var(--pw-color-text-muted)]">Recorded by your world today</p>
+      </div>
+      <ul className="space-y-2" role="list">
+        {changed.slice(0, 5).map((item, i) => (
+          <li key={`${i}-${item}`} className="text-[var(--pw-color-text-primary)]">
+            {humanizeWhatChanged(item)}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -309,76 +375,78 @@ function JournalSection({
   }, [journal.data]);
 
   return (
-    <section aria-labelledby="today-journal-heading" className="space-y-3">
-      <Card>
-        <CardHeader>
-          <CardTitle id="today-journal-heading" className="flex items-center gap-2">
-            <BookOpen size={18} aria-hidden={true} />
-            Your journal
-          </CardTitle>
-          <CardDescription>Leave yourself a note about today.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <label htmlFor="today-journal-note" className="sr-only">
-            Journal note
-          </label>
-          <textarea
-            id="today-journal-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="What happened? What did you notice?"
-            rows={3}
-            maxLength={2000}
-            className="w-full resize-none rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
-          />
-          <div className="flex items-center justify-between gap-3">
-            <Button type="button" onClick={() => void save()} disabled={!note.trim() || saving}>
-              Save entry
-            </Button>
-            <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
-              {error ?? (saving ? "Saving…" : "")}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+    <section
+      aria-labelledby="today-journal-heading"
+      className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+    >
+      <div className="space-y-1">
+        <h2
+          id="today-journal-heading"
+          className="flex items-center gap-2 text-lg font-semibold"
+          style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+        >
+          <BookOpen size={18} aria-hidden={true} />
+          Your journal
+        </h2>
+        <p className="text-sm text-[var(--pw-color-text-muted)]">Leave yourself a note about today.</p>
+      </div>
+      <label htmlFor="today-journal-note" className="sr-only">
+        Journal note
+      </label>
+      <textarea
+        id="today-journal-note"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="What happened? What did you notice?"
+        rows={3}
+        maxLength={2000}
+        className="w-full resize-none rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
+      />
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" onClick={() => void save()} disabled={!note.trim() || saving}>
+          Save entry
+        </Button>
+        <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
+          {error ?? (saving ? "Saving…" : "")}
+        </span>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Recent entries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {journal.isLoading ? (
-            <p className="flex items-center gap-2 text-[var(--pw-color-text-muted)]">
-              <Loader2 size={16} aria-hidden={true} className="loader-static" />
-              Opening your journal…
-            </p>
-          ) : journal.isError ? (
-            <p className="text-[var(--pw-color-text-primary)]">
-              Your journal could not be opened just now. Your note box is unaffected.
-            </p>
-          ) : recent.length === 0 ? (
-            <p className="text-[var(--pw-color-text-secondary)]">
-              No journal entries yet. This is a gentle place to begin.
-            </p>
-          ) : (
-            <ul className="space-y-2" role="list" aria-label="Recent entries">
-              {recent.map((entry, i) => (
-                <li key={`${entry.ts}-${i}`} className="flex items-baseline gap-2">
-                  <time dateTime={entry.ts} className="shrink-0 text-sm text-[var(--pw-color-text-muted)]">
-                    {eventTime(entry.ts)}
-                  </time>
-                  <span className="text-[var(--pw-color-text-primary)]">{eventSummary(entry)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-3">
-            <Link to="/journal" className="pw-nav-link inline-flex">
-              View all in Journal
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+      <h2
+        className="text-base font-semibold"
+        style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+      >
+        Recent entries
+      </h2>
+      {journal.isLoading ? (
+        <p className="flex items-center gap-2 text-[var(--pw-color-text-muted)]">
+          <Loader2 size={16} aria-hidden={true} className="loader-static" />
+          Opening your journal…
+        </p>
+      ) : journal.isError ? (
+        <p className="text-[var(--pw-color-text-primary)]">
+          Your journal could not be opened just now. Your note box is unaffected.
+        </p>
+      ) : recent.length === 0 ? (
+        <p className="text-[var(--pw-color-text-secondary)]">
+          No journal entries yet. This is a gentle place to begin.
+        </p>
+      ) : (
+        <ul className="space-y-2" role="list" aria-label="Recent entries">
+          {recent.map((entry, i) => (
+            <li key={`${entry.ts}-${i}`} className="flex items-baseline gap-2">
+              <time dateTime={entry.ts} className="shrink-0 text-sm text-[var(--pw-color-text-muted)]">
+                {eventTime(entry.ts)}
+              </time>
+              <span className="text-[var(--pw-color-text-primary)]">{eventSummary(entry)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-3">
+        <Link to="/journal" className="pw-nav-link inline-flex">
+          View all in Journal
+        </Link>
+      </p>
     </section>
   );
 }
@@ -413,7 +481,10 @@ function MoreFromWorld({
   const caps = Object.entries(daily.data?.data?.capabilities ?? {});
 
   return (
-    <section aria-labelledby="today-more-heading" className="space-y-4">
+    <section
+      aria-labelledby="today-more-heading"
+      className="space-y-4 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+    >
       <h2 id="today-more-heading" className="sr-only">
         More from your world
       </h2>
@@ -591,6 +662,13 @@ function SubscriptionPanel({ lab }: { lab: ReturnType<typeof useLabState> }) {
   );
 }
 
+/** Statuses that never deserve an individual row at Level 1: the
+ * healthy majority and the not-yet-connected (Finish Line: "healthy
+ * systems stay quiet"). Everything else — warning,
+ * needs_attention, unavailable, stale, unknown, disabled — surfaces
+ * as its own row so problems stay visible. */
+const QUIET_CAPABILITY_STATUSES = new Set(["healthy", "not_configured"]);
+
 function CapabilitiesPanel({
   caps,
   digestOk,
@@ -598,6 +676,13 @@ function CapabilitiesPanel({
   caps: Array<[string, { ok: boolean; status: string; warnings: string[]; last_observed: string }]>;
   digestOk: boolean;
 }) {
+  const surfaced = caps.filter(([, cap]) => !QUIET_CAPABILITY_STATUSES.has(cap.status));
+  const quiet = caps.filter(([, cap]) => QUIET_CAPABILITY_STATUSES.has(cap.status));
+  const quietLine =
+    `${quiet.length} ${surfaced.length > 0 ? "other " : ""}` +
+    `${quiet.length === 1 ? "capability is" : "capabilities are"} healthy or not yet connected.`;
+  const quietSummary =
+    quiet.length === 1 ? "Show the other one" : `Show the other ${quiet.length}`;
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold">Capabilities</h3>
@@ -608,31 +693,57 @@ function CapabilitiesPanel({
       ) : caps.length === 0 ? (
         <p className="text-[var(--pw-color-text-secondary)]">No capabilities defined.</p>
       ) : (
-        <ul className="space-y-2" role="list">
-          {caps.map(([name, cap]) => {
-            const status = asCanonicalStatus(cap.status);
-            return (
-              <li key={name}>
-                <Disclosure summary={name.replaceAll("_", " ")} level={3}>
-                  <div className="space-y-2 pt-1">
-                    <StatusChip status={status} />
-                    {cap.warnings?.length ? (
-                      <p>{cap.warnings[0]}</p>
-                    ) : (
-                      <p>Observed {ageText(cap.last_observed)} ago.</p>
-                    )}
-                    <TechnicalDetails
-                      provider={`capability: ${name}`}
-                      raw={JSON.stringify({ status: cap.status, ok: cap.ok })}
-                    />
-                  </div>
-                </Disclosure>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="space-y-2">
+          {surfaced.length > 0 ? (
+            <ul className="space-y-2" role="list">
+              {surfaced.map(([name, cap]) => (
+                <CapabilityRow key={name} name={name} cap={cap} />
+              ))}
+            </ul>
+          ) : null}
+          {quiet.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[var(--pw-color-text-secondary)]">{quietLine}</p>
+              <Disclosure summary={quietSummary} level={3}>
+                <ul className="space-y-2" role="list">
+                  {quiet.map(([name, cap]) => (
+                    <CapabilityRow key={name} name={name} cap={cap} />
+                  ))}
+                </ul>
+              </Disclosure>
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
+  );
+}
+
+function CapabilityRow({
+  name,
+  cap,
+}: {
+  name: string;
+  cap: { ok: boolean; status: string; warnings: string[]; last_observed: string };
+}) {
+  const status = asCanonicalStatus(cap.status);
+  return (
+    <li>
+      <Disclosure summary={name.replaceAll("_", " ")} level={3}>
+        <div className="space-y-2 pt-1">
+          <StatusChip status={status} />
+          {cap.warnings?.length ? (
+            <p>{cap.warnings[0]}</p>
+          ) : (
+            <p>Observed {ageText(cap.last_observed)} ago.</p>
+          )}
+          <TechnicalDetails
+            provider={`capability: ${name}`}
+            raw={JSON.stringify({ status: cap.status, ok: cap.ok })}
+          />
+        </div>
+      </Disclosure>
+    </li>
   );
 }
 
