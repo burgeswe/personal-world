@@ -5,12 +5,15 @@ records only where we are in that plan and the exact next action.
 
 ## Current phase
 
-**P0 — Stabilize: COMPLETE** (branch `p0/stabilize`, fast-forwarded to
-`main`). **P1 — Frontend foundation: spec approved
-(`docs/p1/FOUNDATION-SPEC.md`), implementation NOT started.** Gate: owner
-confirmation of P0.1 credential rotation → push `main` → CI green for that
-exact SHA → coordination item C1 prepared → worktree `../pw-p1`
-(`p1/frontend-foundation`) → T1.
+**P0 — Stabilize: COMPLETE** (merged via main `b8c77ce`). **P1 — Frontend
+foundation: T0–T9 COMPLETE.** T1–T4 merged to main via PR #20 (main =
+`1fda243`); T5–T9 accumulated on `p1/frontend-foundation` (pushed,
+remote == local). No Fable review consumed: owner policy (2026-09-11)
+supersedes the spec's FABLE-review rows — GLM-autonomous against the spec;
+Fable reserved for genuine contradictions and the final convergence audit.
+Construction continues on `../pw-p1` (`p1/frontend-foundation`) → T10.
+Six pre-existing CodeQL alerts (identity/vault/legacy api.py) are recorded
+security debt: identity/auth → P2, vault → P3, legacy api.py → T15.
 
 ## P0 outcome (verified)
 
@@ -74,17 +77,31 @@ fetch + hooks, no React Query/Storybook without a bounded justification ·
 200% zoom: automated checks are proxies, a real browser zoom check on the
 deployed build is a required human gate.
 
+## P1 progress (2026-09-12, overnight autonomous run)
+
+| Task | Commit | Status |
+|---|---|---|
+| T1 sections API | `b65c57c` | merged (PR #20) |
+| T2 motion vocab | `d5c31e5` | merged (PR #20) |
+| T3 serving/Docker + CodeQL fix | `2608a7a` + `6fe49cc` | merged (PR #20) |
+| T4 frontend tracked + dep diet | `5b288e5` | merged (PR #20) |
+| T5 token pipeline | `86fe750` | pushed, branch |
+| T6 typed API boundary | `533c35b` | pushed, branch |
+| T7 primitives A (Dialog/Popover/LiveRegion) | `216ffb7` | pushed, branch |
+| T8 primitives B (Drawer/Disclosure/StatusChip/CompanionSlot/StepUpPrompt) | `74bb73c` | pushed, branch |
+| T9 AppShell/SectionNav/EmptyState/ErrorState/prefs bootstrap | `1654193` | pushed, branch |
+
+Last full verification (T9): Python 494 passed · `framework validate`
+healthy · frontend 147 tests green · build 100.3 KB gz ≪ 350 KB ·
+tokens/hex/motion gates green. Known honest UNKNOWNs: jsdom cannot prove
+paint order (prefs-before-content enforced structurally) or real-viewport
+cascade — both are Playwright/browser-gate evidence (T14).
+
 ## NEXT
 
-1. Owner: confirm P0.1 rotation done (new values only in `.env` /
-   `config/connections.local.json` via env indirection). **Assume not
-   done until explicitly confirmed.**
-2. Push `main` exactly as-is; verify remote `main` SHA; verify CI green
-   for that exact SHA. No feature work if CI is not green.
-3. Prepare coordination item C1 in `burgeswe/homelab` (Personal World
-   performs app-level Authelia OIDC; route must not depend exclusively on
-   forward-auth; break-glass reachable during IdP outage; register the
-   OIDC client). Preparation only — P2 is not implemented.
-4. Begin **P1** in `../pw-p1` on `p1/frontend-foundation`, starting at
-   T1 (T0 is the spec, already committed). Order and acceptance per
-   `docs/p1/FOUNDATION-SPEC.md` §9–§11.
+1. **T10–T13** may run as parallel worktrees off `1654193` (spec §9).
+2. **T14** browser/Playwright gates after T10–T13.
+3. Merge checkpoint (PR) at T9+ if owner prefers earlier convergence;
+   otherwise next convergence target is after T14 gates.
+4. Fable: only for genuine contradiction, or the final convergence audit.
+5. C1 (Authelia OIDC coordination) prep — P2 scope, unchanged.
