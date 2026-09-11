@@ -72,6 +72,11 @@ function useApiQuery<T>(
   const seq = useRef(0);
 
   const refetch = useCallback(async () => {
+    // A disabled query (e.g. vault names while locked) does nothing:
+    // the enabling state change re-fires the effect below, which is
+    // the single path that fetches. This makes an explicit refetch()
+    // from a screen that has not yet re-rendered a safe no-op.
+    if (!enabled) return;
     const id = ++seq.current;
     setIsLoading(true);
     setError(null);
@@ -86,7 +91,7 @@ function useApiQuery<T>(
     } finally {
       if (id === seq.current) setIsLoading(false);
     }
-  }, deps);
+  }, [...deps, enabled]);
 
   useEffect(() => {
     if (!enabled) return;

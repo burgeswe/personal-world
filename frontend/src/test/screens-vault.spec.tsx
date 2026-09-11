@@ -124,7 +124,12 @@ describe("VaultScreen (T10, parity row 5)", () => {
     await unlockThroughUI(world);
     expect(world.state.calls).toContain("unlock");
     expect(world.state.locked).toBe(false);
-    expect(screen.getByText("provider-api-key")).toBeTruthy();
+    // Names load in the follow-up effect (the names query enables
+    // once the fresh status re-renders): one waitFor tick, then the
+    // name (never the value) is on screen.
+    await waitFor(() => {
+      expect(screen.getByText("provider-api-key")).toBeTruthy();
+    });
     const region = document.querySelector("[data-pw-live-region]");
     expect(region?.textContent).toContain("Vault unlocked");
   });
@@ -236,7 +241,11 @@ describe("VaultScreen (T10, parity row 5)", () => {
       expect(screen.queryByText(/Checking the vault…/)).toBeNull();
     });
     await unlockThroughUI(world);
-    fireEvent.click(screen.getByRole("button", { name: "Delete secret wifi-password" }));
+    // Names render in the follow-up effect (see unlock test).
+    const deleteBtn = await screen.findByRole("button", {
+      name: "Delete secret wifi-password",
+    });
+    fireEvent.click(deleteBtn);
     // Danger dialog: verb label + consequence, initial focus on Cancel.
     expect(screen.getByText("Delete this secret?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete secret" })).toBeTruthy();
@@ -254,7 +263,12 @@ describe("VaultScreen (T10, parity row 5)", () => {
     const world = vaultWorld();
     await bootVault(world);
     await unlockThroughUI(world);
-    fireEvent.click(screen.getByRole("button", { name: "Delete secret provider-api-key" }));
+    // Names render in the follow-up effect (see unlock test): wait
+    // for the delete control before driving it.
+    const deleteBtn = await screen.findByRole("button", {
+      name: "Delete secret provider-api-key",
+    });
+    fireEvent.click(deleteBtn);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => {
       // The dialog element stays mounted (native semantics) — assert it
