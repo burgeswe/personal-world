@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { axe } from "vitest-axe";
 import SettingsScreen from "../screens/SettingsScreen";
+import { SectionNav } from "../shell/SectionNav";
 import { CompanionProvider } from "../lib/companion-context";
+import { CompanionSlot } from "../primitives/CompanionSlot";
 import {
   PrefsProvider,
   PREFERENCES_DEFAULTS,
@@ -167,6 +169,34 @@ function respondSections(): FetchResponder {
   };
 }
 
+/** Route PUT /api/sections like the server: apply order/hidden to the
+ * mutable state and return the fresh payload (§2.4 contract). The
+ * hidden list is authoritative: ids in it are hidden, ids not in it
+ * are visible again. */
+function respondSectionsPut(): FetchResponder {
+  return (url, init) => {
+    if (url.endsWith("/api/sections") && (init.method ?? "GET") === "PUT") {
+      const body = JSON.parse(String(init.body)) as { order?: string[]; hidden?: string[] };
+      if (body.hidden) {
+        sectionsState = sectionsState.map((s) => ({
+          ...s,
+          visible: !body.hidden?.includes(s.id),
+        }));
+      }
+      if (body.order && body.order.length > 0) {
+        sectionsState = body.order
+          .map((id) => sectionsState.find((s) => s.id === id))
+          .filter((s): s is SectionData => s !== undefined);
+      }
+      return jsonResponse(200, {
+        ok: true,
+        data: { schema: "personal-world/sections/1", sections: sectionsState },
+      });
+    }
+    return undefined;
+  };
+}
+
 function respondOk(urlSuffix: string, body: unknown = {}): FetchResponder {
   return (url) =>
     url.endsWith(urlSuffix) ? jsonResponse(200, { ok: true, data: body }) : undefined;
@@ -186,6 +216,25 @@ function renderScreen() {
       <CompanionProvider>
         <PrefsProvider initialPrefs={PREFERENCES_DEFAULTS}>
           <LiveRegionProvider>
+            <SettingsScreen />
+          </LiveRegionProvider>
+        </PrefsProvider>
+      </CompanionProvider>
+    </MemoryRouter>
+  );
+}
+
+/** Settings + the live nav in ONE mounted tree (the real AppShell shape:
+ * SectionNav and the screen are separate subscribers of /api/sections). */
+function renderSettingsWithNav() {
+  return render(
+    <MemoryRouter initialEntries={["/settings"]}>
+      <CompanionProvider>
+        <PrefsProvider initialPrefs={PREFERENCES_DEFAULTS}>
+          <LiveRegionProvider>
+            <nav aria-label="Main">
+              <SectionNav />
+            </nav>
             <SettingsScreen />
           </LiveRegionProvider>
         </PrefsProvider>
@@ -501,6 +550,45 @@ describe("Settings: sections panel (GET/PUT /api/sections)", () => {
   });
 });
 
+// ── Sections writes refresh the LIVE nav ──
+
+describe("Settings sections writes update SectionNav in the same tab (no reload)", () => {
+  it("Hide on `today` removes the Today link from the nav, Show brings it back — both without a reload", async () => {
+    mockFetch(standardRoutes([respondSectionsPut()]));
+    renderSettingsWithNav();
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await waitFor(() => {
+      expect(within(nav).queryByRole("link", { name: /Today/ })).toBeTruthy();
+    });
+    fireEvent.click(await screen.findByTestId("hide-today"));
+    // The nav's useSections() re-fetches on the shared "sections"
+    // signal the settings write emits — same mounted tree, no reload.
+    await waitFor(() => {
+      expect(within(nav).queryByRole("link", { name: /Today/ })).toBeNull();
+    });
+    fireEvent.click(await screen.findByTestId("show-today"));
+    await waitFor(() => {
+      expect(within(nav).queryByRole("link", { name: /Today/ })).toBeTruthy();
+    });
+  });
+
+  it("Move down reorders the live nav immediately", async () => {
+    mockFetch(standardRoutes([respondSectionsPut()]));
+    renderSettingsWithNav();
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await waitFor(() => {
+      const labels = within(nav).getAllByRole("link").map((l) => l.textContent);
+      expect(labels[0]).toBe("Today");
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Move Today down" }));
+    await waitFor(() => {
+      const labels = within(nav).getAllByRole("link").map((l) => l.textContent);
+      expect(labels[0]).toBe("Interests");
+      expect(labels[1]).toBe("Today");
+    });
+  });
+});
+
 // ── Reminders ──
 
 describe("Settings: reminders add / toggle / delete (step-up writes)", () => {
@@ -669,6 +757,54 @@ describe("Settings: companion selection + frontend-only off", () => {
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(JSON.parse(String(calls[0].init.body))).toEqual({ companion: "mermaid" });
     expect(new Headers(calls[0].init.headers).get("X-PW-StepUp")).toBe("1");
+  });
+
+  // Regression (companion key mismatch): selecting the two slugs that
+  // used to be stored under wrong frontend keys must PUT the backend's
+  // canonical vocabulary (prefs.py COMPANION) AND the header artwork a
+  // real shell renders must actually change — not just the "Selected"
+  // button state.
+  it("selecting Squirrel/Tacos PUTs the canonical slugs and swaps the live header artwork", async () => {
+    const puts: Record<string, unknown>[] = [];
+    mockFetch(standardRoutes([
+      (url, init) => {
+        if (url.endsWith("/api/prefs") && (init.method ?? "GET") === "PUT") {
+          const body = JSON.parse(String(init.body)) as { companion: string };
+          puts.push(body);
+          return jsonResponse(200, { ok: true, data: { ...PREFS, companion: body.companion } });
+        }
+        return undefined;
+      },
+    ]));
+    const { container } = render(
+      <MemoryRouter initialEntries={["/settings"]}>
+        <CompanionProvider>
+          <PrefsProvider initialPrefs={PREFERENCES_DEFAULTS}>
+            <LiveRegionProvider>
+              <header>
+                <CompanionSlot size="nav" asAssistantTrigger onOpenAssistant={() => {}} />
+              </header>
+              <SettingsScreen />
+            </LiveRegionProvider>
+          </PrefsProvider>
+        </CompanionProvider>
+      </MemoryRouter>
+    );
+    const panel = await screen.findByTestId("companion-panel");
+    fireEvent.click(within(panel).getByRole("button", { name: "Select World-tree Squirrel" }));
+    await waitFor(() => {
+      expect(container.querySelector('img[src="/companions/world-tree-squirrel.svg"]')).not.toBeNull();
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: "Select Tacos & the Morning Paper" }));
+    await waitFor(() => {
+      expect(container.querySelector('img[src="/companions/taco-news-truck.svg"]')).not.toBeNull();
+    });
+    // Right slugs on the wire, and the default globe never lingers.
+    expect(puts).toEqual([
+      { companion: "world-tree-squirrel" },
+      { companion: "taco-news-truck" },
+    ]);
+    expect(container.querySelector('img[src="/companions/personal-world.svg"]')).toBeNull();
   });
 });
 

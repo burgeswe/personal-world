@@ -68,6 +68,26 @@ describe("CompanionSlot (T8)", () => {
     );
   });
 
+  // Regression (Settings companion-key mismatch): the backend's
+  // canonical slugs (prefs.py COMPANION allowed set) must map to their
+  // own artwork — before the key fix, both silently fell back to the
+  // default personal-world globe because COMPANIONS used wrong keys.
+  it.each([
+    ["world-tree-squirrel", "/companions/world-tree-squirrel.svg"],
+    ["taco-news-truck", "/companions/taco-news-truck.svg"],
+  ])(
+    "backend slug %s renders its own artwork, never the default fallback",
+    (slug, expectedSrc) => {
+      const { container } = render(<CompanionSlot size="nav" companion={slug} />);
+      const img = container.querySelector("img");
+      expect(img?.getAttribute("src")).toBe(expectedSrc);
+      expect(img?.getAttribute("src")).not.toBe("/companions/personal-world.svg");
+      expect(
+        container.querySelector("[data-pw-companion]")?.getAttribute("data-pw-companion")
+      ).toBe(slug);
+    }
+  );
+
   it("companion OFF removes part (a) only; the trigger and its function remain", () => {
     const onOpenAssistant = vi.fn();
     const { container } = render(
