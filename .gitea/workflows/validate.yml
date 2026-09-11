@@ -39,6 +39,8 @@ jobs:
         run: |
           echo "PW_API_TOKEN=ci-placeholder-token" > .env
           docker compose config -q
+      - name: Image builds (frontend stage tolerates absent frontend/)
+        run: docker build -t personal-world:ci .
 
   security-gates:
     runs-on: ubuntu-latest

@@ -1,4 +1,20 @@
 # TODO: pin by digest after the first build is validated
+
+# --- frontend build stage --------------------------------------------
+# Builds frontend/ when it exists in the build context; tolerates its
+# absence (trees before the React frontend is tracked) so the core image
+# always builds. Only the resulting dist/ reaches the runtime image.
+
+# TODO: pin by digest
+FROM node:22-alpine AS frontend
+WORKDIR /src
+COPY . /src/
+RUN mkdir -p /out && if [ -f /src/frontend/package.json ]; then \
+      cd /src/frontend && npm ci --no-audit --no-fund && npm run build && cp -r dist/. /out/; \
+    else echo "frontend/ not present in build context; producing empty dist (react mode will report 503 honestly)"; fi
+
+# --- runtime stage ----------------------------------------------------
+# TODO: pin by digest after the first build is validated
 FROM python:3.12-slim-bookworm
 
 # git: source-control capability feeds the dashboard + chat context.
@@ -16,8 +32,11 @@ RUN pip install --no-cache-dir uv \
 COPY src ./src
 RUN uv pip install --no-cache-dir .
 
+COPY --from=frontend /out /app/frontend/dist
+
 ENV PW_DATA_DIR=/data \
-    PW_CONFIG_DIR=/config
+    PW_CONFIG_DIR=/config \
+    PW_FRONTEND_DIST=/app/frontend/dist
 
 VOLUME /data
 

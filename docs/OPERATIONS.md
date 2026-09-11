@@ -51,6 +51,27 @@ storage in a local install. The Dockerfile already installs the crypto extra.
 Without it, current Vault code falls back to base64 while its status endpoint
 still reports encrypted; do not use that response alone as encryption evidence.
 
+### Frontend serving (transitional)
+
+During P1 the server has two serving modes, chosen by the `PW_FRONTEND`
+environment variable:
+
+- `legacy` (default): the built-in server-rendered HTML pages are served
+  exactly as before. Nothing changes for existing deployments.
+- `react`: the server serves the built React interface from a dist
+  directory instead of the built-in HTML pages.
+
+`PW_FRONTEND_DIST` points at a built `dist/` directory. It defaults to
+`frontend/dist` relative to the repository in a local install and
+`/app/frontend/dist` in the container image, where the image build
+produces it. When the dist directory has no `index.html`, page requests
+answer `503` with an HTML explanation ("Personal World's interface is
+not built") and the API remains fully available; the response never
+contains filesystem or environment values.
+
+The default stays `legacy` for all of P1; it flips to `react` at the P1
+parity cutover. No action is needed now.
+
 ## Containers
 
 The provided Compose file builds the API/dashboard appliance and persists state
