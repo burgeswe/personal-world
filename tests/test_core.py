@@ -33,10 +33,10 @@ from personal_world.world import MutationDenied, UserAction, World  # noqa: E402
 FAKE_SENSITIVE = {
     "name": "Example Person",
     "email": "person@example.invalid",
-    "token": "synthetic-token-for-tests-only",
-    "password": "correct-horse-battery-staple",
+    "token": "synthetic-token-for-tests-only",  # pw-safety: synthetic
+    "password": "correct-horse-battery-staple",  # pw-safety: synthetic
     "private_lore": "Example Person's private narrative that must never leak",
-    "api_key": "synthetic-api-key-for-tests-only",
+    "api_key": "synthetic-api-key-for-tests-only",  # pw-safety: synthetic
 }
 
 

@@ -35,3 +35,17 @@ Revoke or rotate it immediately with its issuer, then investigate use. Report
 only its type, path and commit ID. Coordinate any history rewrite with the owner
 and all active contributors; deleting the current file alone is insufficient,
 and rewriting history cannot recall existing clones or copies.
+
+## Automated gate
+
+`tests/test_public_safety.py` runs in CI and locally. Beyond deployment
+topology it scans every tracked text file for credential *shapes*
+(provider key prefixes, private-key blocks, inline `api_key`/`token`/
+`password` values, `VITE_*TOKEN`-style client env) and reports findings
+redacted — the gate never prints the value it caught. Secrets are always
+referenced by indirection (`api_key_env`, `token_env`, `secret_ref`); a
+deliberate synthetic canary in a test must carry the marker
+`pw-safety: synthetic` on the same line so the exception stays visible.
+
+Nothing reachable by the browser build (Vite `import.meta.env`, public
+assets) may ever hold a credential: it is inlined into the public bundle.
