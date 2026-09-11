@@ -162,6 +162,56 @@ async function apiFetch<T>(
   return unwrapEnvelope(json) as T;
 }
 
+/**
+ * Same transport as apiFetch but keeps the whole `{ok, status,
+ * warnings, actions, data}` envelope (T10): /api/daily is a Result
+ * whose `actions`/`warnings` live at the envelope level, outside
+ * `data`. Additive; no existing read changes behavior.
+ */
+export async function apiFetchEnvelope<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set("Authorization", `Bearer ${getAuthToken()}`);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new ApiError(0, "network", "Could not reach the server.");
+  }
+  if (!response.ok) {
+    const raw = await response.json().catch(() => null);
+    const detail = extractErrorDetail(raw);
+    if (response.status === 401) {
+      localStorage.removeItem("pw_token");
+      navigateToLogin("/login");
+      throw new ApiError(401, "unauthorized", "Sign-in required.");
+    }
+    if (response.status === 503) {
+      navigateToLogin("/setup");
+      throw new ApiError(
+        503,
+        "auth_not_configured",
+        detail ?? "Server authentication is not configured yet.",
+        { body: raw }
+      );
+    }
+    if (response.status === 403 && detail !== null && /step-up/.test(detail)) {
+      throw new ApiError(403, "step_up_required", detail, { detail, body: raw });
+    }
+    throw new ApiError(
+      response.status,
+      response.status === 403 ? "forbidden" : "http_error",
+      detail ?? `Request failed (${response.status}).`,
+      { detail, body: raw }
+    );
+  }
+  const json: unknown = await response.json().catch(() => null);
+  return json as T;
+}
+
 // ── Types ──
 
 export interface WorldData {
@@ -298,6 +348,48 @@ export async function fetchSections(): Promise<SectionData[]> {
 /** Shapes not yet pinned by a screen task (T10–T13 tighten them). */
 export type VaultStatusData = { locked: boolean; encrypted: boolean };
 export type VaultNamesData = { names: string[] };
+
+/**
+ * GET /api/daily (T10 row 1): the read-only digest the daily loop
+ * presents. `attention` merges capability warnings with drift/available
+ * actions; `actions` is the "what changed" list — empty on a quiet day,
+ * and TodayScreen must not invent content for it (parity row 1).
+ */
+export interface DailyData {
+  world: {
+    facts: number;
+    intents: number;
+    policies: number;
+    cemented_policies: number;
+    capabilities: number;
+    providers: number;
+    packs: number;
+  };
+  capabilities: Record<
+    string,
+    { ok: boolean; status: string; warnings: string[]; last_observed: string }
+  >;
+  attention: string[];
+}
+export type DailyResult = {
+  ok: boolean;
+  status: string;
+  warnings: string[];
+  actions: string[];
+};
+
+/** Service launcher entry: GET/PUT /api/apps (parity row 2). */
+export interface ServiceApp {
+  id: string;
+  name: string;
+  url: string;
+  icon?: string;
+  category?: string;
+}
+
+export async function fetchApps(): Promise<ServiceApp[]> {
+  return apiFetch<ServiceApp[]>("/api/apps");
+}
 export type SourceControlRepo = {
   name: string;
   branch: string | null;
@@ -329,6 +421,23 @@ export async function fetchReminders(): Promise<Reminder[]> {
 
 export async function fetchJournal(): Promise<JournalEntry[]> {
   return apiFetch<JournalEntry[]>("/api/journal");
+}
+
+/**
+ * GET /api/journal?n=<limit> (T10 row 4): the journal reader loads in
+ * pages; the server clamps/returns up to n events.
+ */
+export async function fetchJournalPage(n: number): Promise<JournalEntry[]> {
+  return apiFetch<JournalEntry[]>(`/api/journal?n=${encodeURIComponent(n)}`);
+}
+
+/**
+ * GET /api/daily (T10 row 1): the read-only digest (loop.py `daily`,
+ * record=False). The body is a Result envelope whose `data` carries
+ * the digest; `actions`/`warnings` live at the envelope level.
+ */
+export async function fetchDaily(): Promise<DailyResult & { data: DailyData }> {
+  return apiFetchEnvelope<DailyResult & { data: DailyData }>("/api/daily");
 }
 
 export async function fetchHealth(): Promise<HealthStatus> {
@@ -491,6 +600,19 @@ export async function saveJournalEntry(text: string): Promise<unknown> {
     method: "POST",
     headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
     body: JSON.stringify({ text }),
+  });
+}
+
+/**
+ * PUT /api/apps (T10 row 2): replace the services launcher registry.
+ * The screen always sends the full list (current + the new entry), the
+ * shape the server persists (api.py apps_put).
+ */
+export async function saveApps(apps: ServiceApp[]): Promise<ServiceApp[]> {
+  return apiFetch<ServiceApp[]>("/api/apps", {
+    method: "PUT",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify({ apps }),
   });
 }
 
