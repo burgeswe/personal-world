@@ -344,6 +344,13 @@ sections API (`settings` is the only pinned section; `today` is
 hideable; "Restore default sections" in Settings; canonical status or
 `null`, never invented values; `configured` separate from `status`),
 primitive contracts, parity checklist, bounded tasks T0–T16.
+**Progress (2026-09-12).** T0–T9 complete: T1–T4 merged (PR #20);
+T5–T9 at the second convergence checkpoint (tokens pipeline, typed API
+boundary, primitives A+B, AppShell/SectionNav). Screens T10–T13 and
+gates T14 follow; cutover T15 after the human zoom gate. The spec's
+FABLE-review rows are superseded by the owner's 2026-09-11 policy
+(GLM-autonomous; Fable only for genuine contradictions and the final
+convergence audit).
 
 **Files.** `frontend/` (tracked; renamed from `frontend-v2/`), `Dockerfile`
 (stage 1 node build, stage 2 python image copying `dist/`), `api.py` SPA
