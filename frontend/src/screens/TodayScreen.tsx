@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { saveApps, saveJournalEntry, ApiError, type JournalEntry, type ServiceApp } from "../lib/api";
+import { saveApps, saveJournalEntry, ApiError, type JournalEntry, type ServiceApp, type LabEnvelope } from "../lib/api";
 import { useDaily, useApps, useLabState, useJournalPage, useJournalKey } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { useStepUp } from "../primitives/StepUpPrompt";
@@ -550,7 +550,8 @@ function ServicesPanel({
 }
 
 function SubscriptionPanel({ lab }: { lab: ReturnType<typeof useLabState> }) {
-  const packet = lab.data as LabPacket | undefined;
+  const envelope = lab.data as LabEnvelope | undefined;
+  const packet = (envelope?.data ?? undefined) as LabPacket | undefined;
   const rows = packet?.rows ?? [];
   const observations = rows.flatMap((row) => row.observations ?? []);
   const quota = observations.filter((o) => {
