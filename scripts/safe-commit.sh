@@ -4,6 +4,9 @@
 # colleague's WIP. Usage:
 #   scripts/safe-commit.sh -m "message" <path> [<path> ...]
 #   scripts/safe-commit.sh --force -m "message" <path> ...
+#   PW_SAFE_COMMIT_SKIP_TESTS=1 scripts/safe-commit.sh ...   (docs-only lanes)
+#
+# Exit codes: 0 committed; 1 guard refused or tests failed; 2 usage.
 set -eu
 
 force=0
@@ -24,15 +27,20 @@ for p in "$@"; do
     [ -e "$p" ] || { printf 'error: path not found: %s\n' "$p" >&2; exit 2; }
 done
 
-outside=$(git status --porcelain | sed 's/^...//' \
+# Files dirty in the working tree that are NOT among the given paths.
+# Note the `|| :` — under `set -e`, a final `[ ... ] && cmd` that
+# evaluates false would otherwise abort the whole script (exit 1, no
+# message) whenever the *last* dirty file is one we were asked to commit,
+# i.e. exactly in the clean, bounded case this script exists to serve.
+outside=$(git status --porcelain --untracked-files=all | cut -c4- \
     | while IFS= read -r f; do
         skip=0
         for p in "$@"; do
             case "$f" in "$p"|"$p"/*) skip=1; break ;; esac
         done
-        [ "$skip" -eq 0 ] && printf '%s\n' "$f"
-    done)
-out_count=$(printf '%s\n' "$outside" | grep -c . || true)
+        if [ "$skip" -eq 0 ]; then printf '%s\n' "$f"; fi
+    done || :)
+out_count=$(printf '%s\n' "$outside" | grep -c . || :)
 if [ "$out_count" -gt 5 ] && [ "$force" -eq 0 ]; then
     printf 'error: %s modified files outside the given paths:\n' "$out_count" >&2
     printf '%s\n' "$outside" >&2
@@ -40,8 +48,13 @@ if [ "$out_count" -gt 5 ] && [ "$force" -eq 0 ]; then
     exit 1
 fi
 
-uv run pytest -q
+if [ "${PW_SAFE_COMMIT_SKIP_TESTS:-0}" != "1" ]; then
+    if ! uv run pytest -q -p no:cacheprovider; then
+        printf 'error: pytest failed; nothing staged or committed.\n' >&2
+        exit 1
+    fi
+fi
 
 git add -- "$@"
 git commit -m "$msg"
-printf 'committed %s path(s) after pytest.\n' "$#"
+printf 'committed %s path(s).\n' "$#"
