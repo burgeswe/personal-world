@@ -32,11 +32,16 @@ done
 # evaluates false would otherwise abort the whole script (exit 1, no
 # message) whenever the *last* dirty file is one we were asked to commit,
 # i.e. exactly in the clean, bounded case this script exists to serve.
-outside=$(git status --porcelain --untracked-files=all | cut -c4- \
+# Untracked directories stay collapsed (one entry, e.g. `frontend-v2/`),
+# so a big untracked prototype tree counts as one outside item, not
+# hundreds. A collapsed directory entry is "ours" when a named path lives
+# beneath it (`docs/p1/` vs `docs/p1/SPEC.md`).
+outside=$(git status --porcelain --untracked-files=normal | cut -c4- \
     | while IFS= read -r f; do
         skip=0
         for p in "$@"; do
             case "$f" in "$p"|"$p"/*) skip=1; break ;; esac
+            case "$f" in */) case "$p" in "$f"*) skip=1; break ;; esac ;; esac
         done
         if [ "$skip" -eq 0 ]; then printf '%s\n' "$f"; fi
     done || :)

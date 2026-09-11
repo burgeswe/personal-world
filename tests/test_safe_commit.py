@@ -121,3 +121,19 @@ def test_failing_tests_block_the_commit(repo, monkeypatch):
     assert r.returncode == 1
     assert "pytest failed" in r.stderr
     assert _git(repo, "diff", "--cached", "--name-only").strip() == ""
+
+
+def test_untracked_directory_counts_once_and_named_file_inside_new_dir_is_ours(repo):
+    """A large untracked tree (e.g. an uncommitted frontend prototype)
+    must count as ONE outside item, and a named new file inside a brand
+    new directory must not count against the guard at all."""
+    proto = repo / "proto"
+    for i in range(20):
+        (proto / f"f{i}.txt").parent.mkdir(exist_ok=True)
+        (proto / f"f{i}.txt").write_text("x\n")
+    (repo / "docs" / "p1").mkdir(parents=True)
+    (repo / "docs" / "p1" / "SPEC.md").write_text("spec\n")
+    r = _run(repo, "-m", "spec", "docs/p1/SPEC.md")
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert _git(repo, "show", "--name-only", "--format=", "HEAD").split() == ["docs/p1/SPEC.md"]
+    assert "?? proto/" in _git(repo, "status", "--porcelain")
