@@ -51,10 +51,10 @@ function JournalScreen() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
         <Loader2
-          className="h-8 w-8 animate-spin text-[var(--color-accent-primary)]"
+          className="h-8 w-8 loader-static text-[var(--pw-color-accent-primary)]"
           aria-hidden={true}
         />
-        <p className="text-[var(--color-text-muted)]">Loading journal…</p>
+        <p className="text-[var(--pw-color-text-muted)]">Loading journal…</p>
       </div>
     );
   }
@@ -64,10 +64,10 @@ function JournalScreen() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
         <AlertCircle
-          className="h-8 w-8 text-[var(--color-err)]"
+          className="h-8 w-8 text-[var(--pw-color-text-primary)]"
           aria-hidden={true}
         />
-        <p className="text-[var(--color-text-muted)]">
+        <p className="text-[var(--pw-color-text-muted)]">
           Could not load journal entries.
         </p>
       </div>
@@ -98,12 +98,12 @@ function JournalScreen() {
           <div>
             <h1
               id="journal-heading"
-              className="text-3xl font-bold text-[var(--color-text-primary)]"
-              style={{ fontFamily: "var(--font-expressive)" }}
+              className="text-3xl font-bold text-[var(--pw-color-text-primary)]"
+              style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
             >
               Journal
             </h1>
-            <p className="mt-1 text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[var(--pw-color-text-muted)]">
               What has happened in your world
             </p>
           </div>
@@ -124,7 +124,7 @@ function JournalScreen() {
             {/* Search */}
             <div className="relative flex-1">
               <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--pw-color-text-muted)]"
                 aria-hidden={true}
               />
               <input
@@ -132,7 +132,7 @@ function JournalScreen() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search entries…"
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] py-2 pl-10 pr-4 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)]"
+                className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] py-2 pl-10 pr-4 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]"
                 aria-label="Search journal entries"
               />
             </div>
@@ -140,7 +140,7 @@ function JournalScreen() {
             {/* Type filter */}
             <div className="flex items-center gap-2">
               <Filter
-                className="h-4 w-4 text-[var(--color-text-muted)]"
+                className="h-4 w-4 text-[var(--pw-color-text-muted)]"
                 aria-hidden={true}
               />
               <div className="flex flex-wrap gap-1">
@@ -150,8 +150,8 @@ function JournalScreen() {
                     onClick={() => setTypeFilter(filter.value)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       typeFilter === filter.value
-                        ? "bg-[var(--color-accent-primary)] text-[var(--color-canvas)]"
-                        : "bg-[var(--color-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                        ? "bg-[var(--pw-color-accent-primary)] text-[var(--pw-color-surface-canvas)]"
+                        : "bg-[var(--pw-color-surface-elevated)] text-[var(--pw-color-text-secondary)] hover:text-[var(--pw-color-text-primary)]"
                     }`}
                   >
                     {filter.label}
@@ -169,17 +169,17 @@ function JournalScreen() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <BookOpen
-                className="h-12 w-12 text-[var(--color-text-muted)]"
+                className="h-12 w-12 text-[var(--pw-color-text-muted)]"
                 aria-hidden={true}
               />
               <h2
                 id="empty-heading"
-                className="mt-4 text-lg font-semibold text-[var(--color-text-primary)]"
-                style={{ fontFamily: "var(--font-expressive)" }}
+                className="mt-4 text-lg font-semibold text-[var(--pw-color-text-primary)]"
+                style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
               >
                 No journal entries yet
               </h2>
-              <p className="mt-2 text-center text-[var(--color-text-muted)]">
+              <p className="mt-2 text-center text-[var(--pw-color-text-muted)]">
                 Your world will record observations, decisions, and changes
                 here.
               </p>
@@ -198,12 +198,12 @@ function JournalScreen() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <Search
-                className="h-8 w-8 text-[var(--color-text-muted)]"
+                className="h-8 w-8 text-[var(--pw-color-text-muted)]"
                 aria-hidden={true}
               />
               <p
                 id="no-results-heading"
-                className="mt-3 text-[var(--color-text-muted)]"
+                className="mt-3 text-[var(--pw-color-text-muted)]"
               >
                 No entries match your search.
               </p>
@@ -217,7 +217,7 @@ function JournalScreen() {
         <section key={group.label} aria-labelledby={`date-${group.label}`}>
           <h2
             id={`date-${group.label}`}
-            className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+            className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--pw-color-text-muted)]"
           >
             {group.label}
           </h2>
@@ -233,10 +233,10 @@ function JournalScreen() {
                   onClick={() => setSelectedEntry(entry)}
                   className="w-full text-left"
                 >
-                  <Card className="transition-colors hover:border-[var(--color-accent-primary)]/50">
+                  <Card className="transition-colors hover:border-[var(--pw-color-accent-primary)]/50">
                     <CardContent className="flex items-start gap-4 py-4">
                       {/* ── Time ── */}
-                      <div className="w-16 shrink-0 text-right text-sm text-[var(--color-text-muted)]">
+                      <div className="w-16 shrink-0 text-right text-sm text-[var(--pw-color-text-muted)]">
                         {time}
                       </div>
 
@@ -251,14 +251,14 @@ function JournalScreen() {
                           />
                         </div>
                         {i < group.entries.length - 1 && (
-                          <div className="mt-2 h-full w-px bg-[var(--color-border)]" />
+                          <div className="mt-2 h-full w-px bg-[var(--pw-color-border-subtle)]" />
                         )}
                       </div>
 
                       {/* ── Content ── */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                          <h3 className="text-sm font-medium text-[var(--pw-color-text-primary)]">
                             {entry.summary}
                           </h3>
                           <Badge variant="secondary" className="shrink-0">
@@ -266,7 +266,7 @@ function JournalScreen() {
                           </Badge>
                         </div>
                         {entry.provenance?.source && (
-                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                          <p className="mt-1 text-xs text-[var(--pw-color-text-muted)]">
                             via {entry.provenance.source}
                           </p>
                         )}
@@ -353,18 +353,18 @@ function AddEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--pw-color-surface-canvas)]/60 p-4">
       <Card className="w-full max-w-xl">
         <div className="flex items-center justify-between p-4">
           <h2
-            className="text-lg font-semibold text-[var(--color-text-primary)]"
-            style={{ fontFamily: "var(--font-expressive)" }}
+            className="text-lg font-semibold text-[var(--pw-color-text-primary)]"
+            style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
           >
             Add Journal Entry
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            className="rounded-lg p-1 text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -378,15 +378,15 @@ function AddEntryModal({
               placeholder="What happened? What did you observe?"
               rows={4}
               maxLength={2000}
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-3 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)] resize-none"
+              className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)] resize-none"
               aria-label="Journal entry text"
             />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--color-text-muted)]">
+              <span className="text-xs text-[var(--pw-color-text-muted)]">
                 {text.length}/2000 {text.length > 1800 && "(close to limit)"}
               </span>
               {error && (
-                <p className="text-xs text-[var(--color-err)]">{error}</p>
+                <p className="text-xs text-[var(--pw-color-text-primary)]">{error}</p>
               )}
             </div>
           </CardContent>
@@ -396,7 +396,7 @@ function AddEntryModal({
             </Button>
             <Button type="submit" disabled={!text.trim() || isSaving || success}>
               {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 loader-static" />
               ) : success ? (
                 "✓ Saved"
               ) : (
@@ -424,7 +424,7 @@ function EntryDetailModal({
   const date = new Date(entry.ts);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--pw-color-surface-canvas)]/60 p-4">
       <Card className="w-full max-w-xl">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
@@ -435,7 +435,7 @@ function EntryDetailModal({
             </div>
             <div>
               <Badge variant="secondary">{icon.label}</Badge>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              <p className="mt-1 text-xs text-[var(--pw-color-text-muted)]">
                 {date.toLocaleDateString("en-US", {
                   weekday: "long",
                   year: "numeric",
@@ -452,16 +452,16 @@ function EntryDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            className="rounded-lg p-1 text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <CardContent>
-          <p className="text-[var(--color-text-primary)]">{entry.summary}</p>
+          <p className="text-[var(--pw-color-text-primary)]">{entry.summary}</p>
           {entry.provenance?.source && (
-            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+            <p className="mt-3 text-xs text-[var(--pw-color-text-muted)]">
               Recorded by {entry.provenance.source}
             </p>
           )}
@@ -536,48 +536,48 @@ function getJournalIcon(
   if (lower.includes("deploy") || lower.includes("completed") || lower.includes("shipped")) {
     return {
       icon: CheckCircle2,
-      iconColor: "text-[var(--color-ok)]",
-      bgColor: "bg-[var(--color-ok)]/10",
+      iconColor: "text-[var(--pw-color-accent-secondary)]",
+      bgColor: "bg-[var(--pw-color-accent-secondary)]/10",
       label: "deployment",
     };
   }
   if (lower.includes("setting") || lower.includes("config") || lower.includes("updated")) {
     return {
       icon: Settings,
-      iconColor: "text-[var(--color-text-muted)]",
-      bgColor: "bg-[var(--color-elevated)]",
+      iconColor: "text-[var(--pw-color-text-muted)]",
+      bgColor: "bg-[var(--pw-color-surface-elevated)]",
       label: "settings",
     };
   }
   if (lower.includes("health") || lower.includes("check") || lower.includes("passed")) {
     return {
       icon: Heart,
-      iconColor: "text-[var(--color-ok)]",
-      bgColor: "bg-[var(--color-ok)]/10",
+      iconColor: "text-[var(--pw-color-accent-secondary)]",
+      bgColor: "bg-[var(--pw-color-accent-secondary)]/10",
       label: "health",
     };
   }
   if (lower.includes("doc") || lower.includes("readme") || lower.includes("security")) {
     return {
       icon: FileText,
-      iconColor: "text-[var(--color-accent-primary)]",
-      bgColor: "bg-[var(--color-accent-primary)]/10",
+      iconColor: "text-[var(--pw-color-accent-primary)]",
+      bgColor: "bg-[var(--pw-color-accent-primary)]/10",
       label: "documentation",
     };
   }
   if (lower.includes("observ") || lower.includes("record") || lower.includes("note")) {
     return {
       icon: GitCommit,
-      iconColor: "text-[var(--color-accent-secondary)]",
-      bgColor: "bg-[var(--color-accent-secondary)]/10",
+      iconColor: "text-[var(--pw-color-accent-secondary)]",
+      bgColor: "bg-[var(--pw-color-accent-secondary)]/10",
       label: "observation",
     };
   }
 
   return {
     icon: BookOpen,
-    iconColor: "text-[var(--color-text-muted)]",
-    bgColor: "bg-[var(--color-elevated)]",
+    iconColor: "text-[var(--pw-color-text-muted)]",
+    bgColor: "bg-[var(--pw-color-surface-elevated)]",
     label: kind || "note",
   };
 }

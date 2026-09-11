@@ -54,43 +54,57 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Apply prefs to document on change
+  // Apply prefs to document on change. Variable names mirror the
+  // server's prefs_to_css_variables() (prefs.py) so the generated token
+  // layer and the server-rendered style block agree.
   useEffect(() => {
     const root = document.documentElement;
 
-    // Motion
-    if (prefs.motion === "off") {
-      root.style.setProperty("--motion-duration", "0ms");
-      root.classList.add("motion-off");
-      root.classList.remove("motion-subtle");
-    } else if (prefs.motion === "subtle") {
-      root.style.setProperty("--motion-duration", "150ms");
-      root.classList.add("motion-subtle");
-      root.classList.remove("motion-off");
-    } else {
-      root.style.setProperty("--motion-duration", "0ms");
-      root.classList.remove("motion-off", "motion-subtle");
-    }
+    // Motion: tier comes from the server vocabulary (off | reduced |
+    // subtle). off and reduced both run at 0ms; subtle gets 200ms.
+    root.setAttribute(
+      "data-pw-motion",
+      prefs.motion === "off"
+        ? "off"
+        : prefs.motion === "subtle"
+          ? "subtle"
+          : "reduced"
+    );
+    root.style.setProperty(
+      "--pw-motion-duration",
+      prefs.motion === "subtle" ? "200ms" : "0ms"
+    );
+    root.style.setProperty(
+      "--pw-motion-ambient",
+      prefs.motion === "subtle" ? "1" : "0"
+    );
 
-    // Contrast
-    if (prefs.contrast === "high") {
-      root.classList.add("contrast-high");
-      root.classList.remove("contrast-comfortable");
-    } else {
-      root.classList.add("contrast-comfortable");
-      root.classList.remove("contrast-high");
-    }
+    // Contrast (drives the focus-ring token swap in index.css)
+    root.setAttribute(
+      "data-pw-contrast",
+      prefs.contrast === "high" ? "high" : "comfortable"
+    );
 
     // Density
-    root.style.setProperty("--density", prefs.density);
-    root.setAttribute("data-density", prefs.density);
+    root.style.setProperty("--pw-density", prefs.density);
+    root.setAttribute("data-pw-density", prefs.density);
 
     // Text scale
-    root.style.setProperty("--text-scale-base", `${prefs.textScale}rem`);
+    root.style.setProperty(
+      "--pw-text-scale",
+      String(prefs.textScale)
+    );
+    root.style.setProperty(
+      "--pw-typography-text-scale-base",
+      `${prefs.textScale}rem`
+    );
 
-    // Target size
-    root.style.setProperty("--target-min", `${prefs.targetSize}px`);
-    root.setAttribute("data-target-size", String(prefs.targetSize));
+    // Target size (44px floor is enforced server-side too)
+    root.style.setProperty(
+      "--pw-target-minimum",
+      `${Math.max(prefs.targetSize, 44)}px`
+    );
+    root.setAttribute("data-pw-target-size", String(prefs.targetSize));
   }, [prefs]);
 
   const setPref = (key: string, value: string | number) => {

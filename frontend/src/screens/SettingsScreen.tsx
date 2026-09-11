@@ -141,16 +141,16 @@ function SettingsScreen() {
       <section aria-labelledby="settings-heading">
         <div className="flex items-start justify-between">
           <div>
-            <h1 id="settings-heading" className="text-3xl font-bold text-[var(--color-text-primary)]" style={{ fontFamily: "var(--font-expressive)" }}>System Settings</h1>
-            <p className="mt-1 text-[var(--color-text-muted)]">Configure your personal digital appliance preferences and capabilities</p>
+            <h1 id="settings-heading" className="text-3xl font-bold text-[var(--pw-color-text-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>System Settings</h1>
+            <p className="mt-1 text-[var(--pw-color-text-muted)]">Configure your personal digital appliance preferences and capabilities</p>
           </div>
-          {saving && <Badge variant="secondary" className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</Badge>}
+          {saving && <Badge variant="secondary" className="flex items-center gap-1"><Loader2 className="h-3 w-3 loader-static" /> Saving…</Badge>}
         </div>
       </section>
 
       {/* General */}
       <CollapsibleSection id="general" title="General" icon={User} defaultOpen>
-        <Card><CardContent className="divide-y divide-[var(--color-border)]">
+        <Card><CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
           <EditableRow icon={User} label="Display Name" value={displayName} onSave={(v) => {
         setDisplayName(v);
         const token = getAuthToken();
@@ -165,8 +165,8 @@ function SettingsScreen() {
 
       {/* Accessibility */}
       <CollapsibleSection id="accessibility" title="Accessibility" icon={Eye}>
-        <p className="mb-3 text-xs text-[var(--color-text-muted)]">These preferences apply everywhere. No separate accessibility mode — this is how your world works.</p>
-        <Card><CardContent className="divide-y divide-[var(--color-border)]">
+        <p className="mb-3 text-xs text-[var(--pw-color-text-muted)]">These preferences apply everywhere. No separate accessibility mode — this is how your world works.</p>
+        <Card><CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
           <SelectRow icon={Zap} label="Motion & Transitions" value={motion} options={["off", "reduced", "subtle"]} onChange={(v) => { setPref("motion", v); savePrefs({ motion: v }); }} />
           <SelectRow icon={Eye} label="Contrast" value={contrast} options={["comfortable", "high"]} onChange={(v) => { setPref("contrast", v); savePrefs({ contrast: v }); }} />
           <SelectRow icon={Monitor} label="Information Density" value={density} options={["compact", "comfortable", "spacious"]} onChange={(v) => { setPref("density", v); savePrefs({ density: v }); }} />
@@ -179,11 +179,11 @@ function SettingsScreen() {
       <CollapsibleSection id="companion" title="Companion" icon={Settings}>
         <Card><CardContent className="space-y-2">
           {COMPANIONS.map((c) => (
-            <button key={c.id} onClick={() => { savePrefs({ companion: c.id }); setCompanion(c.id); }} className={`flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors ${p.companion === c.id ? "border border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/5" : "border border-transparent hover:bg-[var(--color-elevated)]"}`}>
+            <button key={c.id} onClick={() => { savePrefs({ companion: c.id }); setCompanion(c.id); }} className={`flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors ${p.companion === c.id ? "border border-[var(--pw-color-accent-primary)] bg-[var(--pw-color-accent-primary)]/5" : "border border-transparent hover:bg-[var(--pw-color-surface-elevated)]"}`}>
               <img src={c.icon} alt="" className="h-7 w-7" aria-hidden={true} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-text-primary)]">{c.name}</p>
-                <p className="text-xs text-[var(--color-text-muted)] truncate">{c.desc}</p>
+                <p className="text-sm font-medium text-[var(--pw-color-text-primary)]">{c.name}</p>
+                <p className="text-xs text-[var(--pw-color-text-muted)] truncate">{c.desc}</p>
               </div>
               {p.companion === c.id && <Badge variant="default" className="shrink-0">Active</Badge>}
             </button>
@@ -194,13 +194,13 @@ function SettingsScreen() {
       {/* Providers */}
       <CollapsibleSection id="providers" title="Providers" icon={Wrench} badge={`${providers.filter((pr) => pr.status !== "not configured").length}/${providers.length}`}>
         <Card>
-          <CardContent className="divide-y divide-[var(--color-border)]">
+          <CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
             {providers.map((pr) => (
               <div key={pr.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <Settings className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden={true} />
+                  <Settings className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} />
                   <div>
-                    <span className="text-sm text-[var(--color-text-primary)]">{pr.name}</span>
+                    <span className="text-sm text-[var(--pw-color-text-primary)]">{pr.name}</span>
                     <Badge variant={pr.status === "connected" ? "healthy" : pr.status === "configured" ? "secondary" : "unknown"} className="ml-2">{pr.status}</Badge>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ function SettingsScreen() {
               </div>
             ))}
           </CardContent>
-          <div className="border-t border-[var(--color-border)] p-3">
+          <div className="border-t border-[var(--pw-color-border-subtle)] p-3">
             <Button variant="ghost" className="w-full" onClick={() => setAddingProvider(true)}>
               <Plus className="h-4 w-4 mr-2" aria-hidden={true} />Add Provider
             </Button>
@@ -222,7 +222,7 @@ function SettingsScreen() {
       {/* Icon reference (read-only; the sprite is the icon system) */}
       <CollapsibleSection id="icons" title="Icons" icon={Palette}>
         <Card><CardContent>
-          <p className="mb-3 text-xs text-[var(--color-text-muted)]">The icons used throughout the interface, served from the instance's sprite.</p>
+          <p className="mb-3 text-xs text-[var(--pw-color-text-muted)]">The icons used throughout the interface, served from the instance's sprite.</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { cat: "navigation", icons: ["today", "chat", "worlds", "journal", "settings", "projects"] },
@@ -234,11 +234,11 @@ function SettingsScreen() {
               { cat: "time-organization", icons: ["calendar", "clock", "history", "archive", "pin", "sort"] },
               { cat: "world-content", icons: ["world", "memory", "lore", "story", "bookmark", "tag"] },
             ].map((group) => (
-              <div key={group.cat} className="rounded-lg border border-[var(--color-border)] p-2">
-                <p className="mb-1.5 text-xs font-medium text-[var(--color-text-muted)]">{group.cat}</p>
+              <div key={group.cat} className="rounded-lg border border-[var(--pw-color-border-subtle)] p-2">
+                <p className="mb-1.5 text-xs font-medium text-[var(--pw-color-text-muted)]">{group.cat}</p>
                 <div className="flex flex-wrap gap-1">
                   {group.icons.map((icon) => (
-                    <img key={icon} src={`/icons/${group.cat.toLowerCase()}--${icon}.svg`} alt={icon} className="h-5 w-5 text-[var(--color-text-secondary)]" title={icon} />
+                    <img key={icon} src={`/icons/${group.cat.toLowerCase()}--${icon}.svg`} alt={icon} className="h-5 w-5 text-[var(--pw-color-text-secondary)]" title={icon} />
                   ))}
                 </div>
               </div>
@@ -249,7 +249,7 @@ function SettingsScreen() {
 
       {/* About */}
       <CollapsibleSection id="about" title="About" icon={Shield}>
-        <Card><CardContent className="divide-y divide-[var(--color-border)]">
+        <Card><CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
           <StaticRow icon={Settings} label="Auth" value="Configured" />
         </CardContent></Card>
       </CollapsibleSection>
@@ -265,14 +265,14 @@ function SettingsScreen() {
       <CollapsibleSection id="vault" title="Vault" icon={Shield} badge={vaultStatus.data?.locked ? "locked" : "unlocked"}>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--color-text-secondary)]">
+            <span className="text-sm text-[var(--pw-color-text-secondary)]">
               {vaultStatus.data?.locked ? "🔒 Locked" : "🔓 Unlocked"}
             </span>
             <Button variant="ghost" size="sm" onClick={() => {}}>
               {vaultStatus.data?.locked ? "Unlock" : "Lock"}
             </Button>
           </div>
-          <div className="text-xs text-[var(--color-text-muted)]">
+          <div className="text-xs text-[var(--pw-color-text-muted)]">
             Encrypted at rest: {vaultStatus.data?.encrypted ? "Yes" : "No"}
           </div>
         </div>
@@ -283,10 +283,10 @@ function SettingsScreen() {
         <div className="space-y-3">
           {scStatus.data?.repos ? (
             scStatus.data.repos.map((repo: any) => (
-              <div key={repo.name} className="flex items-center justify-between rounded-xl border border-[var(--color-border)] p-3">
+              <div key={repo.name} className="flex items-center justify-between rounded-xl border border-[var(--pw-color-border-subtle)] p-3">
                 <div>
-                  <div className="text-sm font-medium text-[var(--color-text-primary)]">{repo.name}</div>
-                  <div className="text-xs text-[var(--color-text-muted)]">{repo.branch || "no branch"}</div>
+                  <div className="text-sm font-medium text-[var(--pw-color-text-primary)]">{repo.name}</div>
+                  <div className="text-xs text-[var(--pw-color-text-muted)]">{repo.branch || "no branch"}</div>
                 </div>
                 <Badge variant={repo.dirty ? "attention" : "healthy"}>
                   {repo.dirty ? "dirty" : "clean"}
@@ -294,7 +294,7 @@ function SettingsScreen() {
               </div>
             ))
           ) : (
-            <div className="text-sm text-[var(--color-text-muted)]">
+            <div className="text-sm text-[var(--pw-color-text-muted)]">
               {(!scStatus.data?.repos || scStatus.data.repos.length === 0) ? "No repositories configured" : "Loading..."}
             </div>
           )}
@@ -306,15 +306,15 @@ function SettingsScreen() {
         <div className="space-y-3">
           {backup.data ? (
             <>
-              <div className="text-sm text-[var(--color-text-secondary)]">
+              <div className="text-sm text-[var(--pw-color-text-secondary)]">
                 Schema: {backup.data.schema}
               </div>
-              <div className="text-xs text-[var(--color-text-muted)]">
+              <div className="text-xs text-[var(--pw-color-text-muted)]">
                 {backup.data.world?.facts ? Object.keys(backup.data.world.facts).length : 0} facts stored
               </div>
             </>
           ) : (
-            <div className="text-sm text-[var(--color-text-muted)]">Loading...</div>
+            <div className="text-sm text-[var(--pw-color-text-muted)]">Loading...</div>
           )}
         </div>
       </CollapsibleSection>
@@ -330,9 +330,9 @@ function CollapsibleSection({ id, title, icon: Icon, children, defaultOpen = fal
   return (
     <section aria-labelledby={`${id}-heading`}>
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 text-left" aria-expanded={open} aria-controls={`${id}-content`}>
-        <ChevronDown className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden={true} />
-        <Icon className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden={true} />
-        <h2 id={`${id}-heading`} className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">{title}</h2>
+        <ChevronDown className={`h-4 w-4 text-[var(--pw-color-text-muted)] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden={true} />
+        <Icon className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} />
+        <h2 id={`${id}-heading`} className="text-sm font-semibold uppercase tracking-wider text-[var(--pw-color-text-muted)]">{title}</h2>
         {badge && <Badge variant="secondary" className="ml-auto">{badge}</Badge>}
       </button>
       {open && <div id={`${id}-content`} className="mt-3">{children}</div>}
@@ -392,35 +392,35 @@ function ConfigureModal({ provider, onClose, onSaved }: { provider: Provider; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--pw-color-surface-canvas)]/60 p-4">
       <Card className="w-full max-w-xl">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-elevated)]"><Settings className="h-5 w-5 text-[var(--color-text-muted)]" aria-hidden={true} /></div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--pw-color-surface-elevated)]"><Settings className="h-5 w-5 text-[var(--pw-color-text-muted)]" aria-hidden={true} /></div>
             <div>
-              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]" style={{ fontFamily: "var(--font-expressive)" }}>{provider.name}</h2>
+              <h2 className="text-lg font-semibold text-[var(--pw-color-text-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>{provider.name}</h2>
               <Badge variant={provider.status === "connected" ? "healthy" : provider.status === "configured" ? "secondary" : "unknown"}>{provider.status}</Badge>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]" aria-label="Close"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="rounded-lg p-1 text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]" aria-label="Close"><X className="h-5 w-5" /></button>
         </div>
         <CardContent className="space-y-4">
           {provider.fields.map((field) => (
             <div key={field.key}>
-              <label className="mb-1 flex items-center gap-1.5 text-sm text-[var(--color-text-muted)]">
+              <label className="mb-1 flex items-center gap-1.5 text-sm text-[var(--pw-color-text-muted)]">
                 {field.type === "password" ? <Key className="h-3.5 w-3.5" aria-hidden={true} /> : <Link className="h-3.5 w-3.5" aria-hidden={true} />}
                 {field.label}
               </label>
-              <input type={field.type} value={values[field.key] || ""} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })} placeholder={field.placeholder} className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)]" />
+              <input type={field.type} value={values[field.key] || ""} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })} placeholder={field.placeholder} className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-4 py-2 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
             </div>
           ))}
-          <p className="text-xs text-[var(--color-text-muted)]">Get credentials at: {provider.docs}</p>
+          <p className="text-xs text-[var(--pw-color-text-muted)]">Get credentials at: {provider.docs}</p>
         </CardContent>
         {validation && (
           <div className={`rounded-lg p-3 text-sm ${
-            validation.status === 'valid' ? 'bg-[var(--color-ok)]/10 text-[var(--color-ok)]' :
-            validation.status === 'invalid' ? 'bg-[var(--color-err)]/10 text-[var(--color-err)]' :
-            'bg-[var(--color-warn)]/10 text-[var(--color-warn)]'
+            validation.status === 'valid' ? 'bg-[var(--pw-color-accent-secondary)]/10 text-[var(--pw-color-accent-secondary)]' :
+            validation.status === 'invalid' ? 'bg-[var(--pw-color-text-primary)]/10 text-[var(--pw-color-text-primary)]' :
+            'bg-[var(--pw-color-text-secondary)]/10 text-[var(--pw-color-text-secondary)]'
           }`}>
             {validation.status === 'valid' ? '✓' : validation.status === 'invalid' ? '✗' : '⚠'} {validation.message}
           </div>
@@ -428,10 +428,10 @@ function ConfigureModal({ provider, onClose, onSaved }: { provider: Provider; on
         <div className="flex justify-end gap-2 p-4 pt-0">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="outline" onClick={validateCredentials} disabled={validating}>
-            {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Validate"}
+            {validating ? <Loader2 className="h-4 w-4 loader-static" /> : "Validate"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <><Check className="h-4 w-4" /> Saved</> : "Save"}
+            {isSaving ? <Loader2 className="h-4 w-4 loader-static" /> : saved ? <><Check className="h-4 w-4" /> Saved</> : "Save"}
           </Button>
         </div>
       </Card>
@@ -471,32 +471,32 @@ function AddProviderModal({ onClose, onAdd }: { onClose: () => void; onAdd: (pr:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--pw-color-surface-canvas)]/60 p-4">
       <Card className="w-full max-w-xl">
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]" style={{ fontFamily: "var(--font-expressive)" }}>Add Provider</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]" aria-label="Close"><X className="h-5 w-5" /></button>
+          <h2 className="text-lg font-semibold text-[var(--pw-color-text-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>Add Provider</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]" aria-label="Close"><X className="h-5 w-5" /></button>
         </div>
         <CardContent className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-muted)]">Provider Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. LiteLLM, OpenAI, Anthropic" className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)]" />
+            <label className="mb-1 block text-sm text-[var(--pw-color-text-muted)]">Provider Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. LiteLLM, OpenAI, Anthropic" className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-4 py-2 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-muted)]">Type</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]">
+            <label className="mb-1 block text-sm text-[var(--pw-color-text-muted)]">Type</label>
+            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-4 py-2 text-sm text-[var(--pw-color-text-primary)] outline-none focus:border-[var(--pw-color-accent-primary)]">
               <option value="custom">Custom (OpenAI-compatible)</option>
               <option value="cloud">Cloud Provider</option>
               <option value="local">Local Instance</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-muted)]">Base URL</label>
-            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://your-proxy.com/v1" className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)]" />
+            <label className="mb-1 block text-sm text-[var(--pw-color-text-muted)]">Base URL</label>
+            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://your-proxy.com/v1" className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-4 py-2 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-muted)]">API Key</label>
-            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="••••••••" className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-primary)]" />
+            <label className="mb-1 block text-sm text-[var(--pw-color-text-muted)]">API Key</label>
+            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="••••••••" className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-4 py-2 text-sm text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] outline-none focus:border-[var(--pw-color-accent-primary)]" />
           </div>
         </CardContent>
         <div className="flex justify-end gap-2 p-4 pt-0">
@@ -509,7 +509,7 @@ function AddProviderModal({ onClose, onAdd }: { onClose: () => void; onAdd: (pr:
 }
 
 function StaticRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
-  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--color-text-primary)]">{label}</span></div><span className="text-sm text-[var(--color-text-muted)]">{value}</span></div>);
+  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--pw-color-text-primary)]">{label}</span></div><span className="text-sm text-[var(--pw-color-text-muted)]">{value}</span></div>);
 }
 
 function EditableRow({ icon: Icon, label, value, onSave }: { icon: typeof User; label: string; value: string; onSave?: (v: string) => void }) {
@@ -527,15 +527,15 @@ function EditableRow({ icon: Icon, label, value, onSave }: { icon: typeof User; 
     }).then(() => window.dispatchEvent(new Event('principal-updated'))).catch(() => {});
   };
 
-  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--color-text-primary)]">{label}</span></div>
-    {editing ? <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => commit(draft)} onKeyDown={(e) => e.key === "Enter" && commit(draft)} className="w-40 rounded-lg border border-[var(--color-accent-primary)] bg-[var(--color-panel)] px-2 py-1 text-sm text-[var(--color-text-primary)] outline-none" /> : <button onClick={() => setEditing(true)} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">{value}</button>}
+  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--pw-color-text-primary)]">{label}</span></div>
+    {editing ? <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => commit(draft)} onKeyDown={(e) => e.key === "Enter" && commit(draft)} className="w-40 rounded-lg border border-[var(--pw-color-accent-primary)] bg-[var(--pw-color-surface-panel)] px-2 py-1 text-sm text-[var(--pw-color-text-primary)] outline-none" /> : <button onClick={() => setEditing(true)} className="text-sm text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]">{value}</button>}
   </div>);
 }
 
 
 function SelectRow({ icon: Icon, label, value, options, onChange }: { icon: typeof User; label: string; value: string; options: string[]; onChange: (v: string) => void }) {
-  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--color-text-primary)]">{label}</span></div>
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-2 py-1 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)]">
+  return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--pw-color-text-primary)]">{label}</span></div>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-lg border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-2 py-1 text-sm text-[var(--pw-color-text-primary)] outline-none focus:border-[var(--pw-color-accent-primary)]">
       {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
     </select>
   </div>);

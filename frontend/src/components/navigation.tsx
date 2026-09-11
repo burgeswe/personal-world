@@ -24,12 +24,12 @@ function SidebarNav({ className }: SidebarNavProps) {
     <nav
       aria-label="Main navigation"
       className={cn(
-        "flex h-full w-48 flex-col border-r border-[var(--color-border)] bg-[var(--color-panel)]",
+        "flex h-full w-48 flex-col border-r border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)]",
         className
       )}
     >
       {/* Logo */}
-      <div className="flex h-14 items-center border-b border-[var(--color-border)] px-4">
+      <div className="flex h-14 items-center border-b border-[var(--pw-color-border-subtle)] px-4">
         <img
           src="/companions/personal-world.svg"
           alt=""
@@ -37,8 +37,8 @@ function SidebarNav({ className }: SidebarNavProps) {
           aria-hidden={true}
         />
         <span
-          className="ml-2 text-base font-semibold text-[var(--color-accent-primary)]"
-          style={{ fontFamily: "var(--font-expressive)" }}
+          className="ml-2 text-base font-semibold text-[var(--pw-color-accent-primary)]"
+          style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
         >
           Personal World
         </span>
@@ -55,8 +55,8 @@ function SidebarNav({ className }: SidebarNavProps) {
                 cn(
                   "flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-[var(--color-elevated)] text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-primary)]"
+                    ? "bg-[var(--pw-color-surface-elevated)] text-[var(--pw-color-accent-primary)]"
+                    : "text-[var(--pw-color-text-secondary)] hover:bg-[var(--pw-color-surface-elevated)] hover:text-[var(--pw-color-text-primary)]"
                 )
               }
             >
@@ -68,7 +68,7 @@ function SidebarNav({ className }: SidebarNavProps) {
       </ul>
 
       {/* Companion at bottom */}
-      <div className="border-t border-[var(--color-border)] p-2.5">
+      <div className="border-t border-[var(--pw-color-border-subtle)] p-2.5">
         <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5">
           <img
             src="/companions/personal-world.svg"
@@ -76,8 +76,8 @@ function SidebarNav({ className }: SidebarNavProps) {
             className="h-7 w-7"
           />
           <div className="min-w-0">
-            <p className="text-xs font-medium text-[var(--color-text-primary)] truncate">Personal World</p>
-            <p className="text-[10px] text-[var(--color-text-muted)]">System companion</p>
+            <p className="text-xs font-medium text-[var(--pw-color-text-primary)] truncate">Personal World</p>
+            <p className="text-[10px] text-[var(--pw-color-text-muted)]">System companion</p>
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@ function BottomNav({ className }: BottomNavProps) {
     <nav
       aria-label="Main navigation"
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 flex border-t border-[var(--color-border)] bg-[var(--color-panel)] md:hidden",
+        "fixed bottom-0 left-0 right-0 z-50 flex border-t border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] md:hidden",
         className
       )}
     >
@@ -108,8 +108,8 @@ function BottomNav({ className }: BottomNavProps) {
                 cn(
                   "flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors",
                   isActive
-                    ? "text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                    ? "text-[var(--pw-color-accent-primary)]"
+                    : "text-[var(--pw-color-text-muted)] hover:text-[var(--pw-color-text-primary)]"
                 )
               }
             >

@@ -48,10 +48,10 @@ function TodayScreen() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
         <Loader2
-          className="h-8 w-8 animate-spin text-[var(--color-accent-primary)]"
+          className="h-8 w-8 loader-static text-[var(--pw-color-accent-primary)]"
           aria-hidden={true}
         />
-        <p className="text-[var(--color-text-muted)]">Loading your world…</p>
+        <p className="text-[var(--pw-color-text-muted)]">Loading your world…</p>
       </div>
     );
   }
@@ -61,10 +61,10 @@ function TodayScreen() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
         <AlertCircle
-          className="h-8 w-8 text-[var(--color-err)]"
+          className="h-8 w-8 text-[var(--pw-color-text-primary)]"
           aria-hidden={true}
         />
-        <p className="text-[var(--color-text-muted)]">
+        <p className="text-[var(--pw-color-text-muted)]">
           Could not load your world. Check that the server is running.
         </p>
       </div>
@@ -76,16 +76,16 @@ function TodayScreen() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
         <Inbox
-          className="h-12 w-12 text-[var(--color-text-muted)]"
+          className="h-12 w-12 text-[var(--pw-color-text-muted)]"
           aria-hidden={true}
         />
         <h2
-          className="text-xl font-semibold text-[var(--color-text-primary)]"
-          style={{ fontFamily: "var(--font-expressive)" }}
+          className="text-xl font-semibold text-[var(--pw-color-text-primary)]"
+          style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
         >
           Welcome to your Personal World
         </h2>
-        <p className="text-center text-[var(--color-text-muted)]">
+        <p className="text-center text-[var(--pw-color-text-muted)]">
           Your world hasn't been set up yet. Run the setup wizard to get
           started.
         </p>
@@ -135,21 +135,21 @@ function TodayScreen() {
           <div>
             <h1
               id="greeting-heading"
-              className="text-3xl font-bold text-[var(--color-text-primary)]"
-              style={{ fontFamily: "var(--font-expressive)" }}
+              className="text-3xl font-bold text-[var(--pw-color-text-primary)]"
+              style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
             >
               {principal.data?.display_name
                 ? `Welcome back, ${principal.data.display_name}`
                 : "Welcome back"}
             </h1>
-            <p className="mt-1 text-[var(--color-text-muted)]">{dateStr}</p>
+            <p className="mt-1 text-[var(--pw-color-text-muted)]">{dateStr}</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-ok)] opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-ok)]"></span>
+              <span className="absolute inline-flex h-full w-full loader-static rounded-full bg-[var(--pw-color-accent-secondary)] opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--pw-color-accent-secondary)]"></span>
             </span>
-            <span className="text-sm text-[var(--color-text-muted)]">
+            <span className="text-sm text-[var(--pw-color-text-muted)]">
               Local instance synchronized
             </span>
           </div>
@@ -162,32 +162,32 @@ function TodayScreen() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <CheckCircle2
-                className="h-5 w-5 text-[var(--color-ok)]"
+                className="h-5 w-5 text-[var(--pw-color-accent-secondary)]"
                 aria-hidden={true}
               />
               <span
                 id="health-heading"
-                className="text-lg font-medium text-[var(--color-text-primary)]"
+                className="text-lg font-medium text-[var(--pw-color-text-primary)]"
               >
                 {warningCount > 0
                   ? "Your world needs some attention"
                   : "Your world looks healthy"}
               </span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm text-[var(--color-text-muted)]">
+            <div className="mt-3 flex flex-wrap gap-4 text-sm text-[var(--pw-color-text-muted)]">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[var(--color-ok)]"></span>
+                <span className="h-2 w-2 rounded-full bg-[var(--pw-color-accent-secondary)]"></span>
                 {healthyCount} connected capabilities healthy
               </div>
               {warningCount > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--color-warn)]"></span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--pw-color-text-secondary)]"></span>
                   {warningCount} need attention
                 </div>
               )}
               {offlineCount > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--color-text-muted)]"></span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--pw-color-text-muted)]"></span>
                   {offlineCount} not configured
                 </div>
               )}
@@ -202,7 +202,7 @@ function TodayScreen() {
           <Card>
             <CardHeader>
               <CardTitle id="attention-heading" className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-[var(--color-warn)]" aria-hidden={true} />
+                <AlertCircle className="h-5 w-5 text-[var(--pw-color-text-secondary)]" aria-hidden={true} />
                 Attention
               </CardTitle>
             </CardHeader>
@@ -211,14 +211,14 @@ function TodayScreen() {
                 {attentionItems.map(([name, cap]) => (
                   <li
                     key={name}
-                    className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 last:border-0 last:pb-0"
+                    className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] pb-3 last:border-0 last:pb-0"
                   >
                     <div>
-                      <span className="text-[var(--color-text-primary)] capitalize">
+                      <span className="text-[var(--pw-color-text-primary)] capitalize">
                         {name.replace(/_/g, " ")}
                       </span>
                       {cap.warnings?.[0] && (
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs text-[var(--pw-color-text-muted)]">
                           {cap.warnings[0]}
                         </p>
                       )}
@@ -294,12 +294,12 @@ function TodayScreen() {
                 {Object.entries(world.data.intents).map(([key, intent]) => (
                   <li
                     key={key}
-                    className="flex items-center justify-between border-b border-[var(--color-border)] py-2 last:border-0"
+                    className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] py-2 last:border-0"
                   >
-                    <span className="text-[var(--color-text-secondary)] capitalize">
+                    <span className="text-[var(--pw-color-text-secondary)] capitalize">
                       {key.replace(/_/g, " ")}
                     </span>
-                    <span className="text-[var(--color-text-primary)]">
+                    <span className="text-[var(--pw-color-text-primary)]">
                       {intent.value}
                     </span>
                   </li>
@@ -316,7 +316,7 @@ function TodayScreen() {
           <Card>
             <CardHeader>
               <CardTitle id="discovery-heading" className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[var(--color-accent-primary)]" aria-hidden={true} />
+                <Sparkles className="h-5 w-5 text-[var(--pw-color-accent-primary)]" aria-hidden={true} />
                 Discovery
               </CardTitle>
               <CardDescription>
@@ -328,21 +328,21 @@ function TodayScreen() {
                 {discoveryItems.map(([name, cap]) => (
                   <li
                     key={name}
-                    className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 last:border-0 last:pb-0"
+                    className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] pb-3 last:border-0 last:pb-0"
                   >
                     <div className="flex items-center gap-3">
                       <span
                         className={`h-2 w-2 rounded-full ${
                           cap.ok
-                            ? "bg-[var(--color-ok)]"
-                            : "bg-[var(--color-warn)]"
+                            ? "bg-[var(--pw-color-accent-secondary)]"
+                            : "bg-[var(--pw-color-text-secondary)]"
                         }`}
                       ></span>
                       <div>
-                        <span className="text-[var(--color-text-primary)] capitalize">
+                        <span className="text-[var(--pw-color-text-primary)] capitalize">
                           {name.replace(/_/g, " ")}
                         </span>
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs text-[var(--pw-color-text-muted)]">
                           via discovery
                         </p>
                       </div>
@@ -371,14 +371,14 @@ function TodayScreen() {
                   return (
                     <li
                       key={i}
-                      className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 last:border-0 last:pb-0"
+                      className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] pb-3 last:border-0 last:pb-0"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-[var(--color-text-secondary)]">
+                        <span className="text-[var(--pw-color-text-secondary)]">
                           {change.text}
                         </span>
                       </div>
-                      <span className="text-xs text-[var(--color-text-muted)]">
+                      <span className="text-xs text-[var(--pw-color-text-muted)]">
                         {change.time}
                       </span>
                     </li>
@@ -395,14 +395,14 @@ function TodayScreen() {
         <Card>
           <CardHeader>
             <CardTitle id="vault-heading" className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-[var(--color-accent-primary)]" aria-hidden={true} />
+              <Shield className="h-5 w-5 text-[var(--pw-color-accent-primary)]" aria-hidden={true} />
               Vault
             </CardTitle>
             <CardDescription>Secret storage</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--color-text-secondary)]">
+              <span className="text-sm text-[var(--pw-color-text-secondary)]">
                 {vaultStatus.data?.locked ? "🔒 Locked" : "🔓 Unlocked"}
               </span>
               <Badge variant={vaultStatus.data?.locked ? "attention" : "healthy"}>
@@ -418,7 +418,7 @@ function TodayScreen() {
         <Card>
           <CardHeader>
             <CardTitle id="sc-heading" className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-[var(--color-accent-primary)]" aria-hidden={true} />
+              <Globe className="h-5 w-5 text-[var(--pw-color-accent-primary)]" aria-hidden={true} />
               Source Control
             </CardTitle>
             <CardDescription>Git repositories</CardDescription>
@@ -428,7 +428,7 @@ function TodayScreen() {
               <ul className="space-y-2" role="list">
                 {scStatus.data.repos.map((repo: any) => (
                   <li key={repo.name} className="flex items-center justify-between">
-                    <span className="text-sm text-[var(--color-text-primary)]">{repo.name}</span>
+                    <span className="text-sm text-[var(--pw-color-text-primary)]">{repo.name}</span>
                     <Badge variant={repo.dirty ? "attention" : "healthy"}>
                       {repo.dirty ? "dirty" : "clean"}
                     </Badge>
@@ -436,7 +436,7 @@ function TodayScreen() {
                 ))}
               </ul>
             ) : (
-              <span className="text-sm text-[var(--color-text-muted)]">No repositories found</span>
+              <span className="text-sm text-[var(--pw-color-text-muted)]">No repositories found</span>
             )}
           </CardContent>
         </Card>
@@ -448,7 +448,7 @@ function TodayScreen() {
           <Card>
             <CardHeader>
               <CardTitle id="reminders-heading" className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-[var(--color-accent-primary)]" aria-hidden={true} />
+                <Bell className="h-5 w-5 text-[var(--pw-color-accent-primary)]" aria-hidden={true} />
                 Reminders
               </CardTitle>
             </CardHeader>
@@ -457,9 +457,9 @@ function TodayScreen() {
                 {activeReminders.map((reminder) => (
                   <li
                     key={reminder.id}
-                    className="flex items-center justify-between border-b border-[var(--color-border)] py-2 last:border-0"
+                    className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] py-2 last:border-0"
                   >
-                    <span className="text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--pw-color-text-secondary)]">
                       {reminder.text}
                     </span>
                     <Badge variant="healthy">Active</Badge>
@@ -477,7 +477,7 @@ function TodayScreen() {
           <Card>
             <CardHeader>
               <CardTitle id="journal-heading" className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-[var(--color-accent-secondary)]" aria-hidden={true} />
+                <BookOpen className="h-5 w-5 text-[var(--pw-color-accent-secondary)]" aria-hidden={true} />
                 Recent Journal
               </CardTitle>
             </CardHeader>
@@ -490,21 +490,21 @@ function TodayScreen() {
                   return (
                     <li
                       key={i}
-                      className="flex items-start gap-3 border-b border-[var(--color-border)] pb-3 last:border-0 last:pb-0"
+                      className="flex items-start gap-3 border-b border-[var(--pw-color-border-subtle)] pb-3 last:border-0 last:pb-0"
                     >
                       <Icon
                         className={`h-4 w-4 mt-0.5 ${icon.color}`}
                         aria-hidden={true}
                       />
                       <div className="flex-1">
-                        <p className="text-[var(--color-text-secondary)]">
+                        <p className="text-[var(--pw-color-text-secondary)]">
                           {entry.summary}
                         </p>
                         <div className="mt-1 flex items-center gap-2">
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                             {icon.label}
                           </Badge>
-                          <span className="text-xs text-[var(--color-text-muted)]">
+                          <span className="text-xs text-[var(--pw-color-text-muted)]">
                             {timeAgo}
                           </span>
                         </div>
@@ -530,9 +530,9 @@ function TodayScreen() {
                 {worldStatus.data.actors.map((actor) => (
                   <li
                     key={actor.name}
-                    className="flex items-center justify-between border-b border-[var(--color-border)] py-2 last:border-0"
+                    className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] py-2 last:border-0"
                   >
-                    <span className="text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--pw-color-text-secondary)]">
                       {actor.name}
                     </span>
                     <Badge
@@ -577,21 +577,21 @@ function getJournalIcon(content: string): {
 } {
   const lower = content.toLowerCase();
   if (lower.includes("deploy") || lower.includes("shipped") || lower.includes("completed")) {
-    return { icon: CheckCircle2, color: "text-[var(--color-ok)]", label: "deployment" };
+    return { icon: CheckCircle2, color: "text-[var(--pw-color-accent-secondary)]", label: "deployment" };
   }
   if (lower.includes("setting") || lower.includes("config") || lower.includes("updated")) {
-    return { icon: Settings, color: "text-[var(--color-text-muted)]", label: "settings change" };
+    return { icon: Settings, color: "text-[var(--pw-color-text-muted)]", label: "settings change" };
   }
   if (lower.includes("doc") || lower.includes("readme") || lower.includes("documentation")) {
-    return { icon: FileText, color: "text-[var(--color-accent-primary)]", label: "documentation" };
+    return { icon: FileText, color: "text-[var(--pw-color-accent-primary)]", label: "documentation" };
   }
   if (lower.includes("health") || lower.includes("check") || lower.includes("test")) {
-    return { icon: Heart, color: "text-[var(--color-ok)]", label: "health" };
+    return { icon: Heart, color: "text-[var(--pw-color-accent-secondary)]", label: "health" };
   }
   if (lower.includes("migrat") || lower.includes("move") || lower.includes("setup")) {
-    return { icon: GitCommit, color: "text-[var(--color-accent-secondary)]", label: "observation" };
+    return { icon: GitCommit, color: "text-[var(--pw-color-accent-secondary)]", label: "observation" };
   }
-  return { icon: BookOpen, color: "text-[var(--color-text-muted)]", label: "note" };
+  return { icon: BookOpen, color: "text-[var(--pw-color-text-muted)]", label: "note" };
 }
 
 export default TodayScreen;
