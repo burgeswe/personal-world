@@ -240,41 +240,90 @@ img[src*="/icons/"][class*="h-5"] {
   flex-direction: column;
 }
 
+/* Shell-local sizing vars (NOT generated truth — tokens.json owns
+   colors/spacing/type; these are shell geometry seams so the header
+   and content measure stay consistent across every route):
+   --pw-header-height: fixed compact brand strip; identical on every
+     route and bucket (the banner bucket may wrap its nav taller —
+     bucket-driven, never route-driven).
+   --pw-content-measure: the ONE content width system (DESIGN-HANDOFF
+     §A "calm, cute, highly legible personal control desk"; chat's
+     ~640-720px message column reads comfortably inside 64rem). */
+:root {
+  --pw-header-height: 3.5rem;
+  --pw-content-measure: 64rem;
+}
+
 .pw-main {
   flex: 1 1 auto;
   min-width: 0;
-  padding: var(--pw-spacing-loose);
+  /* Fixed header + one measure (T14 human gate 1+2): route content
+     lives in a centered column of --pw-content-measure; margin
+     discipline keeps route content from leaking geometry upward. */
+  width: 100%;
+  max-width: var(--pw-content-measure);
+  margin-inline: auto;
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+  overflow-x: hidden;
 }
 
-/* Header + banner nav (600–899px) */
+/* Header: FIXED compact geometry — identical height on every route
+   and bucket. Route content cannot influence it (h1 margins live
+   inside .pw-main's padding, not collapsed into the header). */
 .pw-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--pw-spacing-normal);
-  min-height: var(--pw-target-minimum);
-  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  flex-wrap: wrap;
+  height: var(--pw-header-height);
+  padding: 0 var(--pw-spacing-loose);
   border-bottom: 1px solid var(--pw-color-border-subtle);
   background: var(--pw-color-surface-panel);
 }
 
+/* Brand + companion identity (CompanionSlot nav size per
+   COMPANION_INTEGRATION "persistent sidebar presence"). */
+.pw-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-spacing-normal);
+  min-width: 0;
+}
+
 .pw-brand {
-  font-size: 1.05rem;
+  font-family: var(--pw-typography-font-expressive);
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--pw-color-accent-primary);
+  white-space: nowrap;
+}
+
+/* Header right side: assistant trigger + anything else. */
+.pw-header-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-spacing-compact);
+  margin-left: auto;
 }
 
 /* Banner nav (600–899px): rendered in the header only in that bucket
    (AppShell mirrors the same breakpoint); the seam below restates
-   visibility as defense in depth. */
+   visibility as defense in depth. Wrapping makes the header taller in
+   THIS bucket only (bucket-driven, not route-driven). */
 .pw-banner-nav {
   display: none;
 }
 
 @media (min-width: 600px) and (max-width: 899px) {
+  .pw-header {
+    height: auto;
+    min-height: var(--pw-header-height);
+    padding: var(--pw-spacing-compact) var(--pw-spacing-loose);
+  }
   .pw-banner-nav {
     display: block;
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     /* Reflow floor (A11y §6.4, T14 zoom proxy-b): narrow banner
        widths and doubled text must WRAP, never overflow the page —
        8 sections do not fit one 720px row. */
@@ -312,8 +361,14 @@ img[src*="/icons/"][class*="h-5"] {
 }
 
 /* Rail (≥900px): left rail beside main. The AppShell renders exactly
-   one nav per bucket (same breakpoints); CSS seams restate visibility. */
+   one nav per bucket (same breakpoints); CSS seams restate visibility.
+   Rail width is a shell-local geometry var (see --pw-content-measure
+   note above): sized for 24px icons + 0.8rem labels to stay legible
+   without becoming a second content column (T14 human gate 3). */
 @media (min-width: 900px) {
+  :root {
+    --pw-rail-width: 6.75rem;
+  }
   .pw-shell {
     flex-direction: row;
     flex-wrap: wrap;
@@ -323,7 +378,7 @@ img[src*="/icons/"][class*="h-5"] {
   }
   .pw-rail {
     display: block;
-    flex: 0 0 var(--pw-rail-width, 4.5rem);
+    flex: 0 0 var(--pw-rail-width, 6.75rem);
     border-right: 1px solid var(--pw-color-border-subtle);
     background: var(--pw-color-surface-panel);
   }
@@ -349,8 +404,8 @@ img[src*="/icons/"][class*="h-5"] {
 
 .pw-rail .pw-nav-list {
   flex-direction: column;
-  gap: var(--pw-spacing-compact);
-  padding: var(--pw-spacing-normal);
+  gap: var(--pw-spacing-loose);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-compact);
 }
 
 .pw-bottom-bar .pw-nav-list {
@@ -373,15 +428,20 @@ img[src*="/icons/"][class*="h-5"] {
   color: var(--pw-color-text-secondary);
   text-decoration: none;
   font-weight: 500;
+  font-size: 0.8rem;
 }
 
+/* Rail (≥900px): icon over label at the nav-presence scale
+   (COMPANION_INTEGRATION) — 24px icons, 0.8rem labels; targets stay
+   ≥44px via --pw-target-minimum (A11y §2.1). */
 .pw-nav-link--rail {
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   justify-content: center;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   padding: var(--pw-spacing-compact) 0.25rem;
+  width: 100%;
 }
 
 .pw-bottom-bar .pw-nav-link {
@@ -419,6 +479,16 @@ img[src*="/icons/"][class*="h-5"] {
   font-size: 1.6rem;
 }
 
+/* Route h1: expressive type is the identity (T14 human gate 6). The
+   rule lives on the shell so every route h1 gets it without each
+   screen re-asserting a style prop; section headings keep the
+   interface font. */
+.pw-main h1 {
+  margin: 0;
+  font-family: var(--pw-typography-font-expressive);
+  color: var(--pw-color-text-primary);
+}
+
 .pw-state-summary {
   margin: 0;
   color: var(--pw-color-text-primary);
@@ -427,6 +497,13 @@ img[src*="/icons/"][class*="h-5"] {
 .pw-state-detail {
   margin: 0;
   color: var(--pw-color-text-secondary);
+}
+
+/* Empty-state companion (T14 human gate 4): comfort presence at the
+   COMPANION_INTEGRATION Empty-State scale (48-64px; the slot renders
+   64px). Decorative artwork only — aria-hidden, never animated. */
+.pw-state-companion {
+  display: inline-flex;
 }
 
 .pw-state-detail-inline {

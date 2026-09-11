@@ -162,7 +162,7 @@ function VaultScreen() {
 
   if (status.isLoading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="space-y-4">
         <p className="flex items-center gap-2 text-[var(--pw-color-text-muted)]" role="status">
           <Loader2 size={16} aria-hidden={true} className="loader-static" />
           Checking the vault…
@@ -173,7 +173,7 @@ function VaultScreen() {
 
   if (status.isError) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div>
         <ErrorState
           title="Vault"
           failed="could not reach the vault"
@@ -185,7 +185,7 @@ function VaultScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       {stepUp.prompt}
       <section aria-labelledby="vault-page-heading" className="space-y-2">
         <h1

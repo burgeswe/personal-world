@@ -14,6 +14,8 @@ import type { SectionData } from "../lib/api";
  *   not left to NavLink's runtime default).
  * - Items are ≥44px targets (--pw-target-minimum; the 56px preference
  *   enlarges via the server-side token, never shrinks below 44).
+ * - Rail icons render at 24px with 0.8rem labels (T14 human gate 3,
+ *   nav-presence legibility; targets stay ≥44px).
  * - Icons are sprite symbols via the local shim; a section icon id the
  *   sprite does not ship renders no icon rather than a broken glyph,
  *   and the label alone still names the destination (A11y §1.4: no
@@ -41,7 +43,7 @@ function SectionNavLink({ section, compact }: { section: SectionData; compact: b
       {shimName ? (
         <Icon
           name={shimName}
-          size={compact ? 20 : 18}
+          size={compact ? 24 : 18}
           className="pw-nav-icon"
           aria-hidden={true}
         />

@@ -13,7 +13,7 @@ function ChatRoute() {
   const { companion } = useCompanion();
   const comp = COMPANIONS[companion] ?? COMPANIONS["personal-world"];
   return (
-    <section aria-labelledby="chat-heading" className="pw-chat-route">
+    <section aria-labelledby="chat-heading" className="space-y-4">
       <h1
         id="chat-heading"
         style={{ fontFamily: "var(--pw-typography-font-expressive)" }}

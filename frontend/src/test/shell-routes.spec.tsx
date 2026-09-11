@@ -96,11 +96,17 @@ async function boot() {
 }
 
 describe("routes render with App shell (T9)", () => {
-  it("mounts the shell: landmarks, nav from API, live region, drawer mount", async () => {
+  it("mounts the shell: landmarks, nav from API, live region, World Assistant drawer", async () => {
     const container = await boot();
     expect(screen.getAllByRole("navigation").every((n) => n.getAttribute("aria-label") === "Main")).toBe(true);
     expect(container.querySelectorAll("[data-pw-live-region]")).toHaveLength(1);
-    expect(document.getElementById("pw-drawer-mount")).not.toBeNull();
+    // T14 human gate 5: the T9 placeholder mount became the real
+    // shell-hosted World Assistant Drawer (complementary landmark,
+    // "World Assistant" heading, ChatPanel inside).
+    const aside = container.querySelector("aside[role='complementary']");
+    expect(aside).not.toBeNull();
+    expect(aside?.querySelector("h2")?.textContent).toBe("World Assistant");
+    expect(container.querySelector("[data-pw-chat]")).not.toBeNull();
     // prefs attrs applied before content (structural: attrs exist on
     // documentElement now that content is mounted)
     expect(document.documentElement.getAttribute("data-pw-motion")).toBe("reduced");

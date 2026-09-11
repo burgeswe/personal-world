@@ -46,9 +46,12 @@ import { StatusChip, type CanonicalStatus } from "../primitives/StatusChip";
  *     status renders the honest "unknown" word — the canonical word —
  *     with no invented status and no tint).
  *
- * The shell (T9 AppShell) owns <main> and the nav; this screen renders
- * bare inside it. All targets are ≥44px via --pw-target-minimum; no
- * hex (token vars only); destructive confirms use the danger Dialog.
+/**
+ * The shell (T9 AppShell) owns <main> and the nav — and, since the T14
+ * human-gate correction, the ONE content measure (index.css .pw-main
+ * --pw-content-measure); this screen renders bare inside it. All
+ * targets are ≥44px via --pw-target-minimum; no hex (token vars only);
+ * destructive confirms use the danger Dialog.
  */
 
 // ── Small local styles (token vars only; no hex anywhere) ──
@@ -392,7 +395,7 @@ function SettingsScreen() {
   const settingsPinnedNote = "Settings is always reachable — it cannot be hidden.";
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6">
       <h1 className={`${headingClasses} text-3xl font-bold`} style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>
         Settings
       </h1>

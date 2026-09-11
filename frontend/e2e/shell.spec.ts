@@ -120,6 +120,98 @@ test.describe("responsive cascade (§5 rail/banner/bottom)", () => {
     await bootWait(page);
     await assertTargets(page, ".pw-rail a, .pw-rail button");
   });
+
+  test("compact stable header: same height on two routes, fixed geometry (T14 human gate 1)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await bootWait(page);
+    const heightOnToday = await page.locator(".pw-header").evaluate(
+      (el) => el.getBoundingClientRect().height
+    );
+    await page.goto("/vault");
+    await bootWait(page);
+    const heightOnVault = await page.locator(".pw-header").evaluate(
+      (el) => el.getBoundingClientRect().height
+    );
+    expect(heightOnToday).toBeGreaterThan(0);
+    expect(Math.abs(heightOnToday - heightOnVault)).toBeLessThan(0.5);
+  });
+});
+
+test.describe("World Assistant drawer (T14 human gate 5, A11y §3.2)", () => {
+  test("trigger opens drawer; axe-clean open; Escape closes; focus returns", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await bootWait(page);
+    const trigger = page.getByRole("button", { name: "Open World assistant" });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    const aside = page.locator("aside[role='complementary']");
+    await expect(aside).toBeVisible();
+    await expect(aside.getByRole("heading", { name: "World Assistant" })).toBeVisible();
+    // axe on the OPEN drawer: 0 serious/critical (color-contrast included)
+    const results = await new AxeBuilder({ page }).analyze();
+    const serious = results.violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical"
+    );
+    expect(serious.map((v) => v.id)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(aside).toBeHidden();
+    const focusRestored = await trigger.evaluate(
+      (el) => el === document.activeElement
+    );
+    expect(focusRestored).toBeTruthy();
+  });
+
+  test("assistant sheet below 600px: opens, closes, focus returns (A11y §3.5)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await bootWait(page);
+    const trigger = page.getByRole("button", { name: "Open World assistant" });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    // <600px: the Drawer composes the modal Dialog (bottom sheet)
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "World Assistant" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    const focusRestored = await trigger.evaluate(
+      (el) => el === document.activeElement
+    );
+    expect(focusRestored).toBeTruthy();
+  });
+});
+
+test.describe("companion presence (T14 human gate 4, A11y §7)", () => {
+  test("header companion artwork is aria-hidden with alt=''; trigger name is exact", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await bootWait(page);
+    const artwork = page.locator(".pw-brand-lockup [data-pw-companion-slot] span[aria-hidden='true'] img");
+    await expect(artwork).toHaveCount(1);
+    await expect(artwork).toHaveAttribute("alt", "");
+    await expect(artwork).toHaveAttribute("src", /\/companions\/[a-z-]+\.svg$/);
+    // exactly one assistant trigger; its only name is the contract label
+    expect(await page.getByRole("button", { name: "Open World assistant" }).count()).toBe(1);
+    // the artwork is not the trigger: it is inside an aria-hidden subtree
+    const hidden = await artwork.evaluate(
+      (el) => el.closest("[aria-hidden='true']") !== null
+    );
+    expect(hidden).toBeTruthy();
+  });
+
+  test("empty-state companion renders at 64px, aria-hidden (Interests direct route)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/interests");
+    await bootWait(page);
+    const img = page.locator(".pw-state [data-pw-companion-slot] span[aria-hidden='true'] img");
+    await expect(img).toHaveCount(1);
+    const box = await img.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(63);
+    expect(box?.width).toBeGreaterThanOrEqual(63);
+  });
 });
 
 test.describe("zoom/text-resilience PROXIES (row 18a/b — NOT the human gate)", () => {

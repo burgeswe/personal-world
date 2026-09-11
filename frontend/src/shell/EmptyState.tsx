@@ -1,5 +1,6 @@
 import { cn } from "../lib/utils";
 import { StatusChip } from "../primitives/StatusChip";
+import { CompanionSlot } from "../primitives/CompanionSlot";
 import type { CanonicalStatus } from "../primitives/StatusChip";
 
 /**
@@ -13,6 +14,13 @@ import type { CanonicalStatus } from "../primitives/StatusChip";
  *   person controls — normally Settings, or a named server setting);
  * - NEVER names a mount path, module, env var beyond the documented
  *   server-side knob, or anything implementation-internal.
+ *
+ * Companion comfort presence (T14 human gate 4, COMPANION_INTEGRATION
+ * "Empty State (64px) — empty/comfort presence", error/empty comfort
+ * is the contract's #1 use): the selected companion renders at 64px
+ * ABOVE the copy — decorative aria-hidden artwork only (A11y §7.1),
+ * never a status signal, never animated. Companion "off" removes the
+ * artwork; the honest copy is the whole state either way.
  *
  * `status` is passed straight through StatusChip, so it must be a
  * canonical status.py value or null (no invented statuses).
@@ -37,6 +45,7 @@ export function EmptyState({ title, capability, knob, status = null, className }
       data-pw-state="empty"
       aria-labelledby="pw-state-title"
     >
+      <CompanionSlot size="empty" />
       <h2 id="pw-state-title">{title}</h2>
       <p className="pw-state-summary">
         {capability}

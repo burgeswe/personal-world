@@ -82,7 +82,10 @@ function TodayScreen() {
   return (
     <>
       {stepUp.prompt}
-      <div className="mx-auto max-w-3xl space-y-6">
+      {/* The shell owns the content measure (index.css .pw-main); this
+          screen renders bare inside it — one width system per route
+          (T14 human gate 2). */}
+      <div className="space-y-6">
         <HealthSection daily={daily} />
         <AttentionSection daily={daily} />
         <WhatChangedSection daily={daily} />

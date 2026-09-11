@@ -109,7 +109,7 @@ function JournalScreen() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <section aria-labelledby="journal-page-heading" className="space-y-2">
         <h1
           id="journal-page-heading"
