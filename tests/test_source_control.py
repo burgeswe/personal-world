@@ -33,12 +33,20 @@ from personal_world.source_control import (  # noqa: E402
     repository_status,
 )
 
+# Deterministic git for fixtures: identity via env, and the developer's
+# global/system config is *not* consulted (GIT_CONFIG_GLOBAL/SYSTEM point
+# at /dev/null), so a host `init.defaultBranch=dev` or signing/hook
+# settings can never change what these tests observe. `-b master` on
+# init makes the default branch explicit rather than inherited.
 GIT_ENV = {
     "GIT_AUTHOR_NAME": "t",
     "GIT_AUTHOR_EMAIL": "t@t",
     "GIT_COMMITTER_NAME": "t",
     "GIT_COMMITTER_EMAIL": "t@t",
     "HOME": str(Path.home()),
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_SYSTEM": "/dev/null",
+    "GIT_CONFIG_NOSYSTEM": "1",
 }
 
 
@@ -52,7 +60,7 @@ def git(cwd: Path, *args: str) -> None:
 def make_repo(path: Path, commits: int = 2) -> Path:
     """A real temp git repo with `commits` commits touching file.txt."""
     path.mkdir(parents=True, exist_ok=True)
-    git(path, "init", "-q")
+    git(path, "init", "-q", "-b", "master")
     git(path, "config", "user.email", "t@t")
     git(path, "config", "user.name", "t")
     for i in range(commits):
@@ -101,7 +109,7 @@ class TestRepositoryStatus:
         repo = make_repo(tmp_path / "clean")
         s = repository_status(str(repo))
         assert s["error"] is None
-        assert s["branch"] == "master" or s["branch"] == "main"
+        assert s["branch"] == "master"  # explicit via `init -b`
         assert s["dirty"] is False
         assert s["revision"] is not None
         assert len(s["revision"]) == 40
@@ -155,11 +163,11 @@ class TestRepositoryStatus:
         but status stays structured (no exception, no fake data)."""
         repo = tmp_path / "unborn"
         repo.mkdir()
-        git(repo, "init", "-q")
+        git(repo, "init", "-q", "-b", "master")
         s = repository_status(str(repo))
         assert s["error"] is None  # git status works on an unborn repo
         assert s["revision"] is None  # no commits: honest None
-        assert s["branch"] in ("master", "main")
+        assert s["branch"] == "master"
         assert s["dirty"] is False  # pristine empty repo: nothing unclean
 
 
