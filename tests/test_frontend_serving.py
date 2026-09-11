@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-TOKEN = "instancetoken-do-not-leak-7f3a"
+TOKEN = "instancetoken-do-not-leak-7f3a"  # pw-safety: synthetic
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 INDEX_HTML = (

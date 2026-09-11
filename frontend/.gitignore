@@ -1,0 +1,6 @@
+# Frontend build artifacts are never tracked (root .gitignore also
+# covers these; this keeps frontend/ self-contained in shallow mounts).
+node_modules
+dist
+*.local
+.env*
