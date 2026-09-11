@@ -185,3 +185,62 @@ img[src*="/icons/"][class*="h-5"] {
   scrollbar-width: thin;
   scrollbar-color: var(--pw-color-border-subtle) transparent;
 }
+
+/* ── Status chips (T8): luminance + structure only, never hue-only.
+   The status WORD is the content (A11y §1.3); rank is expressed by
+   border luminance/structure over the panel surface. Colors come from
+   the generated token layer only. ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--pw-color-surface-panel);
+  color: var(--pw-color-text-primary);
+  white-space: nowrap;
+}
+.chip-sm {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.8rem;
+}
+.chip-label {
+  color: var(--pw-color-text-secondary);
+}
+.chip[data-status="healthy"] {
+  border-color: var(--pw-color-accent-primary);
+}
+.chip[data-status="warning"],
+.chip[data-status="needs_attention"] {
+  border-color: var(--pw-color-text-secondary);
+}
+.chip[data-status="unknown"],
+.chip[data-status="stale"] {
+  border-color: var(--pw-color-text-muted);
+}
+.chip[data-status="unavailable"],
+.chip[data-status="not_configured"] {
+  border-style: dashed;
+  border-color: var(--pw-color-text-muted);
+}
+.chip[data-status="disabled"] {
+  border-style: dotted;
+  border-color: var(--pw-color-text-muted);
+  color: var(--pw-color-text-secondary);
+}
+
+/* ── sr-only helper (T8 primitives; visually hidden, screen-reader
+   visible) ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
