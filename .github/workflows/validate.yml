@@ -50,9 +50,12 @@ jobs:
           persist-credentials: false
       - name: Clean install, lint, tests, build (node 22)
         # Same base image the Dockerfile frontend stage uses; run in-place
-        # so the workspace stays on the runner filesystem.
+        # so the workspace stays on the runner filesystem. The whole repo
+        # is mounted because frontend tests cross the tree boundary
+        # (icons.spec.ts asserts shim ids against the backend sprite at
+        # src/personal_world/static/icons/sprite.svg).
         run: |
-          docker run --rm -v "$PWD/frontend:/fe" -w /fe node:22-alpine \
+          docker run --rm -v "$PWD:/repo" -w /repo/frontend node:22-alpine \
             sh -c "npm ci --no-audit --no-fund && npm run lint && npm run test && npm run build"
       - name: No generated artifacts tracked
         run: test -z "$(git status --porcelain -- frontend/dist frontend/node_modules)"

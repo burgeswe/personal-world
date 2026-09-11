@@ -1578,18 +1578,27 @@ document.getElementById('token').addEventListener('keydown', e => {
     # registration order. Legacy mode registers nothing; behaviour is
     # byte-identical to before.
     if frontend_mode == "react":
+        # Allowlist built once at app start: every file actually in the
+        # dist, keyed by relative POSIX path → resolved absolute Path.
+        # No user-controlled value ever constructs a filesystem path, so
+        # traversal simply misses the dict (CodeQL path-injection fix).
+        _spa_files: dict[str, Path] = {}
+        if frontend_dist.is_dir():
+            for candidate in frontend_dist.rglob("*"):
+                if candidate.is_file():
+                    _spa_files[candidate.relative_to(
+                        frontend_dist).as_posix()] = candidate.resolve()
 
         @app.get("/{full_path:path}", include_in_schema=False)
         async def spa_fallback(full_path: str):
             if full_path == "healthz" or full_path.startswith("api/") or full_path == "api":
                 raise HTTPException(status_code=404, detail="not found")
-            root = frontend_dist.resolve()
-            candidate = (root / full_path).resolve()
-            if full_path and candidate.is_file() and candidate.is_relative_to(root):
+            allowed = _spa_files.get(full_path)
+            if allowed is not None and allowed.is_file():
                 headers = {}
                 if full_path.startswith("assets/"):
                     headers["Cache-Control"] = "public, max-age=31536000, immutable"
-                return FileResponse(candidate, headers=headers)
+                return FileResponse(allowed, headers=headers)
             return _spa_index()
 
     return app
