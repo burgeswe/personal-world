@@ -62,7 +62,7 @@ function ChatScreen() {
   const hasConversation = messages.length > 0 || error || isLoading;
 
   return (
-    <main id="main-content" className="flex h-full flex-col">
+    <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-[var(--pw-color-border-subtle)] px-6 py-4">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-[var(--pw-color-text-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>Chat</h1>
@@ -152,7 +152,7 @@ function ChatScreen() {
           Powered by your Personal World
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 

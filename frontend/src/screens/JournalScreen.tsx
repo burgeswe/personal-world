@@ -91,7 +91,7 @@ function JournalScreen() {
   const grouped = groupByDate(filteredEntries);
 
   return (
-    <main id="main-content" className="space-y-4 p-4">
+    <div className="space-y-4 p-4">
       {/* ── Header ── */}
       <section aria-labelledby="journal-heading">
         <div className="flex items-start justify-between">
@@ -298,7 +298,7 @@ function JournalScreen() {
           onClose={() => setSelectedEntry(null)}
         />
       )}
-    </main>
+    </div>
   );
 }
 

@@ -134,7 +134,7 @@ function SettingsScreen() {
   const configuringProvider = providers.find((pr) => pr.id === configuring);
 
   return (
-    <main id="main-content" className="space-y-4 p-4 overflow-y-auto h-full">
+    <div className="space-y-4 p-4 overflow-y-auto h-full">
       <section aria-labelledby="settings-heading">
         <div className="flex items-start justify-between">
           <div>
@@ -312,7 +312,7 @@ function SettingsScreen() {
           )}
         </div>
       </CollapsibleSection>
-    </main>
+    </div>
   );
 }
 

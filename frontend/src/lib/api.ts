@@ -254,6 +254,47 @@ export interface Prefs {
   accent: string;
 }
 
+/**
+ * GET /api/sections (T9, FOUNDATION-SPEC §2.3): the nav registry merged
+ * with the caller's stored layout. `status` is the canonical status.py
+ * vocabulary or null (never an invented value); `configured` answers
+ * "is something wired up?" while `status` answers "how is it doing?".
+ * Neither affects navigability — a failing or unconfigured provider
+ * never removes a section from the payload.
+ */
+export interface SectionData {
+  id: string;
+  label: string;
+  /** Sprite symbol id (icons/sprite.svg), e.g. "navigation--today". */
+  icon: string;
+  order: number;
+  visible: boolean;
+  pinned: boolean;
+  kind: "core" | "transitional" | "extension";
+  configured: boolean;
+  status: string | null;
+}
+
+export interface SectionsPayload {
+  schema: string;
+  sections: SectionData[];
+}
+
+/**
+ * GET /api/sections unwraps to `{schema, sections}` (api.py
+ * _sections_payload); the hook wants the section list itself.
+ */
+export async function fetchSections(): Promise<SectionData[]> {
+  const payload = await apiFetch<SectionsPayload>("/api/sections");
+  const sections = (payload as { sections?: SectionData[] }).sections;
+  if (!Array.isArray(sections)) {
+    throw new ApiError(500, "http_error", "Sections response was not the expected shape.", {
+      body: payload,
+    });
+  }
+  return sections;
+}
+
 /** Shapes not yet pinned by a screen task (T10–T13 tighten them). */
 export type VaultStatusData = { locked: boolean; encrypted: boolean };
 export type VaultNamesData = { names: string[] };

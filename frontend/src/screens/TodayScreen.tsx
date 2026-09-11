@@ -128,7 +128,7 @@ function TodayScreen() {
   }> = [];
 
   return (
-    <main id="main-content" className="space-y-4 p-4">
+    <div className="space-y-4 p-4">
       {/* ── Greeting + Status ── */}
       <section aria-labelledby="greeting-heading">
         <div className="flex items-start justify-between">
@@ -549,7 +549,7 @@ function TodayScreen() {
           </Card>
         </section>
       )}
-    </main>
+    </div>
   );
 }
 

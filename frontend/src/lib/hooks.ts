@@ -8,6 +8,7 @@ import {
   fetchPrincipal,
   fetchVaultStatus,
   fetchSourceControlStatus,
+  fetchSections,
   fetchActors,
   fetchBackup,
   fetchThemes,
@@ -28,6 +29,7 @@ import {
   type Principal,
   type VaultStatusData,
   type SourceControlStatusData,
+  type SectionData,
   type ChatProvidersData,
 } from "./api";
 
@@ -117,6 +119,9 @@ export function usePrincipal() {
 }
 
 // ── Refresh signals (transitional; P1 screens re-fetch explicitly) ──
+export function useSections() {
+  return useApiQuery<SectionData[]>(() => fetchSections(), [], ["sections"]);
+}
 const refreshListeners = new Map<string, Set<() => void>>();
 
 function subscribeRefresh(signal: string, fn: () => void): () => void {

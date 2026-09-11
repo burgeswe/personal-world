@@ -44,7 +44,7 @@ function WorldScreen() {
   };
 
   return (
-    <main id="main-content" className="h-full overflow-y-auto p-4 space-y-4">
+    <div className="h-full overflow-y-auto p-4 space-y-4">
       {/* Header */}
       <section aria-labelledby="world-heading">
         <h1 id="world-heading" className="text-3xl font-bold text-[var(--pw-color-text-primary)]" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>Your World</h1>
@@ -181,7 +181,7 @@ function WorldScreen() {
       {showIntentModal && <AddIntentModal onClose={() => setShowIntentModal(false)} onSaved={refreshAll} />}
       {/* Add Policy Modal */}
       {showPolicyModal && <AddPolicyModal onClose={() => setShowPolicyModal(false)} onSaved={refreshAll} />}
-    </main>
+    </div>
   );
 }
 

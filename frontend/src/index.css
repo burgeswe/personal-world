@@ -231,6 +231,216 @@ img[src*="/icons/"][class*="h-5"] {
   color: var(--pw-color-text-secondary);
 }
 
+/* ── AppShell / SectionNav (T9): token vars only, 44px targets,
+   responsive cascade ≥900 rail / 600–899 banner / <600 bottom bar
+   (FOUNDATION-SPEC §5, RESPONSIVE_RULES). ── */
+.pw-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pw-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--pw-spacing-loose);
+}
+
+/* Header + banner nav (600–899px) */
+.pw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-spacing-normal);
+  min-height: var(--pw-target-minimum);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  border-bottom: 1px solid var(--pw-color-border-subtle);
+  background: var(--pw-color-surface-panel);
+}
+
+.pw-brand {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--pw-color-accent-primary);
+}
+
+/* Banner nav (600–899px): rendered in the header only in that bucket
+   (AppShell mirrors the same breakpoint); the seam below restates
+   visibility as defense in depth. */
+.pw-banner-nav {
+  display: none;
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  .pw-banner-nav {
+    display: block;
+    flex: 1 1 auto;
+  }
+  .pw-banner-nav .pw-nav-list {
+    flex-direction: row;
+    gap: var(--pw-spacing-compact);
+    justify-content: flex-end;
+  }
+}
+
+/* Rail slot: rendered in the ≥900px bucket (AppShell picks the slot by
+   the same breakpoint the CSS below enforces); hidden by default so a
+   server-rendered rail never flashes before the bucket resolves. */
+.pw-rail {
+  display: none;
+  align-self: stretch;
+}
+
+/* Bottom bar (<600px): fixed, with the platform safe-area inset so no
+   control hides under browser/device UI (A11y §2.7). Rendered only in
+   the <600px bucket; the seam below restates visibility. */
+.pw-bottom-bar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  border-top: 1px solid var(--pw-color-border-subtle);
+  background: var(--pw-color-surface-panel);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Rail (≥900px): left rail beside main. The AppShell renders exactly
+   one nav per bucket (same breakpoints); CSS seams restate visibility. */
+@media (min-width: 900px) {
+  .pw-shell {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .pw-shell > .pw-header {
+    flex-basis: 100%;
+  }
+  .pw-rail {
+    display: block;
+    flex: 0 0 var(--pw-rail-width, 4.5rem);
+    border-right: 1px solid var(--pw-color-border-subtle);
+    background: var(--pw-color-surface-panel);
+  }
+  .pw-shell > main {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .pw-bottom-bar {
+    display: block;
+  }
+}
+
+/* Nav list + links: one structure, three placements */
+.pw-nav-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pw-rail .pw-nav-list {
+  flex-direction: column;
+  gap: var(--pw-spacing-compact);
+  padding: var(--pw-spacing-normal);
+}
+
+.pw-bottom-bar .pw-nav-list {
+  flex-direction: row;
+  width: 100%;
+}
+
+.pw-bottom-bar .pw-nav-list > li {
+  flex: 1 1 0;
+}
+
+.pw-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-spacing-normal);
+  min-height: var(--pw-target-minimum);
+  min-width: var(--pw-target-minimum);
+  padding: var(--pw-spacing-compact) var(--pw-spacing-normal);
+  border-radius: 0.5rem;
+  color: var(--pw-color-text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pw-nav-link--rail {
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.7rem;
+  padding: var(--pw-spacing-compact) 0.25rem;
+}
+
+.pw-bottom-bar .pw-nav-link {
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+  font-size: 0.7rem;
+  padding: var(--pw-spacing-compact) 0.25rem;
+}
+
+.pw-nav-link:hover {
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-text-primary);
+}
+
+.pw-nav-link--active {
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-accent-primary);
+}
+
+.pw-nav-icon {
+  flex: none;
+}
+
+/* State surfaces (EmptyState / ErrorState) */
+.pw-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+}
+
+.pw-state h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.pw-state-summary {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-state-detail {
+  margin: 0;
+  color: var(--pw-color-text-secondary);
+}
+
+.pw-state-detail-inline {
+  color: var(--pw-color-text-secondary);
+}
+
+.pw-state-retry {
+  align-self: flex-start;
+  padding: var(--pw-spacing-compact) var(--pw-spacing-loose);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-text-primary);
+}
+
+.pw-state-retry:hover {
+  border-color: var(--pw-color-accent-primary);
+}
+
 /* ── sr-only helper (T8 primitives; visually hidden, screen-reader
    visible) ── */
 .sr-only {
