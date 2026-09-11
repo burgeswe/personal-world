@@ -24,6 +24,7 @@ copy of that state — one fact should be maintained once.
 |---|---|
 | What does this product do today? | `README.md` ("What works today") |
 | What does “finished enough to live in every day” mean? | `docs/PERSONAL-WORLD-FINISH-LINE.md` |
+| How do we get there, in what order, and what is next? | `docs/PERSONAL-WORLD-COMPLETION-PLAN.md` (authoritative plan); `.agent/STATE.md` (current phase) |
 | What is designed but not implemented? | `ROADMAP.md` (direction, not promises) |
 | What changed, when? | `CHANGELOG.md` (Keep-a-Changelog) |
 | What governs UI work? | `docs/accessibility/ACCESSIBILITY_CONTRACT.md` (non-negotiable) |

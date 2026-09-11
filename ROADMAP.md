@@ -13,6 +13,11 @@ For the current completion target, `docs/PERSONAL-WORLD-FINISH-LINE.md`
 is authoritative. This roadmap organizes direction; it does not redefine
 what "finished enough to live in every day" means.
 
+For the ordered work toward that target — phases, dependencies,
+acceptance criteria, approved decisions, and what is next — see
+`docs/PERSONAL-WORLD-COMPLETION-PLAN.md`. This roadmap does not duplicate
+it; items below are direction and history, not the execution plan.
+
 ## Now
 
 Work that completes or hardens what 0.1 already promises or is required
