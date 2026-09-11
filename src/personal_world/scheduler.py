@@ -43,6 +43,7 @@ class Scheduler:
         self._reminders: dict[str, Reminder] = {}
         self._loaded = False
         self._thread: threading.Thread | None = None
+        self._last_error: str | None = None  # visible state, not a silent death
         self._stop = threading.Event()
 
     def _ensure_loaded(self) -> None:
@@ -114,9 +115,9 @@ class Scheduler:
             r.last_fired = time.time()
             fired.append(r.text)
             if self.journal:
-                self.journal.append_raw(
-                    kind=JournalKind.OBSERVATION,
-                    summary=f"Reminder: {r.text}",
+                self.journal.record(
+                    JournalKind.OBSERVATION,
+                    f"Reminder: {r.text}",
                     source="scheduler",
                 )
         if fired:
@@ -127,7 +128,10 @@ class Scheduler:
         """Start the background scheduler thread."""
         def run():
             while not self._stop.is_set():
-                self.check_and_fire()
+                try:
+                    self.check_and_fire()
+                except Exception as exc:  # never let one bad tick kill the thread
+                    self._last_error = f"{type(exc).__name__}: {exc}"
                 self._stop.wait(60)
 
         self._thread = threading.Thread(target=run, daemon=True)
