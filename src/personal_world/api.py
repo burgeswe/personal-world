@@ -31,7 +31,7 @@ from .source_control import (
     repository_history,
     status_all,
 )
-from .world import World
+from .world import MutationDenied, World
 
 WIZARD_HTML = """
 
@@ -439,8 +439,18 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     @app.get("/api/daily", dependencies=[Depends(require_auth)])
     async def daily_view() -> dict:
+        """Present the daily digest. Read-only: a page view never
+        journals observations or records facts (that is the POST)."""
         world, registry = _state()
-        result = daily(world, registry, journal)
+        result = daily(world, registry, journal, record=False)
+        return result.model_dump(mode="json")
+
+    @app.post("/api/daily", dependencies=[Depends(require_auth)])
+    async def daily_run() -> dict:
+        """Run the daily loop for real: journal observations, record
+        capability facts, flag drift, save the world."""
+        world, registry = _state()
+        result = daily(world, registry, journal, record=True)
         save_world(world, world_path)
         return result.model_dump(mode="json")
 
@@ -571,9 +581,11 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             },
         }
 
-    @app.post("/api/chat/test")
+    @app.post("/api/chat/test", dependencies=[Depends(require_auth)])
     async def chat_test() -> dict:
-        """Quick chat test — sends a simple message to verify the provider works."""
+        """Quick chat test — sends a simple message to verify the provider
+        works. Authenticated: it spends provider quota and reveals which
+        provider is wired, so it is never a public probe."""
         _, registry = _state()
         provider = registry.provider_for("reasoning")
         if provider is None:
@@ -1088,7 +1100,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         reminders = _reminders.list_reminders()
         return {"ok": True, "data": [r.model_dump(mode="json") for r in reminders]}
 
-    @app.post("/api/reminders", dependencies=[Depends(require_auth)])
+    @app.post("/api/reminders", dependencies=[Depends(require_step_up)])
     async def reminders_add(request: Request) -> dict:
         """Add a reminder. Body: {id, text, cron_hour, cron_minute, cron_day}."""
         body = await request.json()
@@ -1105,13 +1117,13 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         r = _reminders.add(reminder)
         return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
 
-    @app.delete("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
+    @app.delete("/api/reminders/{rid}", dependencies=[Depends(require_step_up)])
     async def reminders_delete(rid: str) -> dict:
         """Delete a reminder."""
         r = _reminders.remove(rid)
         return {"ok": r.ok, "data": r.data, "warnings": r.warnings}
 
-    @app.patch("/api/reminders/{rid}", dependencies=[Depends(require_auth)])
+    @app.patch("/api/reminders/{rid}", dependencies=[Depends(require_step_up)])
     async def reminders_toggle(rid: str, request: Request) -> dict:
         """Toggle a reminder. Body: {enabled: bool}."""
         from .scheduler import Scheduler
@@ -1233,12 +1245,22 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             raise HTTPException(status_code=400, detail="key required")
         world, registry = _state()
         from .model import Policy, PolicyEffect, Provenance
-        policy = Policy(
-            key=key,
-            effect=PolicyEffect(effect),
-            provenance=Provenance(source="dashboard-quick-action"),
-        )
-        world.set_policy(policy)
+        try:
+            policy = Policy(
+                key=key,
+                effect=PolicyEffect(effect),
+                provenance=Provenance(source="dashboard-quick-action"),
+            )
+        except ValueError:
+            raise HTTPException(status_code=400,
+                                detail="effect must be 'allow' or 'deny'")
+        try:
+            world.set_policy(policy)
+        except MutationDenied as exc:
+            # a cemented policy is only changeable by an explicit user
+            # action through the CLI; the API reports the boundary, it
+            # does not crash on it
+            raise HTTPException(status_code=409, detail=str(exc))
         save_world(world, world_path)
         return {"ok": True, "data": {"key": key, "effect": effect}}
 
@@ -1273,11 +1295,6 @@ button:hover { opacity: 0.9; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .error { color: #d4644c; font-size: 0.88rem; margin-top: 0.5rem; }
 .success { color: #5fb85f; font-size: 0.88rem; margin-top: 0.5rem; }
-.chat-test { background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-  padding: 1rem; margin-top: 1rem; }
-.chat-test .reply { color: var(--text); font-size: 0.92rem; margin-top: 0.5rem;
-  padding: 0.5rem; background: var(--panel); border-radius: 6px; min-height: 2rem; }
-.chat-test .status { color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; }
 </style>
 </head>
 <body>
@@ -1290,45 +1307,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 <input id="vault-pass" type="password" placeholder="For your encrypted secret store">
 <label for="vault-pass2">Confirm passphrase</label>
 <input id="vault-pass2" type="password" placeholder="Confirm">
-<div class="chat-test">
-  <label>Chat companion test</label>
-  <p>Your world comes with MiMo 2.5 built in. Test it here.</p>
-  <button id="test-chat" type="button" style="margin-top:0.75rem">Say hello to MiMo</button>
-  <div id="chat-reply" class="reply"></div>
-  <div id="chat-status" class="status"></div>
-</div>
 <button id="go">Set up my world</button>
 <div id="err" class="error"></div>
 </div>
 <script>
-document.getElementById('test-chat').addEventListener('click', async () => {
-  const btn = document.getElementById('test-chat');
-  const reply = document.getElementById('chat-reply');
-  const status = document.getElementById('chat-status');
-  btn.disabled = true;
-  btn.textContent = 'Thinking...';
-  reply.textContent = '';
-  status.textContent = 'Connecting to MiMo 2.5 via OpenCode...';
-  try {
-    const r = await fetch('/api/chat/test');
-    const j = await r.json();
-    if (j.ok && j.data && j.data.reply) {
-      reply.textContent = j.data.reply;
-      status.textContent = 'Connected — ' + (j.data.model || 'MiMo 2.5');
-      status.style.color = '#5fb85f';
-    } else {
-      reply.textContent = '';
-      status.textContent = 'Chat unavailable: ' + (j.warnings || ['unknown error']).join(', ');
-      status.style.color = '#d4644c';
-    }
-  } catch(e) {
-    reply.textContent = '';
-    status.textContent = 'Connection failed: ' + e.message;
-    status.style.color = '#d4644c';
-  }
-  btn.disabled = false;
-  btn.textContent = 'Say hello to MiMo';
-});
 document.getElementById('go').addEventListener('click', async () => {
   const token = document.getElementById('token').value;
   const pass = document.getElementById('vault-pass').value;
@@ -1417,6 +1399,7 @@ document.getElementById('token').addEventListener('keydown', e => {
         setup_needed = not (data_dir / "setup-complete").exists()
         LOGIN_HTML = LOGIN_HTML.replace(
             "<body>", '<body data-setup-needed="' + ("true" if setup_needed else "false") + '">')
+        return HTMLResponse(LOGIN_HTML)
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> HTMLResponse:
@@ -3149,12 +3132,13 @@ async function renderReminders() {
     const toggle = el('button', r.enabled ? 'Disable' : 'Enable');
     toggle.addEventListener('click', async () => {
       await api(state.token, '/api/reminders/' + r.id, {
-        method: 'PATCH', body: JSON.stringify({enabled: !r.enabled})});
+        method: 'PATCH', headers: {'X-PW-StepUp': '1'},
+        body: JSON.stringify({enabled: !r.enabled})});
       renderReminders();
     });
     const del = el('button', 'Delete');
     del.addEventListener('click', async () => {
-      await api(state.token, '/api/reminders/' + r.id, {method: 'DELETE'});
+      await api(state.token, '/api/reminders/' + r.id, {method: 'DELETE', headers: {'X-PW-StepUp': '1'}});
       renderReminders();
     });
     row.appendChild(toggle); row.appendChild(del); host.appendChild(row);
@@ -3164,7 +3148,8 @@ $('reminder-add').addEventListener('click', async () => {
   const text = $('reminder-text').value.trim();
   if (!text) return;
   await api(state.token, '/api/reminders', {
-    method: 'POST', body: JSON.stringify({text: text, cron_hour: 9, cron_minute: 0})});
+    method: 'POST', headers: {'X-PW-StepUp': '1'},
+    body: JSON.stringify({text: text, cron_hour: 9, cron_minute: 0})});
   $('reminder-text').value = '';
   renderReminders();
 });

@@ -134,7 +134,8 @@ The following inventory reflects implemented routes, not deployment acceptance:
 | GET /healthz | Public liveness, auth_configured, setup_needed |
 | GET /api/setup/status; POST /api/setup | Public first-run state/bootstrap; setup rejects repeats after the completion marker |
 | GET /api/status | world summary + capability statuses |
-| GET /api/daily | run/present the daily digest |
+| GET /api/daily | present the daily digest (read-only; never mutates) |
+| POST /api/daily | run the daily loop: journal observations, record facts, save |
 | GET /api/journal | recent events |
 | POST /api/journal | User note append |
 | GET /api/journal/audit | audit-log rendering |

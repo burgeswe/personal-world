@@ -10,7 +10,11 @@ from .providers.registry import Registry
 from .world import World
 
 
-def daily(world: World, registry: Registry, journal: Journal) -> Result:
+def daily(world: World, registry: Registry, journal: Journal,
+          *, record: bool = True) -> Result:
+    """Run the loop. ``record=True`` (the explicit daily run) journals
+    observations and records facts; ``record=False`` presents the same
+    digest read-only so a page view never mutates the world."""
     actions: list[str] = []
     warnings: list[str] = []
 
@@ -22,6 +26,8 @@ def daily(world: World, registry: Registry, journal: Journal) -> Result:
         if not s["ok"] and s["status"] != "not_configured":
             warnings.append(f"{cap}: {s['status']}")
         elif s["status"] == "not_configured":
+            continue
+        if not record:
             continue
         journal.record(
             JournalKind.OBSERVATION,
@@ -41,6 +47,8 @@ def daily(world: World, registry: Registry, journal: Journal) -> Result:
         fact = world.facts.get(key)
         if fact is not None and fact.value != intent.value:
             actions.append(f"drift: {key}: {fact.value!r} != intent {intent.value!r}")
+            if not record:
+                continue
             journal.record(
                 JournalKind.DRIFT,
                 f"{key}: observed {fact.value!r}, intent {intent.value!r}",
