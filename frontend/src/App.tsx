@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TodayScreen from "./screens/TodayScreen";
 import ChatScreen from "./screens/ChatScreen";
 import JournalScreen from "./screens/JournalScreen";
+import VaultScreen from "./screens/VaultScreen";
 import WorldScreen from "./screens/WorldScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import SetupWizard from "./screens/SetupWizard";
@@ -62,6 +63,7 @@ function AppRoutes() {
       <Route path="/lab" element={<LabRoute />} />
       <Route path="/chat" element={<ChatScreen />} />
       <Route path="/journal" element={<JournalScreen />} />
+      <Route path="/vault" element={<VaultScreen />} />
       <Route path="/world" element={<WorldScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
     </Routes>

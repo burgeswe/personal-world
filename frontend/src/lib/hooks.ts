@@ -4,9 +4,13 @@ import {
   fetchWorldStatus,
   fetchReminders,
   fetchJournal,
+  fetchJournalPage,
+  fetchDaily,
+  fetchApps,
   fetchHealth,
   fetchPrincipal,
   fetchVaultStatus,
+  fetchVaultNames,
   fetchSourceControlStatus,
   fetchSections,
   fetchActors,
@@ -28,6 +32,10 @@ import {
   type HealthStatus,
   type Principal,
   type VaultStatusData,
+  type VaultNamesData,
+  type DailyResult,
+  type DailyData,
+  type ServiceApp,
   type SourceControlStatusData,
   type SectionData,
   type ChatProvidersData,
@@ -104,6 +112,34 @@ export function useJournal() {
   return useApiQuery<JournalEntry[]>(() => fetchJournal(), [], ["journal"]);
 }
 
+// ── T10 screen hooks (additive; parity rows 1–5) ──
+
+/** GET /api/daily (Today, row 1): digest + attention + what-changed. */
+export function useDaily() {
+  return useApiQuery<DailyResult & { data: DailyData }>(
+    () => fetchDaily(),
+    [],
+    ["daily", "worldStatus"]
+  );
+}
+
+/** GET /api/journal?n= (Today recent + Journal reader, row 4). */
+export function useJournalPage(n: number) {
+  return useApiQuery<JournalEntry[]>(() => fetchJournalPage(n), [n], [
+    "journal",
+  ]);
+}
+
+/** GET /api/apps (Today services launcher, row 2). */
+export function useApps() {
+  return useApiQuery<ServiceApp[]>(() => fetchApps(), [], ["apps"]);
+}
+
+/** GET /api/vault/names (Vault, row 5). */
+export function useVaultNames() {
+  return useApiQuery<VaultNamesData>(() => fetchVaultNames());
+}
+
 export function useHealth() {
   return useApiQuery<HealthStatus>(() => fetchHealth());
 }
@@ -152,8 +188,13 @@ export function useWorldKey(): () => void {
 export function useJournalKey(): () => void {
   return () => emitRefresh("journal");
 }
+
+/** After a vault write, other surfaces showing vault status re-fetch. */
+export function useVaultKey(): () => void {
+  return () => emitRefresh("vaultStatus");
+}
 export function useVaultStatus() {
-  return useApiQuery<VaultStatusData>(() => fetchVaultStatus());
+  return useApiQuery<VaultStatusData>(() => fetchVaultStatus(), [], ["vaultStatus"]);
 }
 
 // ── Source Control hooks ──
