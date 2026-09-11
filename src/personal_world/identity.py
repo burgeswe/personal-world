@@ -116,6 +116,31 @@ class IdentityStore:
     def list_users(self) -> list[dict]:
         return self._load().get("users", [])
 
+    # -- profile ----------------------------------------------------------
+    def get_display_name(self, user_id: str) -> str | None:
+        """Stored display name for a person, or None if never set."""
+        for u in self._load().get("users", []):
+            if u.get("user_id") == user_id:
+                return u.get("display_name")
+        return None
+
+    def set_display_name(self, user_id: str, display_name: str) -> dict:
+        """Upsert a person's display name in private runtime state
+        (data/users.json). In single mode the "primary" record is created
+        without any token so it can never authenticate by itself."""
+        payload = self._load()
+        for u in payload["users"]:
+            if u.get("user_id") == user_id:
+                u["display_name"] = display_name
+                self._save(payload)
+                return u
+        u = {"user_id": user_id, "display_name": display_name,
+             "hashed_tokens": [], "token_prefixes": [],
+             "enabled": True, "created_at": time.time()}
+        payload["users"].append(u)
+        self._save(payload)
+        return u
+
     def _attach_token(self, user: dict, plain_token: str) -> None:
         user.setdefault("hashed_tokens", []).append(
             _token_fingerprint(plain_token))
@@ -180,10 +205,15 @@ class IdentityStore:
         users = payload.get("users", [])
         for u in users:
             if u.get("user_id") == "primary":
+                if not u.get("hashed_tokens"):
+                    # record created tokenless (e.g. display-name set in
+                    # single mode) — attach the instance credential so a
+                    # mode switch never locks the owner out.
+                    self._attach_token(u, instance_token)
+                    self._save(payload)
                 return u
-        u = self.create_user("primary", "Primary person",
-                             initial_plain_token=instance_token)
-        return self._load()["users"][0] if False else u
+        return self.create_user("primary", "Primary person",
+                                initial_plain_token=instance_token)
 
 
 def resolve_principal(token: str | None,

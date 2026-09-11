@@ -1143,11 +1143,35 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         if p is None:
             raise HTTPException(status_code=409,
                                 detail="principal not resolved")
+        stored = _identity_store.get_display_name(p.id) if p.kind == "person" else None
         return {"ok": True,
                 "data": {"id": p.id, "kind": p.kind,
-                         "display_name": p.display_name,
+                         "display_name": stored or p.display_name,
                          "scopes": list(p.scopes),
                          "source": p.source}}
+
+    @app.put("/api/identity/principal", dependencies=[Depends(require_step_up)])
+    async def identity_principal_update(request: Request) -> dict:
+        """Set the caller's own display name. Persisted in private runtime
+        state (data/users.json), never in tracked config. Persons only."""
+        p = getattr(request.state, "principal", None)
+        if p is None:
+            raise HTTPException(status_code=409, detail="principal not resolved")
+        _require_person(p)
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="JSON body required")
+        name = str((body or {}).get("display_name", "")).strip()
+        if not name or len(name) > 80:
+            raise HTTPException(status_code=400,
+                                detail="display_name must be 1-80 characters")
+        _identity_store.set_display_name(p.id, name)
+        journal.record(JournalKind.SETTINGS_CHANGE,
+                       f"display name updated for {p.id}", source="api")
+        return {"ok": True,
+                "data": {"id": p.id, "kind": p.kind, "display_name": name,
+                         "scopes": list(p.scopes), "source": p.source}}
 
     @app.get("/api/ingress/rollups", dependencies=[Depends(require_auth)])
     async def ingress_rollups() -> dict:
