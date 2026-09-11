@@ -13,7 +13,6 @@ import { Dialog } from "../primitives/Dialog";
 import { StatusChip, type CanonicalStatus } from "../primitives/StatusChip";
 import { ErrorState } from "../shell/ErrorState";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Loader2, Shield } from "../lib/icons";
 
 /**
@@ -30,6 +29,12 @@ import { Loader2, Shield } from "../lib/icons";
  * Status words are StatusChip (canonical vocabulary); unlock/lock
  * outcomes announce through the app LiveRegion (action_completed /
  * error kinds only).
+ *
+ * Composition (T14 warmth, DESIGN-HANDOFF N.7/N.8, same fix as Today
+ * a8a445e / Journal): no Card chrome — sections are real h2 headings
+ * (A11y §4.1, same ids as before) separated by quiet
+ * --pw-color-border-subtle dividers; the names list keeps its plain
+ * ul/li rows with a border-b per row.
  */
 
 function vaultStatusWord(locked: boolean): CanonicalStatus {
@@ -208,143 +213,156 @@ function VaultScreen() {
       </section>
 
       {/* Unlock / lock */}
-      <section aria-labelledby="vault-access-heading">
-        <Card>
-          <CardHeader>
-            <CardTitle id="vault-access-heading" className="flex items-center gap-2">
-              <Shield size={18} aria-hidden={true} />
-              {locked ? "Unlock your vault" : "Lock your vault"}
-            </CardTitle>
-            <CardDescription>
-              {locked
-                ? "Enter your master passphrase to reach your secrets on this device."
-                : "Locking clears the secrets from memory."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {locked ? (
-              <div className="space-y-3">
-                <label htmlFor="vault-passphrase" className="sr-only">
-                  Master passphrase
-                </label>
-                <input
-                  id="vault-passphrase"
-                  type="password"
-                  value={passphrase}
-                  onChange={(e) => setPassphrase(e.target.value)}
-                  autoComplete="current-password"
-                  className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
-                />
-                <Button type="button" onClick={() => void unlock()} disabled={!passphrase || busy}>
-                  Unlock vault
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => void lock()} disabled={busy}>
-                Lock vault
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      <section
+        aria-labelledby="vault-access-heading"
+        className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+      >
+        <div className="space-y-1">
+          <h2
+            id="vault-access-heading"
+            className="flex items-center gap-2 text-lg font-semibold"
+            style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+          >
+            <Shield size={18} aria-hidden={true} />
+            {locked ? "Unlock your vault" : "Lock your vault"}
+          </h2>
+          <p className="text-sm text-[var(--pw-color-text-muted)]">
+            {locked
+              ? "Enter your master passphrase to reach your secrets on this device."
+              : "Locking clears the secrets from memory."}
+          </p>
+        </div>
+        {locked ? (
+          <div className="space-y-3">
+            <label htmlFor="vault-passphrase" className="sr-only">
+              Master passphrase
+            </label>
+            <input
+              id="vault-passphrase"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              autoComplete="current-password"
+              className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
+            />
+            <Button type="button" onClick={() => void unlock()} disabled={!passphrase || busy}>
+              Unlock vault
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" onClick={() => void lock()} disabled={busy}>
+            Lock vault
+          </Button>
+        )}
       </section>
 
       {/* Names + set + delete (only when unlocked) */}
       {unlocked ? (
         <>
-          <section aria-labelledby="vault-names-heading">
-            <Card>
-              <CardHeader>
-                <CardTitle id="vault-names-heading">Stored secrets</CardTitle>
-                <CardDescription>
-                  Only the names are listed — the vault never shows a value here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {names.isLoading ? (
-                  <p className="text-[var(--pw-color-text-muted)]" role="status">
-                    Opening the list…
-                  </p>
-                ) : names.isError ? (
-                  <p className="text-[var(--pw-color-text-primary)]">
-                    {names.error instanceof ApiError && names.error.detail
-                      ? names.error.detail
-                      : "The names list could not be opened."}
-                  </p>
-                ) : (names.data?.names ?? []).length === 0 ? (
-                  <p className="text-[var(--pw-color-text-secondary)]">
-                    No secrets stored yet. Add one below.
-                  </p>
-                ) : (
-                  <ul className="space-y-2" role="list">
-                    {(names.data?.names ?? []).map((name) => (
-                      <li
-                        key={name}
-                        className="flex items-center justify-between gap-3 border-b border-[var(--pw-color-border-subtle)] py-2 last:border-0 last:pb-0"
-                      >
-                        <span className="text-[var(--pw-color-text-primary)]">{name}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setPendingDelete(name)}
-                          aria-label={`Delete secret ${name}`}
-                        >
-                          Delete
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+          <section
+            aria-labelledby="vault-names-heading"
+            className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+          >
+            <div className="space-y-1">
+              <h2
+                id="vault-names-heading"
+                className="text-lg font-semibold"
+                style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+              >
+                Stored secrets
+              </h2>
+              <p className="text-sm text-[var(--pw-color-text-muted)]">
+                Only the names are listed — the vault never shows a value here.
+              </p>
+            </div>
+            {names.isLoading ? (
+              <p className="text-[var(--pw-color-text-muted)]" role="status">
+                Opening the list…
+              </p>
+            ) : names.isError ? (
+              <p className="text-[var(--pw-color-text-primary)]">
+                {names.error instanceof ApiError && names.error.detail
+                  ? names.error.detail
+                  : "The names list could not be opened."}
+              </p>
+            ) : (names.data?.names ?? []).length === 0 ? (
+              <p className="text-[var(--pw-color-text-secondary)]">
+                No secrets stored yet. Add one below.
+              </p>
+            ) : (
+              <ul className="space-y-2" role="list">
+                {(names.data?.names ?? []).map((name) => (
+                  <li
+                    key={name}
+                    className="flex items-center justify-between gap-3 border-b border-[var(--pw-color-border-subtle)] py-2 last:border-0 last:pb-0"
+                  >
+                    <span className="text-[var(--pw-color-text-primary)]">{name}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setPendingDelete(name)}
+                      aria-label={`Delete secret ${name}`}
+                    >
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
-          <section aria-labelledby="vault-set-heading">
-            <Card>
-              <CardHeader>
-                <CardTitle id="vault-set-heading">Store a secret</CardTitle>
-                <CardDescription>
-                  Give it a name you will recognize. The value is stored encrypted and never displayed again.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <label htmlFor="vault-secret-name" className="sr-only">
-                  Secret name
-                </label>
-                <input
-                  id="vault-secret-name"
-                  type="text"
-                  value={setName}
-                  onChange={(e) => setSetName(e.target.value)}
-                  placeholder="Secret name"
-                  autoComplete="off"
-                  className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
-                />
-                <label htmlFor="vault-secret-value" className="sr-only">
-                  Secret value
-                </label>
-                <input
-                  id="vault-secret-value"
-                  type="password"
-                  value={setValue}
-                  onChange={(e) => setSetValue(e.target.value)}
-                  placeholder="Secret value"
-                  autoComplete="off"
-                  className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <Button
-                    type="button"
-                    onClick={() => void store()}
-                    disabled={!setName.trim() || !setValue || storing}
-                  >
-                    Store secret
-                  </Button>
-                  <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
-                    {storing ? "Storing…" : ""}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+          <section
+            aria-labelledby="vault-set-heading"
+            className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+          >
+            <div className="space-y-1">
+              <h2
+                id="vault-set-heading"
+                className="text-lg font-semibold"
+                style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+              >
+                Store a secret
+              </h2>
+              <p className="text-sm text-[var(--pw-color-text-muted)]">
+                Give it a name you will recognize. The value is stored encrypted and never displayed again.
+              </p>
+            </div>
+            <label htmlFor="vault-secret-name" className="sr-only">
+              Secret name
+            </label>
+            <input
+              id="vault-secret-name"
+              type="text"
+              value={setName}
+              onChange={(e) => setSetName(e.target.value)}
+              placeholder="Secret name"
+              autoComplete="off"
+              className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
+            />
+            <label htmlFor="vault-secret-value" className="sr-only">
+              Secret value
+            </label>
+            <input
+              id="vault-secret-value"
+              type="password"
+              value={setValue}
+              onChange={(e) => setSetValue(e.target.value)}
+              placeholder="Secret value"
+              autoComplete="off"
+              className="w-full rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] px-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                onClick={() => void store()}
+                disabled={!setName.trim() || !setValue || storing}
+              >
+                Store secret
+              </Button>
+              <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
+                {storing ? "Storing…" : ""}
+              </span>
+            </div>
           </section>
         </>
       ) : null}

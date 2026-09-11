@@ -4,7 +4,6 @@ import { useJournalPage, useJournalKey } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { Disclosure } from "../primitives/Disclosure";
 import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
 import { Loader2, BookOpen } from "../lib/icons";
 
 /**
@@ -16,6 +15,14 @@ import { Loader2, BookOpen } from "../lib/icons";
  * Provenance renders through Disclosure (Level 3, "Source") and
  * TechnicalDetails (Level 4) — provider/observed_at/authority, never
  * fabricated. The shell owns <main#main-content>.
+ *
+ * Composition (T14 warmth, DESIGN-HANDOFF N.7/N.8, same fix as Today
+ * a8a445e): no Card chrome — the composer is a real h2 section with a
+ * quiet --pw-color-border-subtle divider, and entries group under
+ * plain date headings ("Today", "Yesterday", the actual date — the
+ * journal-screen.svg pattern) with a quiet border-b per row, not a
+ * bordered/shadowed box per entry (A11y §4.1 real headings; entries
+ * themselves stay heading-free rows).
  */
 
 const KIND_FILTERS: Array<{ value: string; label: string }> = [
@@ -60,6 +67,53 @@ function fullTime(ts: string): string {
   });
 }
 
+/** Host-local calendar-day key: entries group by the day the person
+ * experienced, not by UTC bucket (same host-local convention as
+ * eventTime/fullTime; no hard-coded timezone). */
+function localDayKey(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+interface DayGroup {
+  key: string;
+  heading: string;
+  entries: JournalEntry[];
+}
+
+/** Date-group headings ("Today", "Yesterday", or the actual date for
+ * older groups) computed from each entry's ts relative to now — the
+ * journal-screen.svg reference rhythm. Consecutive entries on the
+ * same calendar day share one group; an unparseable ts groups under
+ * the same honest "Unknown time" wording eventTime uses. */
+function groupEntriesByDay(entries: JournalEntry[], now: Date): DayGroup[] {
+  const todayKey = localDayKey(now);
+  const yesterdayKey = localDayKey(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  );
+  const groups: DayGroup[] = [];
+  for (const entry of entries) {
+    const date = new Date(entry.ts);
+    const valid = Boolean(entry.ts) && !Number.isNaN(date.getTime());
+    const key = valid ? localDayKey(date) : "unknown";
+    const heading = !valid
+      ? "Unknown time"
+      : key === todayKey
+        ? "Today"
+        : key === yesterdayKey
+          ? "Yesterday"
+          : date.toLocaleDateString([], {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            });
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.entries.push(entry);
+    else groups.push({ key, heading, entries: [entry] });
+  }
+  return groups;
+}
+
 function JournalScreen() {
   const [pageSize, setPageSize] = useState(0); // index into PAGE_STEPS
   const journal = useJournalPage(PAGE_STEPS[pageSize]);
@@ -74,6 +128,12 @@ function JournalScreen() {
   const filtered = useMemo(
     () => (kind === "all" ? entries : entries.filter((e) => e.kind === kind)),
     [entries, kind]
+  );
+  // Newest-first (the API page is oldest-first), then consecutive
+  // same-calendar-day runs share one date-group heading.
+  const groups = useMemo(
+    () => groupEntriesByDay([...filtered].reverse(), new Date()),
+    [filtered]
   );
 
   const canLoadMore = pageSize < PAGE_STEPS.length - 1;
@@ -123,35 +183,40 @@ function JournalScreen() {
         </p>
       </section>
 
-      {/* Composer */}
-      <section aria-labelledby="journal-composer-heading">
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <h2 id="journal-composer-heading" className="text-lg font-semibold">
-              Leave a note
-            </h2>
-            <label htmlFor="journal-note" className="sr-only">
-              Journal note
-            </label>
-            <textarea
-              id="journal-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What happened? What did you notice?"
-              rows={3}
-              maxLength={2000}
-              className="w-full resize-none rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
-            />
-            <div className="flex items-center justify-between gap-3">
-              <Button type="button" onClick={() => void saveNote()} disabled={!note.trim() || saving}>
-                Save entry
-              </Button>
-              <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
-                {saving ? "Saving…" : noteStatus}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Composer — same treatment as Today's journal composer: real
+          h2 + quiet divider, no card chrome; the textarea keeps its
+          input-field border. */}
+      <section
+        aria-labelledby="journal-composer-heading"
+        className="space-y-3 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]"
+      >
+        <h2
+          id="journal-composer-heading"
+          className="text-lg font-semibold"
+          style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+        >
+          Leave a note
+        </h2>
+        <label htmlFor="journal-note" className="sr-only">
+          Journal note
+        </label>
+        <textarea
+          id="journal-note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="What happened? What did you notice?"
+          rows={3}
+          maxLength={2000}
+          className="w-full resize-none rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3 text-[var(--pw-color-text-primary)] placeholder-[var(--pw-color-text-muted)] focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
+        />
+        <div className="flex items-center justify-between gap-3">
+          <Button type="button" onClick={() => void saveNote()} disabled={!note.trim() || saving}>
+            Save entry
+          </Button>
+          <span className="text-sm text-[var(--pw-color-text-muted)]" role="status">
+            {saving ? "Saving…" : noteStatus}
+          </span>
+        </div>
       </section>
 
       {/* Kind filters: aria-pressed toggles (parity row 4) */}
@@ -202,56 +267,67 @@ function JournalScreen() {
           </p>
         </section>
       ) : filtered.length === 0 ? (
-        <section aria-labelledby="journal-empty-heading">
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-10">
-              <BookOpen size={36} aria-hidden={true} />
-              <h2
-                id="journal-empty-heading"
-                className="text-lg font-semibold"
-                style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
-              >
-                {entries.length === 0 ? "No journal entries yet" : "No entries of this kind yet"}
-              </h2>
-              <p className="text-center text-[var(--pw-color-text-muted)]">
-                {entries.length === 0
-                  ? "Entries appear as your world observes things — and whenever you leave a note."
-                  : "Try another filter to see what else has been recorded."}
-              </p>
-            </CardContent>
-          </Card>
+        <section
+          aria-labelledby="journal-empty-heading"
+          className="flex flex-col items-center gap-3 py-10"
+        >
+          <BookOpen size={36} aria-hidden={true} />
+          <h2
+            id="journal-empty-heading"
+            className="text-lg font-semibold"
+            style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+          >
+            {entries.length === 0 ? "No journal entries yet" : "No entries of this kind yet"}
+          </h2>
+          <p className="text-center text-[var(--pw-color-text-muted)]">
+            {entries.length === 0
+              ? "Entries appear as your world observes things — and whenever you leave a note."
+              : "Try another filter to see what else has been recorded."}
+          </p>
         </section>
       ) : (
-        <ul className="space-y-3" role="list" aria-label="Journal entries">
-          {[...filtered].reverse().map((entry, i) => (
-            <li key={`${entry.ts}-${i}`}>
-              <Card>
-                <CardContent className="space-y-2 p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[var(--pw-color-text-primary)]">{eventSummary(entry)}</p>
-                    <time dateTime={entry.ts} className="shrink-0 text-sm text-[var(--pw-color-text-muted)]">
-                      {eventTime(entry.ts)}
-                    </time>
-                  </div>
-                  <p className="text-sm text-[var(--pw-color-text-muted)]">
-                    Kind: {entry.kind}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Disclosure summary="Source" level={3}>
-                      <div className="space-y-1 pt-1 text-sm">
-                        <p>
-                          Recorded by {entry.provenance?.source ?? "an unknown source"}.
-                        </p>
-                        <p>Recorded at {fullTime(entry.provenance?.observed_at ?? entry.ts)}.</p>
-                      </div>
-                    </Disclosure>
-                    <TechnicalProvenance entry={entry} />
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
+        <div className="space-y-6">
+          {groups.map((group, gi) => (
+            <section key={`${group.key}-${gi}`} aria-labelledby={`journal-day-${gi}`}>
+              <h2
+                id={`journal-day-${gi}`}
+                className="text-base font-semibold"
+                style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
+              >
+                {group.heading}
+              </h2>
+              <ul className="space-y-0" role="list">
+                {group.entries.map((entry, i) => (
+                  <li
+                    key={`${entry.ts}-${i}`}
+                    className="space-y-2 border-b border-[var(--pw-color-border-subtle)] py-3 last:border-0 last:pb-0"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-[var(--pw-color-text-primary)]">{eventSummary(entry)}</p>
+                      <time dateTime={entry.ts} className="shrink-0 text-sm text-[var(--pw-color-text-muted)]">
+                        {eventTime(entry.ts)}
+                      </time>
+                    </div>
+                    <p className="text-sm text-[var(--pw-color-text-muted)]">
+                      Kind: {entry.kind}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Disclosure summary="Source" level={3}>
+                        <div className="space-y-1 pt-1 text-sm">
+                          <p>
+                            Recorded by {entry.provenance?.source ?? "an unknown source"}.
+                          </p>
+                          <p>Recorded at {fullTime(entry.provenance?.observed_at ?? entry.ts)}.</p>
+                        </div>
+                      </Disclosure>
+                      <TechnicalProvenance entry={entry} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       {/* Load more: re-queries /api/journal?n= with a larger n (row 4) */}
