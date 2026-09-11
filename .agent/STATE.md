@@ -6,7 +6,11 @@ records only where we are in that plan and the exact next action.
 ## Current phase
 
 **P0 — Stabilize: COMPLETE** (branch `p0/stabilize`, fast-forwarded to
-`main`). **P1 — Frontend foundation: not started.**
+`main`). **P1 — Frontend foundation: spec approved
+(`docs/p1/FOUNDATION-SPEC.md`), implementation NOT started.** Gate: owner
+confirmation of P0.1 credential rotation → push `main` → CI green for that
+exact SHA → coordination item C1 prepared → worktree `../pw-p1`
+(`p1/frontend-foundation`) → T1.
 
 ## P0 outcome (verified)
 
@@ -47,7 +51,8 @@ untracked until P1 renames it to `frontend/` and commits it.
 
 D1 React 19 + Vite frontend (tokens remain design truth) · D2 Authelia OIDC
 first proof behind a provider-neutral seam, cookie sessions + bearer,
-real step-up, hardened break-glass · D3 opt-in `subtle` motion · D4 NDJSON
+real step-up, hardened break-glass · D3 motion `off | reduced (default) |
+subtle`, OS reduced-motion always wins · D4 NDJSON
 journal + Markdown memory + disposable FTS · D5 homelab `scripts/lab` is the
 Lab provider via `PW_LAB_CLI`; calendar provider undecided · D6 Sonarr /
 Radarr / Lidarr / Plex; RSS + candy-dispenser Interests baseline.
@@ -58,15 +63,28 @@ ever** (anything in Vite env is inlined into the public bundle).
 
 Calendar provider for the first real implementation. Nothing blocks on it.
 
+## P1 spec decisions in force (2026-09-10)
+
+Only `settings` is pinned; `today` hideable; "Restore default sections"
+in Settings · no invented status values (`status.py` vocabulary or
+`null`); `configured` is separate from `status`; provider failure never
+removes a section · CompanionSlot: artwork `aria-hidden` and the "Open
+World assistant" button are siblings, never nested · lean deps: typed
+fetch + hooks, no React Query/Storybook without a bounded justification ·
+200% zoom: automated checks are proxies, a real browser zoom check on the
+deployed build is a required human gate.
+
 ## NEXT
 
 1. Owner: confirm P0.1 rotation done (new values only in `.env` /
-   `config/connections.local.json` via env indirection).
-2. Push `main`; confirm GitHub CI green on the P0 commits.
-3. Open coordination item C1 in `burgeswe/homelab` (Traefik router for
-   Personal World without forward-auth; Authelia OIDC client) so it is
-   ready when P2 starts.
-4. Begin **P1** in a fresh worktree (`git worktree add ../pw-p1 -b
-   p1/frontend-foundation`): FABLE first writes the sections API shape,
-   primitive component contracts, and the parity checklist as a bounded
-   spec; GLM tasks follow one primitive/screen at a time.
+   `config/connections.local.json` via env indirection). **Assume not
+   done until explicitly confirmed.**
+2. Push `main` exactly as-is; verify remote `main` SHA; verify CI green
+   for that exact SHA. No feature work if CI is not green.
+3. Prepare coordination item C1 in `burgeswe/homelab` (Personal World
+   performs app-level Authelia OIDC; route must not depend exclusively on
+   forward-auth; break-glass reachable during IdP outage; register the
+   OIDC client). Preparation only — P2 is not implemented.
+4. Begin **P1** in `../pw-p1` on `p1/frontend-foundation`, starting at
+   T1 (T0 is the spec, already committed). Order and acceptance per
+   `docs/p1/FOUNDATION-SPEC.md` §9–§11.

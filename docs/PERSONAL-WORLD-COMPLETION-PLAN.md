@@ -172,12 +172,17 @@ deployment is a container in the homelab stack behind Traefik + Authelia;
 the Bazzite host runs model/runtime services, not the web host. Therefore
 loopback-only break-glass is **not** sufficient recovery.
 
-### D3 — Motion: opt-in `subtle` tier
+### D3 — Motion: `off | reduced | subtle`
 
-Default `reduced`. Optional `subtle`: transitions ≤300ms; idle visible
-movement ≤2px; no flashing, shaking, spinning, or pulsing. OS
-`prefers-reduced-motion` always overrides. Motion is never required to
-understand or operate the product.
+Three values, default `reduced`. `off`: no nonessential animation, no
+ambient movement, no decorative pose transitions. `reduced` (default): no
+continuous/ambient animation; instant state/pose changes allowed.
+`subtle` (opt-in): transitions ≤300ms; ambient movement ≤2px where
+allowed; no pulse/spin/shake/flash. OS `prefers-reduced-motion` always
+overrides and suppresses subtle animation. Motion is never required to
+understand or operate the product. `off` is not collapsed into
+`reduced`: the explicit no-motion choice is cheap and useful.
+Definitions and CSS emission: `docs/p1/FOUNDATION-SPEC.md` §3.
 
 ### D4 — Memory canon
 
@@ -257,7 +262,10 @@ stack is Vitest (component) · Playwright · axe-core · token-drift test ·
 bundle size and bundle secret-scan · real browser acceptance. Storybook and
 related add-ons are **not** a mandatory dependency; they are removed in P1
 unless a P13 design-review task demonstrates net reduction of work
-(default: remove).
+(default: remove). The same rule applies to data-layer libraries: the
+foundation uses a typed fetch client and ordinary React hooks; React
+Query (or similar) may be added only by a bounded task whose report shows
+more complexity removed than added.
 
 ### C-5. Secrets
 
@@ -330,6 +338,13 @@ a call to a nonexistent upload route.
 cutover checklist review. GLM: each primitive/screen (one task each). DET:
 axe/token/budget tests.
 
+**Spec.** The bounded implementation contract for this phase is
+[`p1/FOUNDATION-SPEC.md`](p1/FOUNDATION-SPEC.md) (approved 2026-09-10):
+sections API (`settings` is the only pinned section; `today` is
+hideable; "Restore default sections" in Settings; canonical status or
+`null`, never invented values; `configured` separate from `status`),
+primitive contracts, parity checklist, bounded tasks T0–T16.
+
 **Files.** `frontend/` (tracked; renamed from `frontend-v2/`), `Dockerfile`
 (stage 1 node build, stage 2 python image copying `dist/`), `api.py` SPA
 mount at `/` with auth-aware HTML and public-safe static assets,
@@ -358,7 +373,9 @@ passphrase) · login · server-side preference floor still enforced by API.
 
 **Acceptance.** All eight sections reachable with honest `not_configured`
 empty states; sections hide/reorder and persist; axe 0 serious/critical per
-route at 1440/900/600/375; 200% zoom without horizontal scroll; ≥44px
+route at 1440/900/600/375; 200% zoom without horizontal scroll (automated
+CSS-zoom/narrow-viewport checks are proxies; a real browser 200% zoom
+check on the deployed build is a required human gate); ≥44px
 targets scanned by Playwright; one visible `h1`; landmarks including
 `complementary`; token-drift test: no color literal outside `tokens.css`;
 bundle budget ≤350 KB gzipped; no external network requests at runtime;

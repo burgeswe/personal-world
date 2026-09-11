@@ -13,6 +13,7 @@ open an issue.
 | [ROADMAP](../ROADMAP.md) | Now / Next / Exploring — direction, not promises. |
 | [PERSONAL-WORLD-FINISH-LINE.md](PERSONAL-WORLD-FINISH-LINE.md) | Canonical target daily-use experience; requirements, not implementation claims. |
 | [PERSONAL-WORLD-COMPLETION-PLAN.md](PERSONAL-WORLD-COMPLETION-PLAN.md) | Canonical plan: current-vs-target audit, approved decisions, dependency-ordered phases P0–P14, acceptance criteria, model routing. |
+| [p1/FOUNDATION-SPEC.md](p1/FOUNDATION-SPEC.md) | Approved P1 implementation contract: sections API, primitive contracts, parity checklist, bounded tasks. |
 | [AGENT_POLICY.md](../AGENT_POLICY.md) | Mandatory agent preflight and decision policy. |
 | [AGENT_CONTRACTS.md](../AGENT_CONTRACTS.md) | Canonical contract registry: applicability, authority, and exact entry points. |
 | [STATUS.md](../STATUS.md) | Pointer to shared operational state; not deployment proof by itself. |
