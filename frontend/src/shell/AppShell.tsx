@@ -19,11 +19,15 @@ import { ChatPanel } from "../components/ChatPanel";
  * no longer re-declare the landmark.
  *
  * Header geometry (T14 human gate 1): a FIXED compact brand strip —
- * brand wordmark + companion identity + assistant trigger — with
- * identical height on every route; the banner bucket may wrap its nav
- * taller (bucket-driven, never route-driven). The companion artwork is
+ * brand wordmark + assistant trigger — with identical height on every
+ * route; the banner bucket may wrap its nav taller (bucket-driven,
+ * never route-driven). The assistant trigger's companion artwork is
  * aria-hidden (A11y §7.2/7.3) and the trigger's ONLY accessible name
  * is "Open World assistant" (the CompanionSlot sibling contract).
+ *
+ * Companion hierarchy (finding D): exactly ONE persistent companion in
+ * the shell — the assistant trigger's artwork. The brand lockup is the
+ * wordmark only; page companions appear only in empty/error states.
  *
  * World Assistant (T14 human gate 5): the existing ChatPanel (T12,
  * context-free by design) hosted in the Drawer primitive with heading
@@ -97,11 +101,12 @@ export function AppShell({ children }: AppShellProps) {
       </a>
 
       <header className="pw-header">
-        {/* Brand + companion identity: the selected companion at NAV
-            size (COMPANION_INTEGRATION persistent presence), aria-hidden
-            artwork; companion "off" removes the artwork only. */}
+        {/* Brand wordmark only (finding D): the header's persistent
+            companion belonged to the brand lockup AND the assistant
+            trigger AND empty states; the hierarchy keeps exactly ONE
+            shell companion — the assistant's — so the brand is calm
+            text. The lockup wrapper keeps the wordmark's layout seam. */}
         <span className="pw-brand-lockup">
-          <CompanionSlot size="nav" />
           <span
             className="pw-brand"
             style={{ fontFamily: "var(--pw-typography-font-expressive)" }}

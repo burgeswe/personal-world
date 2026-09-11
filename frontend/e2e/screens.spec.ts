@@ -39,6 +39,37 @@ test.describe("honest states", () => {
       expect(errors).toEqual([]);
     }
   });
+
+  test("empty states are proportionate: 34rem card, What/Why/Next order (finding E)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/media");
+    await bootWait(page);
+    const state = page.locator(".pw-state");
+    // proportionate card, not a full-measure banner (34rem < 64rem measure)
+    const box = await state.boundingBox();
+    expect(box?.width).toBeLessThanOrEqual(34 * 16 + 1);
+    // What/Why/Next: heading → chip → capability → knob (DOM order)
+    const order = await state.evaluate((el) => {
+      const h2 = el.querySelector("h2");
+      const chip = el.querySelector(".chip");
+      const summary = el.querySelector(".pw-state-summary");
+      const detail = el.querySelector(".pw-state-detail");
+      const before = (a: Element | null, b: Element | null) =>
+        a !== null && b !== null && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      return {
+        chipAfterHeading: before(h2, chip),
+        summaryAfterChip: before(chip, summary),
+        detailAfterSummary: before(summary, detail),
+      };
+    });
+    expect(order.chipAfterHeading).toBe(true);
+    expect(order.summaryAfterChip).toBe(true);
+    expect(order.detailAfterSummary).toBe(true);
+    // copy still names capability + knob (contract intact after layout fix)
+    const text = await state.innerText();
+    expect(text).toMatch(/media connection in Settings/i);
+  });
 });
 
 test.describe("dialog top layer (§5 Dialog primitive in a real browser)", () => {

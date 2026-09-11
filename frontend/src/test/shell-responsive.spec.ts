@@ -77,14 +77,40 @@ describe("responsive cascade seams (T9)", () => {
     expect(css).toMatch(/\.pw-nav-link\s*\{[^}]*min-height:\s*var\(--pw-target-minimum\)/);
   });
 
-  it("shell hosts companion + assistant trigger (T14 human gates 4+5)", () => {
+  it("shell hosts the assistant trigger, exactly one shell companion (T14 human gates 4+5; finding D)", () => {
     const appShell = readFileSync(join(here, "..", "shell", "AppShell.tsx"), "utf8");
-    expect(appShell).toContain('<CompanionSlot size="nav" />');
-    expect(appShell).toContain('asAssistantTrigger');
+    // finding D: the brand lockup is the wordmark ONLY — the shell has
+    // exactly ONE companion, the assistant trigger's artwork.
+    expect(appShell).not.toContain('<CompanionSlot size="nav" />');
+    expect(appShell).toContain("asAssistantTrigger");
     expect(appShell).toContain('title="World Assistant"');
     // heading the contract names (A11y §3.2)
     const emptyState = readFileSync(join(here, "..", "shell", "EmptyState.tsx"), "utf8");
     expect(emptyState).toContain('size="empty"');
+  });
+
+  it("assistant trigger is a labeled affordance, not an ambiguous '+' (finding C)", () => {
+    const slot = readFileSync(join(here, "..", "primitives", "CompanionSlot.tsx"), "utf8");
+    // visible affordance text; the bare ✚ / text-transparent hack is gone
+    expect(slot).toContain('"Ask your world"');
+    expect(slot).not.toContain("✚");
+    expect(slot).not.toContain("text-transparent");
+  });
+
+  it("empty states stay proportionate: 34rem card, 1.25rem h2 (finding E)", () => {
+    expect(css).toMatch(/\.pw-state\s*\{[^}]*max-width:\s*34rem/);
+    expect(css).toMatch(/\.pw-state h2\s*\{[^}]*font-size:\s*1\.25rem/);
+    // the oversized-banner padding (section) is gone with the banner
+    expect(css).toMatch(/\.pw-state\s*\{[^}]*padding:\s*var\(--pw-spacing-loose\)/);
+  });
+
+  it("rail line 2 pins under the header (finding A: no dead band)", () => {
+    // The ≥900px block pins cross-axis content to the top so leftover
+    // space falls BELOW the rail/main line, never between header and
+    // content (attention contract: predictable geometry).
+    const railBlock = css.match(/@media \(min-width: 900px\)\s*\{[\s\S]*?\n\}/);
+    expect(railBlock).not.toBeNull();
+    expect(railBlock![0]).toContain("align-content: flex-start");
   });
 
   it("nav targets use the 44px token floor, never a smaller literal", () => {

@@ -181,17 +181,39 @@ test.describe("World Assistant drawer (T14 human gate 5, A11y §3.2)", () => {
     );
     expect(focusRestored).toBeTruthy();
   });
+
+  test("trigger opens the drawer from any route (finding C: persistent affordance)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const route of ["/", "/vault", "/journal", "/settings", "/chat"]) {
+      await page.goto(route);
+      await bootWait(page);
+      const trigger = page.getByRole("button", { name: "Open World assistant" });
+      await expect(trigger, `trigger on ${route}`).toBeVisible();
+      await trigger.click();
+      await expect(page.locator("aside[role='complementary']")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.locator("aside[role='complementary']")).toBeHidden();
+    }
+  });
 });
 
 test.describe("companion presence (T14 human gate 4, A11y §7)", () => {
-  test("header companion artwork is aria-hidden with alt=''; trigger name is exact", async ({ page }) => {
+  test("header companion artwork is aria-hidden with alt=''; trigger name is exact; ONE shell companion", async ({ page }) => {
     await login(page);
     await page.setViewportSize({ width: 1280, height: 800 });
     await bootWait(page);
-    const artwork = page.locator(".pw-brand-lockup [data-pw-companion-slot] span[aria-hidden='true'] img");
+    // finding D: the brand lockup is the wordmark only; the assistant
+    // trigger's artwork is the ONE companion in the shell.
+    const artwork = page.locator(".pw-header-end [data-pw-companion-slot] span[aria-hidden='true'] img");
     await expect(artwork).toHaveCount(1);
     await expect(artwork).toHaveAttribute("alt", "");
     await expect(artwork).toHaveAttribute("src", /\/companions\/[a-z-]+\.svg$/);
+    // no companion in the brand lockup (exactly one slot in the header)
+    const headerSlots = await page.locator(".pw-header [data-pw-companion-slot]").count();
+    expect(headerSlots).toBe(1);
+    const lockupSlots = await page.locator(".pw-brand-lockup [data-pw-companion-slot]").count();
+    expect(lockupSlots).toBe(0);
     // exactly one assistant trigger; its only name is the contract label
     expect(await page.getByRole("button", { name: "Open World assistant" }).count()).toBe(1);
     // the artwork is not the trigger: it is inside an aria-hidden subtree
@@ -199,6 +221,16 @@ test.describe("companion presence (T14 human gate 4, A11y §7)", () => {
       (el) => el.closest("[aria-hidden='true']") !== null
     );
     expect(hidden).toBeTruthy();
+  });
+
+  test("assistant trigger shows the visible 'Ask your world' affordance (finding C)", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await bootWait(page);
+    const trigger = page.getByRole("button", { name: "Open World assistant" });
+    await expect(trigger).toContainText("Ask your world");
+    // the ambiguous bare '+' glyph is gone
+    expect((await trigger.innerText()).includes("✚")).toBe(false);
   });
 
   test("empty-state companion renders at 64px, aria-hidden (Interests direct route)", async ({ page }) => {

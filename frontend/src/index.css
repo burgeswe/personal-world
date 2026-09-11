@@ -372,6 +372,10 @@ img[src*="/icons/"][class*="h-5"] {
   .pw-shell {
     flex-direction: row;
     flex-wrap: wrap;
+    /* line 2 pins under the header; leftover cross-space goes BELOW
+       content, never between header and content (attention contract §4:
+       predictable geometry; finding A) */
+    align-content: flex-start;
   }
   .pw-shell > .pw-header {
     flex-basis: 100%;
@@ -466,17 +470,21 @@ img[src*="/icons/"][class*="h-5"] {
   flex: none;
 }
 
-/* State surfaces (EmptyState / ErrorState) */
+/* State surfaces (EmptyState / ErrorState). Proportion (finding E):
+   a readable card constrained to 34rem inside the shell's 64rem
+   measure — not a full-measure banner — with the What/Why/Next copy
+   (chip → capability → knob) leading the attention order. */
 .pw-state {
   display: flex;
   flex-direction: column;
   gap: var(--pw-spacing-normal);
-  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+  max-width: 34rem;
+  padding: var(--pw-spacing-loose) var(--pw-spacing-loose);
 }
 
 .pw-state h2 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.25rem;
 }
 
 /* Route h1: expressive type is the identity (T14 human gate 6). The

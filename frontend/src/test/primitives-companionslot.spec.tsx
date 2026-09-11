@@ -25,21 +25,25 @@ const axeNoContrast = (el: Element) =>
  *   Error 64).
  */
 describe("CompanionSlot (T8)", () => {
-  it("artwork is an aria-hidden span with an alt='' img, sibling to the trigger", async () => {
+  it("trigger-mode: artwork + visible label live INSIDE the button as aria-hidden decoration (finding C)", async () => {
     const { container } = render(
       <CompanionSlot size="nav" asAssistantTrigger onOpenAssistant={() => {}} />
     );
     const slot = container.querySelector("[data-pw-companion-slot]") as HTMLElement;
-    const artwork = slot.querySelector(":scope > span[aria-hidden='true']");
-    expect(artwork).not.toBeNull();
-    const img = artwork?.querySelector("img");
-    expect(img).not.toBeNull();
-    expect(img?.getAttribute("alt")).toBe("");
-    // sibling, not nested: the button is NOT inside the aria-hidden span
-    const trigger = slot.querySelector(":scope > button");
+    // no sibling artwork beside a trigger — exactly ONE companion (finding D)
+    expect(slot.querySelector(":scope > span[aria-hidden='true']")).toBeNull();
+    const trigger = slot.querySelector(":scope > button") as HTMLElement;
     expect(trigger).not.toBeNull();
-    expect(artwork?.contains(trigger as Node)).toBe(false);
-    expect(trigger?.closest("[aria-hidden='true']")).toBeNull();
+    // the button itself is not inside an aria-hidden subtree
+    expect(trigger.closest("[aria-hidden='true']")).toBeNull();
+    // artwork + visible label are INSIDE the button, aria-hidden
+    const artwork = trigger.querySelector("span[aria-hidden='true'] img");
+    expect(artwork).not.toBeNull();
+    expect(artwork?.getAttribute("alt")).toBe("");
+    const labels = Array.from(trigger.querySelectorAll("span[aria-hidden='true']")).map(
+      (s) => s.textContent
+    );
+    expect(labels).toContain("Ask your world");
     expect(await axeNoContrast(container)).toHaveNoViolations();
   });
 

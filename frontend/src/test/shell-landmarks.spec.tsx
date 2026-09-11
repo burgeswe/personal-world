@@ -141,11 +141,21 @@ describe("AppShell landmarks and structure (T9)", () => {
       expect(el).toBeTruthy();
       return el;
     });
-    // companion artwork present and aria-hidden, trigger outside it
-    const artwork = container.querySelector(".pw-header [data-pw-companion-slot] > span[aria-hidden='true']");
+    // companion artwork present and aria-hidden INSIDE the trigger
+    // (finding C/D: labeled affordance, ONE shell companion — the
+    // assistant's; the brand lockup is the wordmark only)
+    const triggerSlot = container.querySelector(
+      ".pw-header [data-pw-companion-slot]"
+    );
+    expect(triggerSlot).not.toBeNull();
+    const artwork = triggerSlot?.querySelector("img");
     expect(artwork).not.toBeNull();
-    expect(artwork?.querySelector("img")?.getAttribute("alt")).toBe("");
-    expect(artwork?.contains(trigger as Node)).toBe(false);
+    expect(artwork?.getAttribute("alt")).toBe("");
+    expect(artwork?.closest("[aria-hidden='true']")).not.toBeNull();
+    expect(triggerSlot?.querySelector(":scope > button")).not.toBeNull();
+    expect(triggerSlot?.querySelector("button")?.closest("[aria-hidden='true']")).toBeNull();
+    // exactly one companion slot in the whole shell (finding D)
+    expect(container.querySelectorAll("[data-pw-companion-slot]").length).toBe(1);
 
     // A real click focuses the button; jsdom's fireEvent does not, so
     // set it explicitly (the Drawer restores focus to its invoker).
@@ -164,6 +174,28 @@ describe("AppShell landmarks and structure (T9)", () => {
       expect(container.querySelector("aside")?.className).toContain("hidden");
     });
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("assistant trigger is a labeled affordance: visible 'Ask your world' (finding C)", async () => {
+    // A bare "+" was too ambiguous for the primary interaction model;
+    // the trigger now shows the visible label as aria-hidden
+    // decoration so the accessible name stays EXACTLY the contract
+    // label (A11y §7.2).
+    shellProviders(withRoute(<h1>Today</h1>));
+    const trigger = await waitFor(() => {
+      const el = screen.getByRole("button", { name: ASSISTANT_TRIGGER_LABEL });
+      expect(el).toBeTruthy();
+      return el;
+    });
+    const labels = Array.from(
+      trigger.querySelectorAll("span[aria-hidden='true']")
+    ).map((s) => s.textContent);
+    // the visible text is rendered inside the button (artwork span
+    // contributes no text; the label span does)
+    expect(labels).toContain("Ask your world");
+    // the name comes from aria-label alone — the visible text is
+    // decorative and must not leak into the accessible name
+    expect(trigger.getAttribute("aria-label")).toBe(ASSISTANT_TRIGGER_LABEL);
   });
 });
 
