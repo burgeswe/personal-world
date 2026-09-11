@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import TodayScreen from "./screens/TodayScreen";
-import ChatScreen from "./screens/ChatScreen";
+import ChatRoute from "./screens/ChatRoute";
+import LoginScreen from "./screens/LoginScreen";
 import JournalScreen from "./screens/JournalScreen";
 import WorldScreen from "./screens/WorldScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -14,7 +15,7 @@ import {
   PREFERENCES_DEFAULTS,
 } from "./lib/prefs-context";
 import { LiveRegionProvider } from "./primitives/LiveRegion";
-import { fetchPrefs } from "./lib/api";
+import { fetchPrefs, setLoginNavigation } from "./lib/api";
 import { AppShell } from "./shell/AppShell";
 import { EmptyState } from "./shell/EmptyState";
 
@@ -55,12 +56,13 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/setup" element={<SetupWizard />} />
+      <Route path="/login" element={<LoginScreen />} />
       <Route path="/" element={<TodayScreen />} />
       <Route path="/interests" element={<InterestsRoute />} />
       <Route path="/media" element={<MediaRoute />} />
       <Route path="/projects" element={<ProjectsRoute />} />
       <Route path="/lab" element={<LabRoute />} />
-      <Route path="/chat" element={<ChatScreen />} />
+      <Route path="/chat" element={<ChatRoute />} />
       <Route path="/journal" element={<JournalScreen />} />
       <Route path="/world" element={<WorldScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
@@ -120,6 +122,23 @@ function LabRoute() {
   );
 }
 
+/**
+ * Login navigation (T12, FOUNDATION-SPEC §1.5): the T6 api boundary
+ * owns the 401→/login contract; this wires its settable hook to the
+ * router (SPA navigation instead of a hard reload). Lives inside the
+ * BrowserRouter so useNavigate resolves. Any 401 from any screen
+ * routes here; the token was already cleared by the api boundary.
+ */
+function LoginNavigationWiring() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setLoginNavigation((path) => navigate(path, { replace: true }));
+    return () =>
+      setLoginNavigation((path) => window.location.assign(path));
+  }, [navigate]);
+  return null;
+}
+
 function App() {
   return (
     <CompanionProvider>
@@ -130,7 +149,10 @@ function App() {
               AppShell (T9): skip link, nav "Main", main#main-content,
               Drawer mount. LiveRegionProvider stays app-level (one
               region). The router wraps the shell so NavLinks resolve.
+              LoginNavigationWiring (T12): SPA 401→/login for the whole
+              tree, no chat/auth logic in routes.
             */}
+            <LoginNavigationWiring />
             <AppShell>
               <AppRoutes />
             </AppShell>

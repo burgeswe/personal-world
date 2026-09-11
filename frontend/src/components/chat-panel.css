@@ -1,0 +1,191 @@
+/* ChatPanel styles (P1 T12). Component-scoped on purpose: the shared
+   index.css global blocks are not this task's surface. Token vars only
+   (no literals — the hex gate enforces design/tokens.json as the only
+   color truth). Targets ≥44px via --pw-target-minimum (A11y §2.1).
+   Motion: none beyond attribute toggling (A11y §1.5, §3 Disclosure). */
+
+.pw-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+  height: 100%;
+  min-height: 0;
+}
+
+.pw-chat > h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+/* Conversation details disclosure copy */
+.pw-chat details {
+  font-size: 0.92rem;
+}
+.pw-chat-provider-line {
+  margin: 0 0 var(--pw-spacing-compact);
+  color: var(--pw-color-text-primary);
+}
+.pw-chat-provider-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-compact);
+}
+.pw-chat-provider-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-spacing-normal);
+  color: var(--pw-color-text-secondary);
+}
+
+/* Log */
+.pw-chat-log {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+  padding: var(--pw-spacing-normal);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--pw-color-surface-panel);
+}
+
+.pw-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pw-spacing-normal);
+  margin: auto;
+  text-align: center;
+  color: var(--pw-color-text-secondary);
+}
+.pw-chat-empty img {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+.pw-chat-empty p {
+  margin: 0;
+  max-width: 30rem;
+}
+.pw-chat-starters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--pw-spacing-compact);
+}
+
+.pw-chat-msg {
+  max-width: 75%;
+  border-radius: 0.75rem;
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  font-size: 0.95rem;
+}
+.pw-chat-msg p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pw-chat-msg-user {
+  align-self: flex-end;
+  background: var(--pw-color-surface-elevated);
+  border: 1px solid var(--pw-color-border-subtle);
+}
+.pw-chat-msg-assistant {
+  align-self: flex-start;
+  background: var(--pw-color-surface-panel);
+  border: 1px solid var(--pw-color-border-subtle);
+}
+.pw-chat-msg-error {
+  align-self: stretch;
+  max-width: none;
+  background: var(--pw-color-surface-panel);
+  border: 1px solid var(--pw-color-text-secondary);
+  color: var(--pw-color-text-primary);
+}
+.pw-chat-msg-error p {
+  margin: 0;
+}
+.pw-chat-actions {
+  display: flex;
+  gap: var(--pw-spacing-compact);
+  margin-top: var(--pw-spacing-normal);
+}
+
+.pw-chat-thinking {
+  color: var(--pw-color-text-muted);
+}
+
+/* Starter + action chips: 44px targets */
+.pw-chat-chip {
+  min-height: var(--pw-target-minimum);
+  padding: var(--pw-spacing-compact) var(--pw-spacing-loose);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 999px;
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.pw-chat-chip:hover:not(:disabled) {
+  border-color: var(--pw-color-accent-primary);
+}
+.pw-chat-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Composer */
+.pw-chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--pw-spacing-compact);
+}
+.pw-chat-input {
+  flex: 1 1 auto;
+  min-height: var(--pw-target-minimum);
+  resize: vertical;
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--pw-color-surface-panel);
+  color: var(--pw-color-text-primary);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  font: inherit;
+}
+.pw-chat-input::placeholder {
+  color: var(--pw-color-text-muted);
+}
+.pw-chat-input:focus-visible {
+  outline: var(--pw-focus-ring);
+  outline-offset: 2px;
+}
+.pw-chat-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--pw-target-minimum);
+  min-width: var(--pw-target-minimum);
+  border: none;
+  border-radius: 0.75rem;
+  background: var(--pw-color-accent-primary);
+  color: var(--pw-color-surface-canvas);
+  cursor: pointer;
+}
+.pw-chat-send:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.pw-chat-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pw-chat-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--pw-color-text-muted);
+}

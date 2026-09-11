@@ -308,8 +308,17 @@ export type SourceControlHistoryData = {
   repo: string;
   commits: unknown[];
 };
+/** One entry of GET /api/chat/providers (api.py `chat_providers`). */
+export interface ChatProviderInfo {
+  name: string;
+  display_name: string;
+  /** Canonical status.py vocabulary for the provider's observation. */
+  status: string;
+  ok: boolean;
+}
+
 export type ChatProvidersData = {
-  providers: unknown[];
+  providers: ChatProviderInfo[];
   active: string | null;
 };
 
@@ -516,11 +525,31 @@ export async function saveWorldPolicy(
   });
 }
 
+export async function saveWorldFact(
+  key: string,
+  value: string
+): Promise<unknown> {
+  return apiFetch<unknown>("/api/world/fact", {
+    method: "POST",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify({ key, value }),
+  });
+}
+
 export interface ChatResult {
   ok?: boolean;
   status?: string;
   warnings?: string[];
+  /** The provider's visible reply (Result.data.reply — chat.py). */
   reply?: string;
+  /**
+   * Provider-supplied reasoning text, when the adapter exposes it
+   * (ollama `thinking`); always treated as progressive-disclosure
+   * material, never concatenated into the visible reply.
+   */
+  thinking?: string | null;
+  /** Model identifier the provider reported (Result.data.model). */
+  model?: string | null;
 }
 
 export async function sendChatMessage(
@@ -537,8 +566,13 @@ export async function sendChatMessage(
 // ── Setup (pre-auth; /api/setup and /api/setup/status are public
 // routes — api.py registers them with no auth dependency) ──
 
-export async function fetchSetupStatus(): Promise<unknown> {
-  return apiFetch<unknown>("/api/setup/status");
+/** GET /api/setup/status unwraps to `{complete: boolean}` (api.py). */
+export interface SetupStatusData {
+  complete: boolean;
+}
+
+export async function fetchSetupStatus(): Promise<SetupStatusData> {
+  return apiFetch<SetupStatusData>("/api/setup/status");
 }
 
 export interface SetupResult {
@@ -549,6 +583,7 @@ export interface SetupResult {
 export async function postSetup(payload: {
   token: string;
   companion?: string;
+  vault_passphrase?: string;
 }): Promise<SetupResult> {
   return apiFetch<SetupResult>("/api/setup", {
     method: "POST",
