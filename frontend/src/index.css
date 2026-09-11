@@ -482,6 +482,10 @@ img[src*="/icons/"][class*="h-5"] {
   padding: var(--pw-spacing-loose) var(--pw-spacing-loose);
 }
 
+/* The state heading keeps its proportion at either level: h2 beside
+   a page h1, or h1 when the state is the page's only heading
+   (headingLevel prop). Same geometry, only the tag changes. */
+.pw-state h1,
 .pw-state h2 {
   margin: 0;
   font-size: 1.25rem;

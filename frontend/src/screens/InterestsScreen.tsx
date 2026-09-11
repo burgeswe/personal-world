@@ -11,6 +11,7 @@ export default function InterestsScreen() {
   return (
     <EmptyState
       title="Interests"
+      headingLevel={1}
       capability="Interests collect things you care about and find more like them."
       knob="Turn on a discovery connection in Settings → Connections to populate this section."
       status="not_configured"
