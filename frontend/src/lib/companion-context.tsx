@@ -50,10 +50,18 @@ export function useCompanion() {
   return useContext(CompanionContext);
 }
 
+/**
+ * Keys MUST be the backend's canonical companion slugs
+ * (src/personal_world/prefs.py COMPANION EnumPref allowed set): this
+ * dict is both the artwork lookup (CompanionSlot) and the choice list
+ * the setup wizard submits, so a key that differs from the server
+ * vocabulary silently falls back to the default artwork or fails the
+ * all-or-nothing pref write.
+ */
 export const COMPANIONS: Record<string, { name: string; icon: string }> = {
   "personal-world": { name: "Personal World", icon: "/companions/personal-world.svg" },
   "mermaid": { name: "Mermaid", icon: "/companions/mermaid.svg" },
   "robot": { name: "Little Helper Robot", icon: "/companions/robot.svg" },
-  "squirrel": { name: "World-tree Squirrel", icon: "/companions/world-tree-squirrel.svg" },
-  "tacos": { name: "Tacos & the Morning Paper", icon: "/companions/taco-news-truck.svg" },
+  "world-tree-squirrel": { name: "World-tree Squirrel", icon: "/companions/world-tree-squirrel.svg" },
+  "taco-news-truck": { name: "Tacos & the Morning Paper", icon: "/companions/taco-news-truck.svg" },
 };

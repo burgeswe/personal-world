@@ -21,6 +21,7 @@ import {
 } from "../lib/api";
 import { useCompanion, COMPANIONS } from "../lib/companion-context";
 import { usePrefs, COMPANION_OFF, companionChoices } from "../lib/prefs-context";
+import { useSectionsWrite } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { useStepUp } from "../primitives/StepUpPrompt";
 import { Dialog } from "../primitives/Dialog";
@@ -130,6 +131,11 @@ function SettingsScreen() {
   const { announce } = useAnnounce();
   const { companion, setCompanion } = useCompanion();
   const { setPref } = usePrefs();
+  // Emits the shared "sections" refresh signal: SectionNav (mounted in
+  // AppShell, outside this screen) subscribes to the same signal via
+  // useSections(), so a sections write here updates the live nav in
+  // this interaction — no reload needed.
+  const emitSectionsWrite = useSectionsWrite();
 
   // ── Data (plain hooks on the typed client; each panel owns its state
   // so one failing panel degrades alone and names what still works —
@@ -282,6 +288,11 @@ function SettingsScreen() {
       try {
         await withStepUp(() => saveSections(update));
         const fresh = await loadSections();
+        // After a successful write: refresh the nav too. The emit makes
+        // SectionNav's useSections() refetch, so hide/show/reorder and
+        // "Restore default sections" land in the SAME open tab's rail
+        // (visible state, not remembered state).
+        await emitSectionsWrite();
         if (fresh) {
           announce(describe, { kind: "action_completed", key: "sections" });
         }
@@ -296,7 +307,7 @@ function SettingsScreen() {
         setSectionsBusy(false);
       }
     },
-    [announce, loadSections, withStepUp]
+    [announce, emitSectionsWrite, loadSections, withStepUp]
   );
 
   const moveSection = useCallback(
