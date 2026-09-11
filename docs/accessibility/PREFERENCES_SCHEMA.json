@@ -9,7 +9,7 @@
       "type": "enum",
       "values": ["off", "reduced", "subtle"],
       "default": "reduced",
-      "description": "off = no transitions. reduced = instant pose switches. subtle = max 300ms ease-out. OS prefers-reduced-motion overrides to off or reduced."
+      "description": "off = no nonessential animation, no ambient/idle movement, no decorative pose transitions. reduced (default) = no continuous/ambient animation; instant state/pose changes allowed. subtle = opt-in; transitions <=300ms, ambient movement <=2px where allowed, no pulse/spin/shake/flash. OS prefers-reduced-motion always overrides and suppresses subtle animation. Motion is never required to understand or operate the product."
     },
     "contrast": {
       "type": "enum",
