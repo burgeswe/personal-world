@@ -70,6 +70,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install uv (the e2e server boots the real app via uvicorn)
+        run: pip install uv==0.11.28
+      - name: Sync python deps (personal_world importable for uvicorn)
+        run: uv sync --frozen --extra test
       - name: Install frontend deps, build dist, install Chromium
         run: |
           cd frontend
@@ -81,10 +88,7 @@ jobs:
       - name: Dist safety (secret scan + VITE grep + bundle budget)
         # Runs AFTER the browser job built frontend/dist: required in
         # CI (skips only on a machine with no build).
-        run: |
-          pip install uv==0.11.28
-          uv sync --frozen --extra test
-          uv run pytest --timeout=60 tests/test_dist_safety.py -v
+        run: uv run pytest --timeout=60 tests/test_dist_safety.py -v
 
   security-gates:
     runs-on: ubuntu-latest

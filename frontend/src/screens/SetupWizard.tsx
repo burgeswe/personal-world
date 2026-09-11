@@ -46,10 +46,18 @@ const COMPANION_CHOICES = COMPANION_IDS.map((id) => ({
 }));
 
 function generateToken(): string {
+  // Unbiased selection: rejection sampling keeps every character
+  // exactly uniform (plain `% chars.length` biases toward early
+  // chars because 2^32 is not a multiple of the alphabet size).
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.";
+  const max = Math.floor(0x100000000 / chars.length) * chars.length;
   let result = "";
-  const values = crypto.getRandomValues(new Uint32Array(32));
-  for (let i = 0; i < 32; i++) result += chars.charAt(values[i] % chars.length);
+  while (result.length < 32) {
+    const values = crypto.getRandomValues(new Uint32Array(32));
+    for (let i = 0; i < values.length && result.length < 32; i++) {
+      if (values[i] < max) result += chars.charAt(values[i] % chars.length);
+    }
+  }
   return result;
 }
 
