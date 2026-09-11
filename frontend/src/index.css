@@ -1,65 +1,20 @@
+@import "./tokens.css";
 @import "tailwindcss";
 
-/* ── Personal World Design Tokens ── */
-/* Canonical source: design/tokens.json */
-
-:root {
-  /* ── Dark Theme (default) ── */
-  --color-canvas: #0a0810;
-  --color-panel: #12101a;
-  --color-elevated: #1a1724;
-  --color-border: #2a2538;
-  --color-text-primary: #f0eaff;
-  --color-text-secondary: #a397b8;
-  --color-text-muted: #6b5f82;
-  --color-accent-primary: #72b1b1;
-  --color-accent-secondary: #b57f8b;
-  --color-ok: #5fb85f;
-  --color-warn: #d4a54c;
-  --color-err: #d4644c;
-
-  /* ── Typography ── */
-  --font-expressive: "Young Serif", Georgia, serif;
-  --font-interface: "Instrument Sans", system-ui, sans-serif;
-  --font-stack: system-ui, sans-serif;
-  --text-scale-base: 1rem;
-  --line-height-body: 1.6;
-
-  /* ── Spacing ── */
-  --spacing-compact: 0.25rem;
-  --spacing-normal: 0.5rem;
-  --spacing-loose: 1rem;
-  --spacing-section: 1.5rem;
-
-  /* ── Targets ── */
-  --target-min: 44px;
-  --target-large: 56px;
-
-  /* ── Focus ── */
-  --focus-ring: 2px solid var(--color-accent-primary);
-  --focus-offset: 2px;
-
-  /* ── Motion ── */
-  --motion-duration: 0ms;
-
-  /* ── Shadows ── */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* ── Light Theme ── */
-[data-theme="light"] {
-  --color-canvas: #f4f2ed;
-  --color-panel: #ece9e1;
-  --color-elevated: #e2ddd4;
-  --color-border: #d9d4c9;
-  --color-text-primary: #26241f;
-  --color-text-secondary: #5a5650;
-  --color-text-muted: #6b675f;
-  --color-accent-primary: #5a9a9a;
-  --color-accent-secondary: #9a6872;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+/* ── Tailwind theme: aliases only ──
+   Every value is a var() reference into the generated --pw-* token
+   layer (src/tokens.css, generated from design/tokens.json). No
+   literal color may appear here; the hex-literal test enforces it. */
+@theme {
+  --color-surface: var(--pw-color-surface-canvas);
+  --color-panel: var(--pw-color-surface-panel);
+  --color-elevated: var(--pw-color-surface-elevated);
+  --color-border: var(--pw-color-border-subtle);
+  --color-text: var(--pw-color-text-primary);
+  --color-text-secondary: var(--pw-color-text-secondary);
+  --color-text-muted: var(--pw-color-text-muted);
+  --color-accent: var(--pw-color-accent-primary);
+  --color-accent-secondary: var(--pw-color-accent-secondary);
 }
 
 /* ── Base Styles ── */
@@ -75,52 +30,60 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-canvas);
-  color: var(--color-text-primary);
-  font-family: var(--font-interface);
-  font-size: var(--text-scale-base);
-  line-height: var(--line-height-body);
+  background: var(--pw-color-surface-canvas);
+  color: var(--pw-color-text-primary);
+  font-family: var(--pw-typography-font-interface);
+  font-size: var(--pw-typography-text-scale-base);
+  line-height: var(--pw-typography-line-height-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Headings ── */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-expressive);
-  color: var(--color-text-primary);
+/* ── Self-hosted fonts via the existing backend /fonts/* route ── */
+@font-face {
+  font-family: "Young Serif";
+  src: url("/fonts/young-serif-latin.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
 }
 
-/* ── Motion Preferences ── */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("/fonts/instrument-sans-var-latin.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+/* ── Headings ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--pw-typography-font-expressive);
+  color: var(--pw-color-text-primary);
 }
 
 /* ── Focus Styles ── */
 :focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  outline: var(--pw-focus-ring);
+  outline-offset: 2px;
+}
+
+[data-pw-contrast="high"] {
+  --pw-focus-ring: var(--pw-focus-ring-high-contrast);
 }
 
 /* ── Skip Link ── */
 .skip-link {
   position: absolute;
   top: -100%;
-  left: var(--spacing-loose);
+  left: var(--pw-spacing-loose);
   z-index: 9999;
-  padding: var(--spacing-normal) var(--spacing-loose);
-  background: var(--color-accent-primary);
-  color: var(--color-canvas);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  background: var(--pw-color-accent-primary);
+  color: var(--pw-color-surface-canvas);
   font-weight: 600;
   text-decoration: none;
   border-radius: 0 0 8px 8px;
-  transition: top var(--motion-duration);
 }
 
 .skip-link:focus {
@@ -138,85 +101,52 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--pw-color-border-subtle);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
-}
-
-/* ── Smooth scrolling ── */
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
+  background: var(--pw-color-text-muted);
 }
 
 /* ── Selection ── */
 ::selection {
-  background: var(--color-accent-primary);
-  color: var(--color-canvas);
+  background: var(--pw-color-accent-primary);
+  color: var(--pw-color-surface-canvas);
 }
 
-/* ── Accessibility Preferences ── */
-.motion-off *,
-.motion-off *::before,
-.motion-off *::after {
-  animation-duration: 0ms !important;
-  transition-duration: 0ms !important;
-}
-
-.contrast-high {
-  --color-text-secondary: #c4b8d9;
-  --color-text-muted: #9a8cb3;
-  --color-border: #3d3654;
-}
-
-/* ── Density Variants ── */
-[data-density="compact"] {
-  --spacing-compact: 0.125rem;
-  --spacing-normal: 0.25rem;
-  --spacing-loose: 0.75rem;
-  --spacing-section: 1rem;
-}
-
-[data-density="spacious"] {
-  --spacing-compact: 0.375rem;
-  --spacing-normal: 0.75rem;
-  --spacing-loose: 1.5rem;
-  --spacing-section: 2rem;
-}
-
-/* ── Density: override Tailwind spacing ── */
-[data-density="compact"] {
+/* ── Density: server-pref-driven override of Tailwind spacing ── */
+[data-pw-density="compact"] {
   --spacing: 0.1875rem;
 }
 
-[data-density="spacious"] {
+[data-pw-density="spacious"] {
   --spacing: 0.4375rem;
 }
 
-/* ── Target Size: minimum touch target ── */
-[data-target-size="44"] {
-  --target-min: 44px;
+/* ── Target Size: 44px floor, server pref may enlarge ── */
+[data-pw-target-size="48"] {
+  --pw-target-minimum: 48px;
 }
-[data-target-size="48"] {
-  --target-min: 48px;
-}
-[data-target-size="56"] {
-  --target-min: 56px;
+[data-pw-target-size="56"] {
+  --pw-target-minimum: 56px;
 }
 
-/* Apply to all interactive elements */
 button, a, input, select, textarea, [role="button"], [role="link"] {
-  min-height: var(--target-min, 44px);
+  min-height: var(--pw-target-minimum);
 }
 
-/* ── Fix scrollbar on settings ── */
-#main-content {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+/* ── Motion preference (server prefs own the runtime tier via the
+   data-pw-motion attribute + --pw-motion-duration; see prefs.py) ── */
+[data-pw-motion="subtle"] * {
+  transition-duration: var(--pw-motion-duration) !important;
+}
+
+/* ── Smooth scrolling (subtle only, and only when the OS allows it) ── */
+@media (prefers-reduced-motion: no-preference) {
+  [data-pw-motion="subtle"] html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* ── Icon visibility on dark background ── */
@@ -226,7 +156,7 @@ nav img[src*="/icons/"] {
 }
 
 nav img[src*="/icons/"] + span {
-  color: var(--color-text-secondary);
+  color: var(--pw-color-text-secondary);
 }
 
 nav a:hover img[src*="/icons/"] {
@@ -235,11 +165,292 @@ nav a:hover img[src*="/icons/"] {
 
 nav a[class*="accent"] img[src*="/icons/"] {
   opacity: 1;
-  filter: brightness(0) invert(1) drop-shadow(0 0 1px var(--color-accent-primary));
+  filter: brightness(0) invert(1) drop-shadow(0 0 1px var(--pw-color-accent-primary));
 }
 
 /* ── Settings icon grid visibility ── */
 img[src*="/icons/"][class*="h-5"] {
   filter: brightness(0) invert(1);
   opacity: 0.8;
+}
+
+/* ── Loading indicator: static per A11y §1.5 ── */
+.loader-static {
+  animation: none;
+  transition: none;
+}
+
+/* ── Fix scrollbar on main content ── */
+#main-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pw-color-border-subtle) transparent;
+}
+
+/* ── Status chips (T8): luminance + structure only, never hue-only.
+   The status WORD is the content (A11y §1.3); rank is expressed by
+   border luminance/structure over the panel surface. Colors come from
+   the generated token layer only. ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--pw-color-surface-panel);
+  color: var(--pw-color-text-primary);
+  white-space: nowrap;
+}
+.chip-sm {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.8rem;
+}
+.chip-label {
+  color: var(--pw-color-text-secondary);
+}
+.chip[data-status="healthy"] {
+  border-color: var(--pw-color-accent-primary);
+}
+.chip[data-status="warning"],
+.chip[data-status="needs_attention"] {
+  border-color: var(--pw-color-text-secondary);
+}
+.chip[data-status="unknown"],
+.chip[data-status="stale"] {
+  border-color: var(--pw-color-text-muted);
+}
+.chip[data-status="unavailable"],
+.chip[data-status="not_configured"] {
+  border-style: dashed;
+  border-color: var(--pw-color-text-muted);
+}
+.chip[data-status="disabled"] {
+  border-style: dotted;
+  border-color: var(--pw-color-text-muted);
+  color: var(--pw-color-text-secondary);
+}
+
+/* ── AppShell / SectionNav (T9): token vars only, 44px targets,
+   responsive cascade ≥900 rail / 600–899 banner / <600 bottom bar
+   (FOUNDATION-SPEC §5, RESPONSIVE_RULES). ── */
+.pw-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pw-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--pw-spacing-loose);
+}
+
+/* Header + banner nav (600–899px) */
+.pw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-spacing-normal);
+  min-height: var(--pw-target-minimum);
+  padding: var(--pw-spacing-normal) var(--pw-spacing-loose);
+  border-bottom: 1px solid var(--pw-color-border-subtle);
+  background: var(--pw-color-surface-panel);
+}
+
+.pw-brand {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--pw-color-accent-primary);
+}
+
+/* Banner nav (600–899px): rendered in the header only in that bucket
+   (AppShell mirrors the same breakpoint); the seam below restates
+   visibility as defense in depth. */
+.pw-banner-nav {
+  display: none;
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  .pw-banner-nav {
+    display: block;
+    flex: 1 1 auto;
+  }
+  .pw-banner-nav .pw-nav-list {
+    flex-direction: row;
+    gap: var(--pw-spacing-compact);
+    justify-content: flex-end;
+  }
+}
+
+/* Rail slot: rendered in the ≥900px bucket (AppShell picks the slot by
+   the same breakpoint the CSS below enforces); hidden by default so a
+   server-rendered rail never flashes before the bucket resolves. */
+.pw-rail {
+  display: none;
+  align-self: stretch;
+}
+
+/* Bottom bar (<600px): fixed, with the platform safe-area inset so no
+   control hides under browser/device UI (A11y §2.7). Rendered only in
+   the <600px bucket; the seam below restates visibility. */
+.pw-bottom-bar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  border-top: 1px solid var(--pw-color-border-subtle);
+  background: var(--pw-color-surface-panel);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Rail (≥900px): left rail beside main. The AppShell renders exactly
+   one nav per bucket (same breakpoints); CSS seams restate visibility. */
+@media (min-width: 900px) {
+  .pw-shell {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .pw-shell > .pw-header {
+    flex-basis: 100%;
+  }
+  .pw-rail {
+    display: block;
+    flex: 0 0 var(--pw-rail-width, 4.5rem);
+    border-right: 1px solid var(--pw-color-border-subtle);
+    background: var(--pw-color-surface-panel);
+  }
+  .pw-shell > main {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .pw-bottom-bar {
+    display: block;
+  }
+}
+
+/* Nav list + links: one structure, three placements */
+.pw-nav-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pw-rail .pw-nav-list {
+  flex-direction: column;
+  gap: var(--pw-spacing-compact);
+  padding: var(--pw-spacing-normal);
+}
+
+.pw-bottom-bar .pw-nav-list {
+  flex-direction: row;
+  width: 100%;
+}
+
+.pw-bottom-bar .pw-nav-list > li {
+  flex: 1 1 0;
+}
+
+.pw-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-spacing-normal);
+  min-height: var(--pw-target-minimum);
+  min-width: var(--pw-target-minimum);
+  padding: var(--pw-spacing-compact) var(--pw-spacing-normal);
+  border-radius: 0.5rem;
+  color: var(--pw-color-text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pw-nav-link--rail {
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.7rem;
+  padding: var(--pw-spacing-compact) 0.25rem;
+}
+
+.pw-bottom-bar .pw-nav-link {
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+  font-size: 0.7rem;
+  padding: var(--pw-spacing-compact) 0.25rem;
+}
+
+.pw-nav-link:hover {
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-text-primary);
+}
+
+.pw-nav-link--active {
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-accent-primary);
+}
+
+.pw-nav-icon {
+  flex: none;
+}
+
+/* State surfaces (EmptyState / ErrorState) */
+.pw-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-spacing-normal);
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+}
+
+.pw-state h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.pw-state-summary {
+  margin: 0;
+  color: var(--pw-color-text-primary);
+}
+
+.pw-state-detail {
+  margin: 0;
+  color: var(--pw-color-text-secondary);
+}
+
+.pw-state-detail-inline {
+  color: var(--pw-color-text-secondary);
+}
+
+.pw-state-retry {
+  align-self: flex-start;
+  padding: var(--pw-spacing-compact) var(--pw-spacing-loose);
+  border: 1px solid var(--pw-color-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--pw-color-surface-elevated);
+  color: var(--pw-color-text-primary);
+}
+
+.pw-state-retry:hover {
+  border-color: var(--pw-color-accent-primary);
+}
+
+/* ── sr-only helper (T8 primitives; visually hidden, screen-reader
+   visible) ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

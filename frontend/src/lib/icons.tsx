@@ -80,6 +80,20 @@ const ICON_NAMES = [
 export type IconName = (typeof ICON_NAMES)[number];
 export { ICON_NAMES };
 
+/**
+ * Section icon ids arrive from GET /api/sections in the sprite's
+ * `<category>--<name>` form (e.g. "navigation--today"); the shim's
+ * ICON_NAMES use the legacy dash form ("icon-navigation-today").
+ * This maps one to the other; ids absent from both spellings render
+ * label-only (SectionNav) rather than guessing a broken glyph.
+ */
+export function sectionIconToShimName(spriteId: string): IconName | null {
+  const shimName = `icon-${spriteId.replace("--", "-")}` as IconName;
+  return (ICON_NAMES as readonly string[]).includes(shimName)
+    ? shimName
+    : null;
+}
+
 // "name" is omitted from SVG props so the sprite symbol id stays a
 // closed literal union (SVGAttributes.name is a plain string).
 export type IconProps = Omit<SVGProps<SVGSVGElement>, "name"> & {

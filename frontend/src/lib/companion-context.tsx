@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getAuthToken } from "./api";
+import { fetchPrefs } from "./api";
 
 interface CompanionContextType {
   companion: string;
@@ -25,11 +25,9 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
 
   // Sync with API on mount
   useEffect(() => {
-    const token = getAuthToken();
-    fetch("/api/prefs", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : null))
+    fetchPrefs()
       .then((d) => {
-        if (d?.data?.companion) setCompanionState(d.data.companion);
+        if (d?.companion) setCompanionState(d.companion);
       })
       .catch(() => {});
   }, []);

@@ -8,6 +8,7 @@ import {
   fetchPrincipal,
   fetchVaultStatus,
   fetchSourceControlStatus,
+  fetchSections,
   fetchActors,
   fetchBackup,
   fetchThemes,
@@ -26,13 +27,17 @@ import {
   type JournalEntry,
   type HealthStatus,
   type Principal,
+  type VaultStatusData,
+  type SourceControlStatusData,
+  type SectionData,
+  type ChatProvidersData,
 } from "./api";
-import { getAuthToken } from "./api";
 
 /**
- * T4 transitional data hooks: plain useState/useEffect replacing React
- * Query (dieted per FOUNDATION-SPEC §1.4). T6 replaces these with the
- * typed client + error mapping per §1.5; no cache layer was needed.
+ * T6 data hooks: plain useState/useEffect on the typed client
+ * (FOUNDATION-SPEC §1.5). apiFetch reads the token itself and maps
+ * errors to ApiError; no cache layer was needed (screens re-fetch via
+ * the refresh signals below, dedupe was never the bottleneck).
  */
 
 export interface QueryState<T> {
@@ -44,7 +49,7 @@ export interface QueryState<T> {
 }
 
 function useApiQuery<T>(
-  fn: (token: string) => Promise<T>,
+  fn: () => Promise<T>,
   deps: unknown[] = [],
   signals: string[] = []
 ): QueryState<T> {
@@ -58,7 +63,7 @@ function useApiQuery<T>(
     setIsLoading(true);
     setError(null);
     try {
-      const result = await fn(getAuthToken());
+      const result = await fn();
       if (id === seq.current) {
         setData(result);
         setError(null);
@@ -84,19 +89,19 @@ function useApiQuery<T>(
 }
 
 export function useWorld() {
-  return useApiQuery<WorldData>((t) => fetchWorld(t), [], ["world"]);
+  return useApiQuery<WorldData>(() => fetchWorld(), [], ["world"]);
 }
 
 export function useWorldStatus() {
-  return useApiQuery<WorldStatus>((t) => fetchWorldStatus(t), [], ["worldStatus"]);
+  return useApiQuery<WorldStatus>(() => fetchWorldStatus(), [], ["worldStatus"]);
 }
 
 export function useReminders() {
-  return useApiQuery<Reminder[]>((t) => fetchReminders(t), [], ["reminders"]);
+  return useApiQuery<Reminder[]>(() => fetchReminders(), [], ["reminders"]);
 }
 
 export function useJournal() {
-  return useApiQuery<JournalEntry[]>((t) => fetchJournal(t), [], ["journal"]);
+  return useApiQuery<JournalEntry[]>(() => fetchJournal(), [], ["journal"]);
 }
 
 export function useHealth() {
@@ -104,7 +109,7 @@ export function useHealth() {
 }
 
 export function usePrincipal() {
-  const state = useApiQuery<Principal>((t) => fetchPrincipal(t));
+  const state = useApiQuery<Principal>(() => fetchPrincipal());
   useEffect(() => {
     const handler = () => void state.refetch();
     window.addEventListener("principal-updated", handler);
@@ -113,8 +118,10 @@ export function usePrincipal() {
   return state;
 }
 
-// ── Refresh signals (transitional; T6 folds these into the typed
-// client's invalidation surface) ──
+// ── Refresh signals (transitional; P1 screens re-fetch explicitly) ──
+export function useSections() {
+  return useApiQuery<SectionData[]>(() => fetchSections(), [], ["sections"]);
+}
 const refreshListeners = new Map<string, Set<() => void>>();
 
 function subscribeRefresh(signal: string, fn: () => void): () => void {
@@ -146,72 +153,70 @@ export function useJournalKey(): () => void {
   return () => emitRefresh("journal");
 }
 export function useVaultStatus() {
-  return useApiQuery<{ locked: boolean; encrypted: boolean }>((t) =>
-    fetchVaultStatus(t)
-  );
+  return useApiQuery<VaultStatusData>(() => fetchVaultStatus());
 }
 
 // ── Source Control hooks ──
 export function useSourceControlStatus() {
-  return useApiQuery<{ repos: any[] }>((t) => fetchSourceControlStatus(t));
+  return useApiQuery<SourceControlStatusData>(() => fetchSourceControlStatus());
 }
 
 // ── Actors hook ──
 export function useActors() {
-  return useApiQuery<any[]>((t) => fetchActors(t));
+  return useApiQuery<unknown[]>(() => fetchActors());
 }
 
 // ── Backup hook ──
 export function useBackup() {
-  return useApiQuery<any>((t) => fetchBackup(t));
+  return useApiQuery<{ schema: string; world?: { facts?: Record<string, unknown> } }>(
+    () => fetchBackup() as Promise<{ schema: string; world?: { facts?: Record<string, unknown> } }>
+  );
 }
 
 // ── Themes hook ──
 export function useThemes() {
-  return useApiQuery<any[]>((t) => fetchThemes(t));
+  return useApiQuery<unknown[]>(() => fetchThemes());
 }
 
 // ── Journal Audit hook ──
 export function useJournalAudit() {
-  return useApiQuery<{ text: string }>((t) => fetchJournalAudit(t));
+  return useApiQuery<{ text: string }>(() => fetchJournalAudit());
 }
 
 // ── Exports hooks ──
 export function useExportSettings() {
-  return useApiQuery<any>((t) => fetchExportSettings(t));
+  return useApiQuery<unknown>(() => fetchExportSettings());
 }
 
 export function useExportStory() {
-  return useApiQuery<{ text: string }>((t) => fetchExportStory(t));
+  return useApiQuery<{ text: string }>(() => fetchExportStory());
 }
 
 // ── Manifest hook ──
 export function useManifest() {
-  return useApiQuery<any>((t) => fetchManifest(t));
+  return useApiQuery<unknown>(() => fetchManifest());
 }
 
 // ── Updates hook ──
 export function useUpdates() {
-  return useApiQuery<any>((t) => fetchUpdates(t));
+  return useApiQuery<unknown>(() => fetchUpdates());
 }
 
 // ── Chat Providers hook ──
 export function useChatProviders() {
-  return useApiQuery<{ providers: any[]; active: string | null }>((t) =>
-    fetchChatProviders(t)
-  );
+  return useApiQuery<ChatProvidersData>(() => fetchChatProviders());
 }
 
 // ── Lab hooks ──
 export function useLabState() {
-  return useApiQuery<any>((t) => fetchLabState(t));
+  return useApiQuery<unknown>(() => fetchLabState());
 }
 
 export function useLabHealth() {
-  return useApiQuery<any>((t) => fetchLabHealth(t));
+  return useApiQuery<unknown>(() => fetchLabHealth());
 }
 
 // ── Memory Search hook ──
 export function useMemorySearch(query: string) {
-  return useApiQuery<any>((t) => fetchMemorySearch(t, query), [query]);
+  return useApiQuery<unknown>(() => fetchMemorySearch(query), [query]);
 }

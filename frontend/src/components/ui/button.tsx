@@ -9,16 +9,16 @@ export interface ButtonProps
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   default:
-    "bg-[var(--color-accent-primary)] text-[var(--color-canvas)] hover:bg-[var(--color-accent-primary)]/90 shadow-sm hover:shadow-md",
+    "bg-[var(--pw-color-accent-primary)] text-[var(--pw-color-surface-canvas)] hover:bg-[var(--pw-color-accent-primary)]/90 shadow-sm hover:shadow-md",
   destructive:
-    "bg-[var(--color-err)] text-white hover:bg-[var(--color-err)]/90 shadow-sm",
+    "bg-[var(--pw-color-text-primary)] text-[var(--pw-color-surface-canvas)] hover:bg-[var(--pw-color-text-secondary)] shadow-sm",
   outline:
-    "border border-[var(--color-border)] bg-transparent hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent-primary)]/50",
+    "border border-[var(--pw-color-border-subtle)] bg-transparent hover:bg-[var(--pw-color-surface-elevated)] hover:text-[var(--pw-color-text-primary)] hover:border-[var(--pw-color-accent-primary)]/50",
   secondary:
-    "bg-[var(--color-elevated)] text-[var(--color-text-primary)] hover:bg-[var(--color-elevated)]/80 shadow-sm",
+    "bg-[var(--pw-color-surface-elevated)] text-[var(--pw-color-text-primary)] hover:bg-[var(--pw-color-surface-elevated)]/80 shadow-sm",
   ghost:
-    "hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-primary)]",
-  link: "text-[var(--color-accent-primary)] underline-offset-4 hover:underline",
+    "hover:bg-[var(--pw-color-surface-elevated)] hover:text-[var(--pw-color-text-primary)]",
+  link: "text-[var(--pw-color-accent-primary)] underline-offset-4 hover:underline",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
@@ -33,7 +33,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pw-color-accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--pw-color-surface-canvas)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
           variantClasses[variant],
           sizeClasses[size],
           className

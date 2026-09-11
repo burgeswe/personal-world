@@ -1,4 +1,13 @@
 ## [Unreleased]
+- 2026-09-12 — **P1 frontend foundation T1–T9 landed on `p1/frontend-foundation`** (T1–T4 merged via PR #20; T5–T9 at the convergence checkpoint):
+  - T1/T2 (backend): sections registry + `GET/PUT /api/sections` per-person layout API, `GET /api/prefs/schema`; motion vocabulary `off | reduced (default) | subtle` with OS `prefers-reduced-motion` always overriding.
+  - T3: `PW_FRONTEND` serving boundary (legacy default), SPA fallback with route precedence and traversal-safe allowlist, multi-stage Dockerfile (runtime image has no Node), CI image build; focus-ring token corrected per A11y §2.4.
+  - T4: React prototype tracked as `frontend/` with the dependency diet (no Storybook/Chromatic/React Query/lucide/cva/Google Fonts); clean `npm ci` proven; lean Vitest/vitest-axe/Playwright/oxlint stack.
+  - T5: `design/tokens.json` → `src/tokens.css` zero-dep generator, committed output, `tokens:check` CI drift gate, Tailwind `@theme` aliases only, self-hosted `@font-face` via `/fonts/*`, hex-literal and motion-lint gates.
+  - T6: one typed API boundary (`lib/api.ts`): `pw_token` transitional auth, envelope unwrap, error mapping, 401→login / 503-setup routing, single `withStepUp()` write header.
+  - T7/T8: accessible primitives — Dialog, Popover, LiveRegion (30s batched announcements), Drawer, Disclosure, StatusChip (luminance-only, closed vocabulary), CompanionSlot (sibling artwork/trigger), StepUpPrompt.
+  - T9: AppShell (skip link, landmarks, rail/banner/bottom cascade, safe-area), SectionNav from `/api/sections` (hidden sections omitted, routes resolve), EmptyState/ErrorState, prefs applied to `<html data-pw-*>` before content.
+  - Verification: Python 494 passed; `framework validate` healthy; frontend 147 tests green; build ~100 KB gz (budget 350 KB); tokens/hex/motion gates green; container CI-shape green.
 - 2026-09-10 — completion plan adopted (`docs/PERSONAL-WORLD-COMPLETION-PLAN.md`) and **Phase 0 (stabilize) landed**:
   - P0.2 gitignore covers private runtime config (`config/*.local.json`, `config/principal.json`), frontend env/dist; ownership rule documented in `config/README.local.md`.
   - P0.3 `PUT /api/identity/principal` sets the caller's display name in private runtime state (`data/users.json`), step-up + persons only; a working-tree experiment that wrote plaintext provider keys into tracked config and served an unauthenticated React bundle was discarded, not merged. The client-side `VITE_*` bearer-token pattern is removed from the React prototype — no replacement client token exists by design.

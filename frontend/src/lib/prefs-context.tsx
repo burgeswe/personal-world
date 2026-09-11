@@ -1,109 +1,153 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { type Prefs } from "./api";
 
-interface PrefsContextType {
+/**
+ * The preference shape the context owns (the fields App applies to
+ * <html>). Mirrors the server's prefs.py vocabulary.
+ */
+export interface PrefsState {
   motion: string;
   contrast: string;
   density: string;
   textScale: number;
   targetSize: number;
-  setPref: (key: string, value: string | number) => void;
+  theme: string;
 }
 
-const PrefsContext = createContext<PrefsContextType>({
+export const PREFERENCES_DEFAULTS: PrefsState = {
   motion: "reduced",
   contrast: "comfortable",
   density: "comfortable",
   textScale: 1,
   targetSize: 44,
+  theme: "dark",
+};
+
+/**
+ * Apply preferences to `document.documentElement` (T9, FOUNDATION-SPEC
+ * §1.2 + §10 row 10): data-pw-* attributes and --pw-* variables land on
+ * <html> BEFORE the first content paint.
+ *
+ * Variable/attribute names mirror prefs.py (prefs_to_css_variables /
+ * prefs_to_data_attributes) so the generated token layer and the
+ * server-rendered style block agree:
+ * - data-pw-theme (dark is the token default; light swaps the palette)
+ * - data-pw-contrast (drives the focus-ring token swap)
+ * - data-pw-density (+ the spacing override in index.css)
+ * - data-pw-motion + --pw-motion-duration/--pw-motion-ambient per the
+ *   motion tier (off/reduced → 0ms/0, subtle → 200ms/1)
+ * - data-pw-text-scale + --pw-typography-text-scale-base
+ * - data-pw-target-size + --pw-target-minimum (44px floor)
+ *
+ * Honest seam: jsdom cannot prove paint order (no rendering pipeline),
+ * so "before content" is enforced structurally — the app fetches prefs
+ * and applies attributes, THEN renders routes (App bootstrap), and
+ * tests assert documentElement carries the attrs before/without any
+ * route content mounted.
+ */
+export function applyPrefsToDocument(prefs: PrefsState): void {
+  const root = document.documentElement;
+
+  root.setAttribute("data-pw-theme", prefs.theme === "light" ? "light" : "dark");
+  root.setAttribute(
+    "data-pw-contrast",
+    prefs.contrast === "high" ? "high" : "comfortable"
+  );
+  root.setAttribute("data-pw-density", prefs.density);
+  root.setAttribute(
+    "data-pw-motion",
+    prefs.motion === "off"
+      ? "off"
+      : prefs.motion === "subtle"
+        ? "subtle"
+        : "reduced"
+  );
+  root.setAttribute("data-pw-text-scale", String(prefs.textScale));
+  root.setAttribute("data-pw-target-size", String(Math.max(prefs.targetSize, 44)));
+
+  // Motion tier vocabulary (prefs.py MOTION_TIERS): off and reduced both
+  // run at 0ms / no ambient; subtle gets 200ms and ambient allowed.
+  root.style.setProperty(
+    "--pw-motion-duration",
+    prefs.motion === "subtle" ? "200ms" : "0ms"
+  );
+  root.style.setProperty("--pw-motion-ambient", prefs.motion === "subtle" ? "1" : "0");
+
+  root.style.setProperty("--pw-density", prefs.density);
+  root.style.setProperty("--pw-text-scale", String(prefs.textScale));
+  root.style.setProperty(
+    "--pw-typography-text-scale-base",
+    `${prefs.textScale}rem`
+  );
+  root.style.setProperty(
+    "--pw-target-minimum",
+    `${Math.max(prefs.targetSize, 44)}px`
+  );
+}
+
+interface PrefsContextType extends PrefsState {
+  setPref: (key: string, value: string | number) => void;
+}
+
+const PrefsContext = createContext<PrefsContextType>({
+  ...PREFERENCES_DEFAULTS,
   setPref: () => {},
 });
 
 /**
- * T4: transitional prefs context. Server prefs (`GET /api/prefs`) are the
- * truth; `localStorage["pw_prefs"]` is no longer read or written
- * (deleted per FOUNDATION-SPEC §1.2). T9/T11 move this behind the typed
- * API client and `data-pw-*` attributes per §1.2 and the parity plan.
+ * T9: server prefs (`GET /api/prefs`) are the truth; the provider is
+ * seeded with them at bootstrap (App applies them before routes render)
+ * and re-applies to <html> on every change. `localStorage["pw_prefs"]`
+ * stays deleted (§1.2: the browser holds no truth).
  */
-export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [prefs, setPrefs] = useState({
-    motion: "reduced",
-    contrast: "comfortable",
-    density: "comfortable",
-    textScale: 1,
-    targetSize: 44,
-  });
+export function PrefsProvider({
+  children,
+  initialPrefs = PREFERENCES_DEFAULTS,
+}: {
+  children: ReactNode;
+  initialPrefs?: PrefsState;
+}) {
+  const [prefs, setPrefs] = useState<PrefsState>(initialPrefs);
 
-  // Sync from the server once on mount; localStorage is not consulted.
+  // Keep <html> in sync whenever the state changes (bootstrap and
+  // Settings updates both land here).
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/prefs")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !d?.data) return;
-        setPrefs((prev) => ({
-          motion: d.data.motion ?? prev.motion,
-          contrast: d.data.contrast ?? prev.contrast,
-          density: d.data.density ?? prev.density,
-          textScale: d.data.text_scale ?? prev.textScale,
-          targetSize: d.data.target_size ?? prev.targetSize,
-        }));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Apply prefs to document on change
-  useEffect(() => {
-    const root = document.documentElement;
-
-    // Motion
-    if (prefs.motion === "off") {
-      root.style.setProperty("--motion-duration", "0ms");
-      root.classList.add("motion-off");
-      root.classList.remove("motion-subtle");
-    } else if (prefs.motion === "subtle") {
-      root.style.setProperty("--motion-duration", "150ms");
-      root.classList.add("motion-subtle");
-      root.classList.remove("motion-off");
-    } else {
-      root.style.setProperty("--motion-duration", "0ms");
-      root.classList.remove("motion-off", "motion-subtle");
-    }
-
-    // Contrast
-    if (prefs.contrast === "high") {
-      root.classList.add("contrast-high");
-      root.classList.remove("contrast-comfortable");
-    } else {
-      root.classList.add("contrast-comfortable");
-      root.classList.remove("contrast-high");
-    }
-
-    // Density
-    root.style.setProperty("--density", prefs.density);
-    root.setAttribute("data-density", prefs.density);
-
-    // Text scale
-    root.style.setProperty("--text-scale-base", `${prefs.textScale}rem`);
-
-    // Target size
-    root.style.setProperty("--target-min", `${prefs.targetSize}px`);
-    root.setAttribute("data-target-size", String(prefs.targetSize));
+    applyPrefsToDocument(prefs);
   }, [prefs]);
 
-  const setPref = (key: string, value: string | number) => {
-    setPrefs((prev) => ({ ...prev, [key]: value }));
+  const setPref = (key: string, value: string | number): void => {
+    setPrefs((prev) => {
+      const merged = { ...prev, [key]: value };
+      return merged;
+    });
   };
 
+  const value = useMemo(() => ({ ...prefs, setPref }), [prefs]);
+
   return (
-    <PrefsContext.Provider value={{ ...prefs, setPref }}>
-      {children}
-    </PrefsContext.Provider>
+    <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>
   );
 }
 
 export function usePrefs() {
   return useContext(PrefsContext);
+}
+
+/** Map the wire shape (server prefs) onto the context shape. */
+export function prefsFromServer(d: Prefs | null | undefined): PrefsState {
+  return {
+    motion: d?.motion ?? PREFERENCES_DEFAULTS.motion,
+    contrast: d?.contrast ?? PREFERENCES_DEFAULTS.contrast,
+    density: d?.density ?? PREFERENCES_DEFAULTS.density,
+    textScale: d?.text_scale ?? PREFERENCES_DEFAULTS.textScale,
+    targetSize: d?.target_size ?? PREFERENCES_DEFAULTS.targetSize,
+    theme: "dark",
+  };
 }
