@@ -1,4 +1,13 @@
 ## [Unreleased]
+- 2026-09-10 — completion plan adopted (`docs/PERSONAL-WORLD-COMPLETION-PLAN.md`) and **Phase 0 (stabilize) landed**:
+  - P0.2 gitignore covers private runtime config (`config/*.local.json`, `config/principal.json`), frontend env/dist; ownership rule documented in `config/README.local.md`.
+  - P0.3 `PUT /api/identity/principal` sets the caller's display name in private runtime state (`data/users.json`), step-up + persons only; a working-tree experiment that wrote plaintext provider keys into tracked config and served an unauthenticated React bundle was discarded, not merged. The client-side `VITE_*` bearer-token pattern is removed from the React prototype — no replacement client token exists by design.
+  - P0.4 reminder scheduler no longer dies on first fire (`journal.append_raw` never existed); tick errors are visible state.
+  - P0.5 `/login` returns its page; `POST /api/chat/test` requires auth; `POST /api/world/policy` → 409 on cemented keys (was 500); `GET /api/daily` is read-only, `POST /api/daily` runs the loop; reminder writes require the write-path gate.
+  - P0.6 git test fixtures ignore host git config (suite green regardless of `init.defaultBranch`).
+  - P0.7 public-safety gate scans every tracked text file for secret shapes with redacted reporting; tracked `config/*.json` must be zero-provider and free of inline secret keys.
+  - P0.9 `scripts/safe-commit.sh` fixed (silently aborted in the clean bounded case), made executable, tested.
+  - 425 tests passing; `framework validate` healthy.
 - Personal World UI rescue: responsive shell and accessible navigation, progressive Today loading, working journal/service actions, a complete keyboard-friendly Chat loop, calm empty/error states, honest comfortable/high contrast preferences, and quieter personal-language/provenance presentation.
 - Issue #8 phases 2-3: user provisioning API, multi-mode bootstrap keeps the instance token as primary, agent principals with owned narrow scopes, person-only guard on prefs/journal, revocation. 361 tests.
 - Services launcher: /api/apps registry (step-up PUT, journal-audited) + dashboard "Services" card.

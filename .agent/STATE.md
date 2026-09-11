@@ -1,34 +1,47 @@
-# Agent state — 2026-09-10 (completion plan adopted)
+# Agent state — 2026-09-10 (Phase 0 complete)
 
 Authoritative plan: `docs/PERSONAL-WORLD-COMPLETION-PLAN.md`. This file
 records only where we are in that plan and the exact next action.
 
 ## Current phase
 
-**P0 — Stabilize the working tree and secret boundary.** Not started.
-Implementation has NOT begun; the plan commit is documentation only.
+**P0 — Stabilize: COMPLETE** (branch `p0/stabilize`, fast-forwarded to
+`main`). **P1 — Frontend foundation: not started.**
 
-## Verified starting state (read-only inspection, 2026-09-10)
+## P0 outcome (verified)
 
-- `main` fast-forwarded to `f6658dd` (documentation-only commits), then
-  the completion plan added on top.
-- Uncommitted, deliberately untouched, working-tree changes in the
-  development checkout: modified `config/connections.json` (tracked;
-  contains inline provider keys — hazard H1), modified
-  `src/personal_world/api.py` (+188 lines: plaintext connections routes,
-  absolute home paths, React `dist` serving — hazard H3), untracked
-  `config/principal.json` and `frontend-v2/` (hazards H2, H4).
-- Working-tree suite: 368 passed / 11 failed. Attribution: 7 from React
-  `dist` taking over `/`; 2 from tracked inline secrets; 2 environmental
-  (host `init.defaultBranch` is not `master`/`main`).
-- `framework validate`: unhealthy, 3 violations (working-tree `type: cloud`
-  connections lacking `capability`). Clean HEAD is expected healthy.
-- Latent HEAD bugs queued for P0: `/login` empty body (H5), scheduler
-  `append_raw` crash (H6), unauthenticated `/api/chat/test`, 500 on
-  cemented policy, mutating `GET /api/daily` (H7), step-up bypass via
-  private address or header (H8).
-- Exposed credential values are considered burned and are being rotated
-  by the owner (P0.1). Agents must not receive, record, or reuse them.
+| Task | Status | Evidence |
+|---|---|---|
+| P0.1 credential rotation | OWNER — outside agent visibility | old values treated as burned; no client-side replacement token exists |
+| P0.2 private-config/gitignore | done | `.gitignore`, `config/README.local.md` ownership rule |
+| P0.3 unsafe experiment discarded; safe display-name route | done | `tests/test_principal_profile.py` (5) |
+| P0.4 scheduler crash | done | `tests/test_scheduler.py` (4) |
+| P0.5 API/auth correctness | done | `tests/test_api_correctness_p0.py` (12) |
+| P0.6 deterministic git fixtures | done | `tests/test_source_control.py` green with host `init.defaultBranch=dev` |
+| P0.7 secret-shape scanner, redacted | done | `tests/test_public_safety.py` (23; planted-key negative proof run manually) |
+| P0.8 state reconciled | done | this file, `CHANGELOG.md` |
+| P0.9 safe-commit.sh | done | `tests/test_safe_commit.py` (7); exec bit set |
+
+Suite: **425 passed** on this host (previously 368/11 on the dirty tree,
+2 environmental failures on clean HEAD). `framework validate`: healthy.
+
+Development checkout cleanup performed with P0: tracked
+`config/connections.json` restored to zero-provider; the untracked
+`config/principal.json` removed (display name now lives in
+`data/users.json` via the API); `frontend-v2/.env` and `frontend-v2/dist/`
+(both carried the burned client token) deleted; `frontend-v2/src` no
+longer references any `VITE_*` token. `frontend-v2/` source itself stays
+untracked until P1 renames it to `frontend/` and commits it.
+
+## Known, intentionally deferred to later phases
+
+- `require_step_up` still accepts the `X-PW-StepUp: 1` header / private
+  addresses — **P2** replaces it with session-level step-up. P0 only made
+  the *routes* declare the write-path dependency.
+- Native Vault base64 fallback when `cryptography` is absent — **P3**.
+- `compose.yaml` host-specific bind mounts and missing `TZ` — **P14**.
+- Legacy `DASHBOARD_HTML` / three setup flows — retired in **P1** after
+  browser-verified parity.
 
 ## Decisions in force
 
@@ -38,9 +51,8 @@ real step-up, hardened break-glass · D3 opt-in `subtle` motion · D4 NDJSON
 journal + Markdown memory + disposable FTS · D5 homelab `scripts/lab` is the
 Lab provider via `PW_LAB_CLI`; calendar provider undecided · D6 Sonarr /
 Radarr / Lidarr / Plex; RSS + candy-dispenser Interests baseline.
-Corrections C-1..C-5 (private runtime config ownership, provider contracts
-over mount names, disposable session/index state, transitional standalone
-Chat, lean tooling) are folded into the plan.
+Corrections C-1..C-5 folded into the plan. **No client-side bearer token,
+ever** (anything in Vite env is inlined into the public bundle).
 
 ## Open decision
 
@@ -48,12 +60,13 @@ Calendar provider for the first real implementation. Nothing blocks on it.
 
 ## NEXT
 
-1. Owner: P0.1 credential rotation (outside agent visibility).
-2. Then dispatch P0.2–P0.7 as bounded tasks in a dedicated worktree
-   (`git worktree add ../pw-p0 -b p0/stabilize`), one commit each,
-   verified by `uv run pytest --timeout=30` and
-   `uv run personal-world framework validate --json`.
-3. Open coordination item C1 in `burgeswe/homelab` so it is ready for P2.
-
-Do not begin P1 until P0's exit criterion (HEAD green locally and in CI,
-validator healthy, no secret material tracked or unignored) is met.
+1. Owner: confirm P0.1 rotation done (new values only in `.env` /
+   `config/connections.local.json` via env indirection).
+2. Push `main`; confirm GitHub CI green on the P0 commits.
+3. Open coordination item C1 in `burgeswe/homelab` (Traefik router for
+   Personal World without forward-auth; Authelia OIDC client) so it is
+   ready when P2 starts.
+4. Begin **P1** in a fresh worktree (`git worktree add ../pw-p1 -b
+   p1/frontend-foundation`): FABLE first writes the sections API shape,
+   primitive component contracts, and the parity checklist as a bounded
+   spec; GLM tasks follow one primitive/screen at a time.
