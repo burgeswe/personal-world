@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ApiError,
   deleteVaultSecret,
@@ -38,10 +38,21 @@ function vaultStatusWord(locked: boolean): CanonicalStatus {
 
 function VaultScreen() {
   const status = useVaultStatus();
-  const names = useVaultNames();
+  const [statusReady, setStatusReady] = useState(false);
   const bumpVault = useVaultKey();
   const { announce } = useAnnounce();
   const stepUp = useStepUp();
+
+  useEffect(() => {
+    if (status.data != null) setStatusReady(true);
+  }, [status.data]);
+
+  const locked = status.data?.locked ?? true;
+  const unlocked = status.data != null && !locked;
+  // Names only for an unlocked vault (see useVaultNames): the lock
+  // state arrives from /api/vault/status; until then `locked` is the
+  // honest default (true) and the names query stays disabled.
+  const names = useVaultNames(statusReady ? locked : true);
 
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,9 +65,6 @@ function VaultScreen() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  const locked = status.data?.locked ?? true;
-  const unlocked = status.data != null && !locked;
-
   const unlock = async () => {
     if (!passphrase || busy) return;
     setBusy(true);
@@ -66,7 +74,10 @@ function VaultScreen() {
       setPassphrase("");
       setMessage("Vault unlocked.");
       announce("Vault unlocked.", { kind: "action_completed", key: "vault-unlocked" });
-      await Promise.all([status.refetch(), names.refetch()]);
+      // Status first: its fresh `locked:false` re-enables the names
+      // query (useVaultNames gate), so this refetch actually fetches.
+      await status.refetch();
+      await names.refetch();
     } catch (e) {
       if (e instanceof ApiError && e.code === "step_up_required") {
         setMessage("Unlock cancelled — the vault stays locked.");
@@ -88,7 +99,8 @@ function VaultScreen() {
       await stepUp.withStepUp(() => lockVault());
       setMessage("Vault locked. Your secrets are sealed.");
       announce("Vault locked.", { kind: "action_completed", key: "vault-locked" });
-      await Promise.all([status.refetch(), bumpVault(), names.refetch()]);
+      await status.refetch();
+      await Promise.all([bumpVault(), names.refetch()]);
     } catch (e) {
       if (e instanceof ApiError && e.code === "step_up_required") {
         setMessage("Lock cancelled — the vault stays unlocked.");

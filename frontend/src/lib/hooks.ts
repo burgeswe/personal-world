@@ -62,11 +62,13 @@ export interface QueryState<T> {
 function useApiQuery<T>(
   fn: () => Promise<T>,
   deps: unknown[] = [],
-  signals: string[] = []
+  signals: string[] = [],
+  options: { enabled?: boolean } = {}
 ): QueryState<T> {
+  const { enabled = true } = options;
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const seq = useRef(0);
 
   const refetch = useCallback(async () => {
@@ -87,8 +89,9 @@ function useApiQuery<T>(
   }, deps);
 
   useEffect(() => {
+    if (!enabled) return;
     void refetch();
-  }, [refetch]);
+  }, [refetch, enabled]);
 
   useEffect(() => {
     if (signals.length === 0) return;
@@ -138,9 +141,18 @@ export function useApps() {
   return useApiQuery<ServiceApp[]>(() => fetchApps(), [], ["apps"]);
 }
 
-/** GET /api/vault/names (Vault, row 5). */
-export function useVaultNames() {
-  return useApiQuery<VaultNamesData>(() => fetchVaultNames());
+/** GET /api/vault/names (Vault, row 5). Names are only meaningful for
+ * an UNLOCKED vault: while locked the query is disabled — a locked
+ * vault answering 409 on every route visit is browser console noise,
+ * not information (the status card already shows the lock). Unlock
+ * flips `locked` → the query enables and fetches. */
+export function useVaultNames(locked: boolean) {
+  return useApiQuery<VaultNamesData>(
+    () => fetchVaultNames(),
+    [locked],
+    ["vault"],
+    { enabled: !locked }
+  );
 }
 
 export function useHealth() {

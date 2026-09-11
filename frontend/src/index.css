@@ -275,9 +275,14 @@ img[src*="/icons/"][class*="h-5"] {
   .pw-banner-nav {
     display: block;
     flex: 1 1 auto;
+    /* Reflow floor (A11y §6.4, T14 zoom proxy-b): narrow banner
+       widths and doubled text must WRAP, never overflow the page —
+       8 sections do not fit one 720px row. */
+    overflow: hidden;
   }
   .pw-banner-nav .pw-nav-list {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: var(--pw-spacing-compact);
     justify-content: flex-end;
   }
@@ -439,6 +444,37 @@ img[src*="/icons/"][class*="h-5"] {
 
 .pw-state-retry:hover {
   border-color: var(--pw-color-accent-primary);
+}
+
+/* ── AuthLayout (T14): standalone /login + /setup frame. No app
+   navigation; centered card surface; token vars only. The auth shell
+   OWNS the page when its route matches: the authenticated AppShell
+   still mounts beside it (App renders both route groups), but on
+   /login + /setup it matches no route — so it is pushed out of the
+   viewport here (never rendered as a visible second shell, never a
+   duplicate landmark experience). ── */
+.pw-auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--pw-color-surface-canvas);
+}
+
+.pw-auth-main {
+  width: 100%;
+  max-width: 40rem;
+  padding: var(--pw-spacing-section) var(--pw-spacing-loose);
+}
+
+/* Auth pages (T14): the ShellGate keeps the authenticated shell
+   structurally ABSENT on /login + /setup — no CSS hide is needed or
+   wanted (a display:none shell would still fire its data hooks).
+   This rule is belt-and-braces only: if a .pw-shell ever mounts
+   beside an auth frame, remove it from view while the structural
+   bug is fixed. */
+#root:has(> .pw-auth) > .pw-shell {
+  display: none;
 }
 
 /* ── sr-only helper (T8 primitives; visually hidden, screen-reader

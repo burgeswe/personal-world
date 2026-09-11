@@ -61,6 +61,31 @@ jobs:
       - name: No generated artifacts tracked
         run: test -z "$(git status --porcelain -- frontend/dist frontend/node_modules)"
 
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend deps, build dist, install Chromium
+        run: |
+          cd frontend
+          npm ci --no-audit --no-fund
+          npm run build
+          npx playwright install --with-deps chromium
+      - name: Playwright e2e + axe + external-request + zoom proxies (real server)
+        run: cd frontend && npx playwright test
+      - name: Dist safety (secret scan + VITE grep + bundle budget)
+        # Runs AFTER the browser job built frontend/dist: required in
+        # CI (skips only on a machine with no build).
+        run: |
+          pip install uv==0.11.28
+          uv sync --frozen --extra test
+          uv run pytest --timeout=60 tests/test_dist_safety.py -v
+
   security-gates:
     runs-on: ubuntu-latest
     steps:

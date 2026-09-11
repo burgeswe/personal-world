@@ -15,11 +15,19 @@ import { cn } from "../lib/utils";
  *
  * jsdom (test env) does not implement showModal/close/inert; a
  * feature-detected fallback renders the same <dialog> as a centered
- * overlay with manual inert handling so tests stay honest (console
- * notes the degradation once).
+ * overlay with manual inert handling so tests stay honest.
+ *
+ * React-controlled `open` pitfall (P1 T14 e2e discovery): React sets
+ * the open ATTRIBUTE during commit, BEFORE this effect runs — an open
+ * attribute makes the element a NON-modal open dialog, and showModal()
+ * on it throws InvalidStateError ("already open as a non-modal
+ * dialog"). The open prop therefore must not land as a plain
+ * attribute in native-modal environments: the element renders with
+ * open=false, the effect promotes it to the top layer with
+ * showModal(), and close paths go through dialog.close() so the top
+ * layer is released. The fallback path keeps the attribute (no top
+ * layer there).
  */
-
-let warnedFallback = false;
 
 function nativeModalAvailable(): boolean {
   return (
@@ -111,13 +119,8 @@ export function Dialog({
       if (nativeModal.current) {
         if (!dialog.open) dialog.showModal();
       } else {
-        if (!warnedFallback) {
-          warnedFallback = true;
-          console.warn(
-            "Dialog: HTMLDialogElement.showModal unavailable; " +
-              "using feature-detected overlay fallback (non-native environment)."
-          );
-        }
+        // jsdom fallback: [open] + inert background reproduce the modal
+        // contract in environments without showModal().
         dialog.setAttribute("open", "");
         // Background inert: the dialog must be OUTSIDE the inerted subtree,
         // so inert the rest of the body, not the dialog's ancestors here.
@@ -200,7 +203,12 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
-      open={open}
+      // Native-modal environments: open is OWNED by the top layer
+      // (showModal/close below), never by this attribute — a committed
+      // open attribute would make the dialog non-modal and block
+      // showModal() ("already open as a non-modal dialog"). Fallback
+      // environments keep the attribute.
+      open={open && !nativeModal.current}
       aria-labelledby="pw-dialog-title"
       aria-describedby={describedById}
       className={cn(

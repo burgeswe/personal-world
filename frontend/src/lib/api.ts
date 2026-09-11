@@ -467,7 +467,18 @@ export async function fetchVaultStatus(): Promise<VaultStatusData> {
 }
 
 export async function fetchVaultNames(): Promise<VaultNamesData> {
-  return apiFetch<VaultNamesData>("/api/vault/names");
+  try {
+    return await apiFetch<VaultNamesData>("/api/vault/names");
+  } catch (err) {
+    // A locked vault is the EXPECTED rest state, not a failure: the
+    // backend answers 409 "vault is locked" and the screen renders
+    // the honest locked status. Swallowing only this case keeps the
+    // browser console clean (row 15) without hiding real errors.
+    if (err instanceof ApiError && err.status === 409) {
+      return { names: [] };
+    }
+    throw err;
+  }
 }
 
 export async function fetchSourceControlStatus(): Promise<SourceControlStatusData> {

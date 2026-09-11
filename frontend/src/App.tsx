@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TodayScreen from "./screens/TodayScreen";
 import ChatRoute from "./screens/ChatRoute";
 import LoginScreen from "./screens/LoginScreen";
@@ -22,6 +22,7 @@ import {
 import { LiveRegionProvider } from "./primitives/LiveRegion";
 import { fetchPrefs, setLoginNavigation } from "./lib/api";
 import { AppShell } from "./shell/AppShell";
+import { AuthLayout } from "./shell/AuthLayout";
 
 /**
  * Bootstrap (T9, FOUNDATION-SPEC §1.2 + §10 row 10): preferences are
@@ -34,8 +35,20 @@ import { AppShell } from "./shell/AppShell";
  */
 function AppRoutes() {
   const [booted, setBooted] = useState(false);
+  const location = useLocation();
+  // T14: on /login and /setup the ShellGate keeps this subtree
+  // unmounted, so this effect never runs there — no unauthenticated
+  // /api/prefs fetch, no 401 noise on the auth pages (the AuthRoutes
+  // frame renders without prefs-dependent content; attrs come from
+  // the PrefsProvider defaults already applied at the document root).
+  const isAuthRoute =
+    location.pathname === "/login" || location.pathname === "/setup";
 
   useEffect(() => {
+    if (isAuthRoute) {
+      setBooted(true);
+      return;
+    }
     let cancelled = false;
     fetchPrefs()
       .then((d) => {
@@ -59,8 +72,6 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/setup" element={<SetupWizard />} />
-      <Route path="/login" element={<LoginScreen />} />
       <Route path="/" element={<TodayScreen />} />
       <Route path="/interests" element={<InterestsScreen />} />
       <Route path="/media" element={<MediaScreen />} />
@@ -73,6 +84,53 @@ function AppRoutes() {
       <Route path="/settings" element={<SettingsScreen />} />
     </Routes>
   );
+}
+
+/**
+ * Standalone auth routes (T14 owner decision): /login and /setup
+ * render in the AuthLayout wrapper, OUTSIDE the AppShell — no section
+ * nav, no rail/banner/bottom bar, no app controls. A person who is
+ * not signed in never sees (half of) the app. Same bootstrap pattern
+ * as AppRoutes: prefs land on <html data-pw-*> before any route
+ * content appears.
+ */
+function AuthRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/setup"
+        element={
+          <AuthLayout>
+            <SetupWizard />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <AuthLayout>
+            <LoginScreen />
+          </AuthLayout>
+        }
+      />
+    </Routes>
+  );
+}
+
+/**
+ * ShellGate (T14 owner decision): the authenticated AppShell mounts
+ * ONLY on non-auth routes. On /login and /setup it renders nothing
+ * at all — the standalone AuthLayout owns the page. This is a
+ * structural absence, not a CSS hide: a display:none shell would
+ * still boot its data hooks and fire unauthenticated /api requests
+ * (401 console noise, half-signed-in appearance).
+ */
+function ShellGate({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const isAuthRoute =
+    location.pathname === "/login" || location.pathname === "/setup";
+  if (isAuthRoute) return null;
+  return <>{children}</>;
 }
 
 /**
@@ -106,9 +164,17 @@ function App() {
               tree, no chat/auth logic in routes.
             */}
             <LoginNavigationWiring />
-            <AppShell>
-              <AppRoutes />
-            </AppShell>
+            {/* Standalone auth routes (T14): /login + /setup never
+                mount inside the authenticated AppShell — and the
+                AppShell never mounts on them (no nav, no 401-fetch
+                storm from a hidden shell: the shell is ABSENT, not
+                display:none'd — see ShellGate). */}
+            <ShellGate>
+              <AppShell>
+                <AppRoutes />
+              </AppShell>
+            </ShellGate>
+            <AuthRoutes />
           </BrowserRouter>
         </LiveRegionProvider>
       </PrefsProvider>
