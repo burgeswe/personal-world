@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getAuthToken } from "../lib/api";
+import { saveJournalEntry, ApiError } from "../lib/api";
 import { useJournal, useJournalKey } from "../lib/hooks";
 import {
   Card,
@@ -324,29 +324,11 @@ function AddEntryModal({
     setError(null);
 
     try {
-      const token =
-        getAuthToken();
-
-      const response = await fetch("/api/journal", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text: text.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (!data.ok) {
-        setError(data.warnings?.[0] || "Failed to save entry.");
-        return;
-      }
-
+      await saveJournalEntry(text.trim());
       setSuccess(true);
         setTimeout(() => { onSaved(); }, 1500);
-    } catch {
-      setError("Could not connect to the server.");
+    } catch (e) {
+      setError(e instanceof ApiError && e.detail ? e.detail : "Could not connect to the server.");
     } finally {
       setIsSaving(false);
     }

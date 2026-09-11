@@ -1,5 +1,5 @@
 import { useCompanion, COMPANIONS } from "../lib/companion-context";
-import { getAuthToken } from "../lib/api";
+import { sendChatMessage } from "../lib/api";
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -45,19 +45,13 @@ function ChatScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
       const history = messages.map((m) => ({ role: m.role, content: m.content }));
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: text.trim(), history }),
-      });
-      const data = await response.json();
+      const data = await sendChatMessage(text.trim(), history);
       if (!data.ok) {
         setError(data.status === "not_configured" ? "No chat provider configured. Add a chat connection in Settings to start talking." : data.warnings?.[0] || "Something went wrong.");
         return;
       }
-      setMessages((prev) => [...prev, { role: "assistant", content: data.data?.reply || data.reply || "No response.", timestamp: new Date() }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "No response.", timestamp: new Date() }]);
     } catch {
       setError("Could not connect to the chat service.");
     } finally {

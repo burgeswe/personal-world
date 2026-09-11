@@ -426,7 +426,7 @@ function TodayScreen() {
           <CardContent>
             {scStatus.data?.repos && scStatus.data.repos.length > 0 ? (
               <ul className="space-y-2" role="list">
-                {scStatus.data.repos.map((repo: any) => (
+                {scStatus.data.repos.map((repo) => (
                   <li key={repo.name} className="flex items-center justify-between">
                     <span className="text-sm text-[var(--pw-color-text-primary)]">{repo.name}</span>
                     <Badge variant={repo.dirty ? "attention" : "healthy"}>

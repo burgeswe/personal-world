@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { fetchPrefs } from "./api";
 
 interface PrefsContextType {
   motion: string;
@@ -36,16 +37,15 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   // Sync from the server once on mount; localStorage is not consulted.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/prefs")
-      .then((r) => (r.ok ? r.json() : null))
+    fetchPrefs()
       .then((d) => {
-        if (cancelled || !d?.data) return;
+        if (cancelled || !d) return;
         setPrefs((prev) => ({
-          motion: d.data.motion ?? prev.motion,
-          contrast: d.data.contrast ?? prev.contrast,
-          density: d.data.density ?? prev.density,
-          textScale: d.data.text_scale ?? prev.textScale,
-          targetSize: d.data.target_size ?? prev.targetSize,
+          motion: d.motion ?? prev.motion,
+          contrast: d.contrast ?? prev.contrast,
+          density: d.density ?? prev.density,
+          textScale: d.text_scale ?? prev.textScale,
+          targetSize: d.target_size ?? prev.targetSize,
         }));
       })
       .catch(() => {});

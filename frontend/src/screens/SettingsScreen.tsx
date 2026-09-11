@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { getAuthToken } from "../lib/api";
+import {
+  fetchConnections,
+  fetchPrincipal,
+  fetchPrefs,
+  savePrefs,
+  savePrincipalDisplayName,
+  saveConnection,
+  validateConnection,
+  ApiError,
+} from "../lib/api";
 import { useVaultStatus, useSourceControlStatus, useBackup } from "../lib/hooks";
 import { useCompanion } from "../lib/companion-context";
 import { usePrefs } from "../lib/prefs-context";
@@ -54,15 +63,12 @@ function SettingsScreen() {
 
   // Fetch saved connections on mount
   useEffect(() => {
-    const token = getAuthToken();
-    fetch('/api/connections', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((d) => {
-        const saved = (d.data || []) as any[];
+    fetchConnections()
+      .then((saved) => {
         if (saved.length > 0) {
           setProviders((prev) => {
             const merged = [...prev];
-            for (const conn of saved) {
+            for (const conn of saved as Array<Record<string, unknown>>) {
               const existing = merged.find((p) => p.id === conn.id);
               if (existing) {
                 existing.status = 'saved';
@@ -72,10 +78,10 @@ function SettingsScreen() {
                 if (conn.api_key) fields.push({ key: 'api_key', label: 'API Key', type: 'password', placeholder: '••••••••' });
                 if (conn.base_url) fields.push({ key: 'base_url', label: 'Base URL', type: 'text', placeholder: 'https://...' });
                 merged.push({
-                  id: conn.id,
-                  name: conn.name || conn.id,
+                  id: String(conn.id),
+                  name: (conn.name as string) || String(conn.id),
                   status: 'saved',
-                  type: conn.type || 'custom',
+                  type: (conn.type as string) || 'custom',
                   fields,
                   docs: '',
                 });
@@ -93,43 +99,34 @@ function SettingsScreen() {
   const [displayName, setDisplayName] = useState('Primary person');
 
   useEffect(() => {
-    const token = getAuthToken();
-    fetch('/api/identity/principal', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((d) => { if (d.data?.display_name) setDisplayName(d.data.display_name); })
+    fetchPrincipal()
+      .then((d) => { if (d.display_name) setDisplayName(d.display_name); })
       .catch(() => {});
   }, []);
   const { setCompanion } = useCompanion();
   const { motion, contrast, density, textScale, targetSize, setPref } = usePrefs();
 
   useEffect(() => {
-    const token = getAuthToken();
-    fetch("/api/prefs", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+    fetchPrefs()
       .then((d) => {
-        setPrefs(d.data);
-        if (d.data?.motion) setPref("motion", d.data.motion);
-        if (d.data?.contrast) setPref("contrast", d.data.contrast);
-        if (d.data?.density) setPref("density", d.data.density);
-        if (d.data?.target_size) setPref("targetSize", d.data.target_size);
-        if (d.data?.text_scale) setPref("textScale", d.data.text_scale);
+        setPrefs(d);
+        if (d?.motion) setPref("motion", d.motion);
+        if (d?.contrast) setPref("contrast", d.contrast);
+        if (d?.density) setPref("density", d.density);
+        if (d?.target_size) setPref("targetSize", d.target_size);
+        if (d?.text_scale) setPref("textScale", d.text_scale);
       })
       .catch(() => {});
   }, []);
 
   const p = prefs || { motion: "reduced", contrast: "comfortable", text_scale: 1.0, density: "comfortable", target_size: 44, companion: "personal-world", accent: "world-keeper" };
 
-  const savePrefs = async (updates: Partial<Prefs>) => {
+  const savePrefsAndSync = async (updates: Partial<Prefs>) => {
     const newPrefs = { ...p, ...updates };
     setPrefs(newPrefs);
     setSaving(true);
     try {
-      const token = getAuthToken();
-      await fetch("/api/prefs", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-PW-StepUp": "1" },
-        body: JSON.stringify(newPrefs),
-      });
+      await savePrefs(newPrefs);
     } catch {}
     setSaving(false);
   };
@@ -153,12 +150,9 @@ function SettingsScreen() {
         <Card><CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
           <EditableRow icon={User} label="Display Name" value={displayName} onSave={(v) => {
         setDisplayName(v);
-        const token = getAuthToken();
-        fetch('/api/identity/principal', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-PW-StepUp': '1' },
-          body: JSON.stringify({ display_name: v }),
-        }).then(() => window.dispatchEvent(new Event('principal-updated'))).catch(() => {});
+        savePrincipalDisplayName(v)
+          .then(() => window.dispatchEvent(new Event('principal-updated')))
+          .catch(() => {});
       }} />
         </CardContent></Card>
       </CollapsibleSection>
@@ -167,11 +161,11 @@ function SettingsScreen() {
       <CollapsibleSection id="accessibility" title="Accessibility" icon={Eye}>
         <p className="mb-3 text-xs text-[var(--pw-color-text-muted)]">These preferences apply everywhere. No separate accessibility mode — this is how your world works.</p>
         <Card><CardContent className="divide-y divide-[var(--pw-color-border-subtle)]">
-          <SelectRow icon={Zap} label="Motion & Transitions" value={motion} options={["off", "reduced", "subtle"]} onChange={(v) => { setPref("motion", v); savePrefs({ motion: v }); }} />
-          <SelectRow icon={Eye} label="Contrast" value={contrast} options={["comfortable", "high"]} onChange={(v) => { setPref("contrast", v); savePrefs({ contrast: v }); }} />
-          <SelectRow icon={Monitor} label="Information Density" value={density} options={["compact", "comfortable", "spacious"]} onChange={(v) => { setPref("density", v); savePrefs({ density: v }); }} />
-          <SelectRow icon={Hand} label="Target Size" value={`${targetSize}px`} options={["44px", "48px", "56px"]} onChange={(v) => { setPref("targetSize", parseInt(v)); savePrefs({ target_size: parseInt(v) }); }} />
-          <SelectRow icon={Palette} label="Text Scale" value={`${textScale}x`} options={["0.875x", "1x", "1.125x", "1.25x", "1.5x"]} onChange={(v) => { setPref("textScale", parseFloat(v)); savePrefs({ text_scale: parseFloat(v) }); }} />
+          <SelectRow icon={Zap} label="Motion & Transitions" value={motion} options={["off", "reduced", "subtle"]} onChange={(v) => { setPref("motion", v); savePrefsAndSync({ motion: v }); }} />
+          <SelectRow icon={Eye} label="Contrast" value={contrast} options={["comfortable", "high"]} onChange={(v) => { setPref("contrast", v); savePrefsAndSync({ contrast: v }); }} />
+          <SelectRow icon={Monitor} label="Information Density" value={density} options={["compact", "comfortable", "spacious"]} onChange={(v) => { setPref("density", v); savePrefsAndSync({ density: v }); }} />
+          <SelectRow icon={Hand} label="Target Size" value={`${targetSize}px`} options={["44px", "48px", "56px"]} onChange={(v) => { setPref("targetSize", parseInt(v)); savePrefsAndSync({ target_size: parseInt(v) }); }} />
+          <SelectRow icon={Palette} label="Text Scale" value={`${textScale}x`} options={["0.875x", "1x", "1.125x", "1.25x", "1.5x"]} onChange={(v) => { setPref("textScale", parseFloat(v)); savePrefsAndSync({ text_scale: parseFloat(v) }); }} />
         </CardContent></Card>
       </CollapsibleSection>
 
@@ -179,7 +173,7 @@ function SettingsScreen() {
       <CollapsibleSection id="companion" title="Companion" icon={Settings}>
         <Card><CardContent className="space-y-2">
           {COMPANIONS.map((c) => (
-            <button key={c.id} onClick={() => { savePrefs({ companion: c.id }); setCompanion(c.id); }} className={`flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors ${p.companion === c.id ? "border border-[var(--pw-color-accent-primary)] bg-[var(--pw-color-accent-primary)]/5" : "border border-transparent hover:bg-[var(--pw-color-surface-elevated)]"}`}>
+            <button key={c.id} onClick={() => { savePrefsAndSync({ companion: c.id }); setCompanion(c.id); }} className={`flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors ${p.companion === c.id ? "border border-[var(--pw-color-accent-primary)] bg-[var(--pw-color-accent-primary)]/5" : "border border-transparent hover:bg-[var(--pw-color-surface-elevated)]"}`}>
               <img src={c.icon} alt="" className="h-7 w-7" aria-hidden={true} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[var(--pw-color-text-primary)]">{c.name}</p>
@@ -282,7 +276,7 @@ function SettingsScreen() {
       <CollapsibleSection id="source-control" title="Source Control" icon={Globe} defaultOpen={false}>
         <div className="space-y-3">
           {scStatus.data?.repos ? (
-            scStatus.data.repos.map((repo: any) => (
+            scStatus.data.repos.map((repo) => (
               <div key={repo.name} className="flex items-center justify-between rounded-xl border border-[var(--pw-color-border-subtle)] p-3">
                 <div>
                   <div className="text-sm font-medium text-[var(--pw-color-text-primary)]">{repo.name}</div>
@@ -352,20 +346,14 @@ function ConfigureModal({ provider, onClose, onSaved }: { provider: Provider; on
     setValidating(true);
     setValidation(null);
     try {
-      const token = getAuthToken();
-      const res = await fetch('/api/connections/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-PW-StepUp': '1' },
-        body: JSON.stringify({
-          provider_id: provider.id,
-          base_url: values.base_url || '',
-          api_key: values.api_key || '',
-        }),
+      const data = await validateConnection({
+        provider_id: provider.id,
+        base_url: values.base_url || '',
+        api_key: values.api_key || '',
       });
-      const data = await res.json();
-      setValidation(data.data);
-    } catch {
-      setValidation({ status: 'error', message: 'Validation request failed' });
+      setValidation(data as { status: string; message: string });
+    } catch (e) {
+      setValidation({ status: 'error', message: e instanceof ApiError ? e.message : 'Validation request failed' });
     }
     setValidating(false);
   };
@@ -373,16 +361,11 @@ function ConfigureModal({ provider, onClose, onSaved }: { provider: Provider; on
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const token = getAuthToken();
-      await fetch('/api/connections', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-PW-StepUp': '1' },
-        body: JSON.stringify({
-          provider_id: provider.id,
-          name: provider.name,
-          type: provider.type,
-          fields: values,
-        }),
+      await saveConnection({
+        provider_id: provider.id,
+        name: provider.name,
+        type: provider.type,
+        fields: values,
       });
     } catch {}
     setIsSaving(false);
@@ -462,11 +445,11 @@ function AddProviderModal({ onClose, onAdd }: { onClose: () => void; onAdd: (pr:
     };
     onAdd(pr);
     // Persist to API
-    const token = getAuthToken();
-    fetch('/api/connections', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-PW-StepUp': '1' },
-      body: JSON.stringify({ provider_id: id, name: name.trim(), type, fields: { api_key: apiKey, base_url: baseUrl } }),
+    saveConnection({
+      provider_id: id,
+      name: name.trim(),
+      type,
+      fields: { api_key: apiKey, base_url: baseUrl },
     }).catch(() => {});
   };
 
@@ -519,12 +502,9 @@ function EditableRow({ icon: Icon, label, value, onSave }: { icon: typeof User; 
   const commit = (v: string) => {
     setEditing(false);
     onSave?.(v);
-    const token = getAuthToken();
-    fetch('/api/identity/principal', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-PW-StepUp': '1' },
-      body: JSON.stringify({ display_name: v }),
-    }).then(() => window.dispatchEvent(new Event('principal-updated'))).catch(() => {});
+    savePrincipalDisplayName(v)
+      .then(() => window.dispatchEvent(new Event('principal-updated')))
+      .catch(() => {});
   };
 
   return (<div className="flex items-center justify-between py-3 first:pt-0 last:pb-0"><div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[var(--pw-color-text-muted)]" aria-hidden={true} /><span className="text-sm text-[var(--pw-color-text-primary)]">{label}</span></div>

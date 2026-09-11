@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchSetupStatus, postSetup } from "../lib/api";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -25,7 +26,15 @@ function SetupWizard() {
   const [alreadySetup, setAlreadySetup] = useState(false);
 
   useEffect(() => {
-    fetch("/api/setup/status").then((r) => r.json()).then((d) => { if (d.data?.complete) setAlreadySetup(true); }).catch(() => {});
+    fetchSetupStatus()
+      .then((d) => {
+        const complete =
+          typeof d === "object" && d !== null && "complete" in d
+            ? Boolean((d as { complete: unknown }).complete)
+            : false;
+        if (complete) setAlreadySetup(true);
+      })
+      .catch(() => {});
   }, []);
 
   const selectedCompanion = COMPANIONS.find((c) => c.id === companion);
@@ -43,12 +52,12 @@ function SetupWizard() {
     setIsSaving(true);
     setError(null);
     try {
-      const response = await fetch("/api/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: token || undefined, companion }) });
-      const data = await response.json();
-      if (!data.ok) { setError(data.warnings?.[0] || "Setup failed."); return; }
+      await postSetup({ token: token || "", companion });
       localStorage.setItem("pw_token", token);
       setStep(5);
-    } catch { setError("Could not connect to server."); } finally { setIsSaving(false); }
+    } catch {
+      setError("Setup failed. Check the server and try again.");
+    } finally { setIsSaving(false); }
   };
 
   if (alreadySetup) {

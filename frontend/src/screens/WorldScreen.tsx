@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getAuthToken } from "../lib/api";
+import { saveWorldIntent, saveWorldPolicy, ApiError } from "../lib/api";
 import { useWorld, useWorldStatus, useReminders, useWorldKey } from "../lib/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -198,17 +198,12 @@ function AddIntentModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     setIsSaving(true);
     setError(null);
     try {
-      const token = getAuthToken();
-      const response = await fetch("/api/world/intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ key: key.trim(), value: value.trim() }),
-      });
-      const data = await response.json();
-      if (!data.ok) { setError(data.warnings?.[0] || "Failed to save."); return; }
+      await saveWorldIntent(key.trim(), value.trim());
       setSuccess(true);
       setTimeout(() => { onSaved(); }, 1500);
-    } catch { setError("Could not connect to server."); } finally { setIsSaving(false); }
+    } catch (e) {
+      setError(e instanceof ApiError && e.detail ? e.detail : "Failed to save.");
+    } finally { setIsSaving(false); }
   };
 
   return (
@@ -244,17 +239,12 @@ function AddPolicyModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     setIsSaving(true);
     setError(null);
     try {
-      const token = getAuthToken();
-      const response = await fetch("/api/world/policy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ key: key.trim(), effect: effect.trim() }),
-      });
-      const data = await response.json();
-      if (!data.ok) { setError(data.warnings?.[0] || "Failed to save."); return; }
+      await saveWorldPolicy(key.trim(), effect.trim());
       setSuccess(true);
       setTimeout(() => { onSaved(); }, 1500);
-    } catch { setError("Could not connect to server."); } finally { setIsSaving(false); }
+    } catch (e) {
+      setError(e instanceof ApiError && e.detail ? e.detail : "Failed to save.");
+    } finally { setIsSaving(false); }
   };
 
   return (
