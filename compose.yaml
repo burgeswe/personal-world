@@ -1,37 +1,42 @@
-# Project Worlds — supported standalone deployment. (Product formerly "Personal World"; service identifiers unchanged.)
-# One appliance: core/API + dashboard served by one process, plus a
-# persistent volume. No homelab, GitHub, Komodo, or any provider is
-# required to boot; optional providers are wired via config/connections.json.
+# Project Worlds — portable standalone deployment.
+#
+# Product formerly "Personal World"; service identifiers unchanged.
+#
+# This compose file is the portable appliance. It pulls the published
+# GHCR image; it carries no host-specific mounts, no homelab checkout,
+# no Kilo auth file, and no WSL paths. It boots with only:
+#
+#   - a published OCI image
+#   - a persistent world-data volume
+#   - the required PW_API_TOKEN
+#   - one published port (8000)
+#
+# Machine-specific integrations (homelab Lab CLI, Kilo auth file) live
+# in compose.homelab.yaml and are opt-in enrichment only. Local
+# development with a source-tree build lives in compose.dev.yaml.
+#
+# Rollback by pinning PW_IMAGE to a known-good :sha-... tag (see
+# docs/OPERATIONS.md).
 
 services:
   core:
-    build: .
-    image: personal-world:0.1
+    image: ${PW_IMAGE:-ghcr.io/rylee-bee/personal-world:latest}
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       # Auth boundary: fail-closed. Compose parses with no .env present
       # (config-time interpolation defaults to empty); runtime still
-      # refuses to boot without a token -- see Dockerfile CMD guard and
-      # the healthcheck's auth_configured assertion. Generate with:
+      # refuses to boot without a token -- see the Dockerfile CMD guard
+      # and the healthcheck's auth_configured assertion. Generate with:
       #   python -c "import secrets; print(secrets.token_urlsafe(32))"
       PW_API_TOKEN: ${PW_API_TOKEN:-}
-      # Chat provider keys use env indirection; forwarded to the core here.
+      # Optional chat provider keys use env indirection; forwarded only
+      # if set. The portable base does not bake any keys.
       XIAOMI_MIMO_API_KEY: ${XIAOMI_MIMO_API_KEY:-}
-      # lab CLI location inside the container (mounted homelab checkout)
-      PW_LAB_CLI: /homelab/scripts/lab
-      # GitHub enrichment (optional) uses the gh CLI session already
-      # present on the host — no token is managed here.
     volumes:
       - world-data:/data
-      - ./config:/config:ro
-      # lab CLI mounts read-only so /api/lab/* can observe homelab
-      # state without duplicating it in the appliance.
-      - /mnt/c/Users/ryleeb/projects/kilo2/homelab:/homelab:ro
-      # kilo auth file (read-only; keeps quota widget working in-container;
-      # the quota script expects it at $HOME/.local/share/kilo/auth.json)
-      - /mnt/c/Users/ryleeb/.local/share/kilo/auth.json:/root/.local/share/kilo/auth.json:ro
     healthcheck:
       # Unhealthy (restarts) when auth is not configured: an empty
       # PW_API_TOKEN must never settle into a green container.

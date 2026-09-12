@@ -26,52 +26,9 @@ dated entry superseding the old one (append-only, like the journal).
   identifiers intentionally stay `personal-world` (repo slug,
   `personal_world` package, `personal-world` CLI, compose services,
   schema URIs); historical references are preserved rather than
-  rewritten. Reason: continuity of tooling and truthful history
-  outweigh cosmetic consistency.
+  rewritten. Reason: continuity of tooling and truthful history.
 
-- **2026-09-12 — Project Worlds publicly identifies as a Play-Nice
-  product.** Play-Nice Contracts are the shared cooperation and
-  engineering constitution (how Rylee, Personal World, agents, and
-  providers work together). Play-Nice does not own product identity,
-  data, UI, or domain behavior. Adoption is evidenced by the
-  repository itself; no certification or endorsement is claimed.
-  Reason: the cooperation floor should be explicit, shared, and
-  linkable, not implicit.
-
-- **2026-09-12 — Local Git truth is canonical for source control;
-  GitHub is optional remote enrichment.** Local Git answers
-  existence, branch, dirty state, ahead/behind, and history; GitHub
-  (via the authenticated `gh` CLI — no second credential system) only
-  adds remote facts (identity, open PRs/issues, default branch, last
-  push) and degrades quietly when absent. The Gitea enrichment
-  provider was retired from the live architecture the same day; the
-  generic forge adapter remains as substitution-proof registry
-  machinery. Reason: local truth survives the remote provider.
-
-## Journal
-
-- **2026-09-12 — Journal corrections are append-only supersessions,
-  never rewrites.** A corrected entry links back via `supersedes`;
-  the original row is never mutated on disk; currency is derived by
-  readers; chains are linear (branching rejected); idempotent retries
-  return `already_applied`. Reason: correct the record without
-  erasing the record.
-
-- **2026-09-12 — Agreement is not authorization.** Every journal
-  mutation (corrections included) goes through the step-up-gated
-  endpoint after an explicit approval press on a WHAT/WHY/ORIGINAL/
-  PROPOSED/EFFECT/RISK/RECOVERY proposal. Assistant-drafted
-  correction proposals (same day) follow the same boundary: Personal
-  World may draft and explain, the owner reviews/edits/approves, and
-  the audit records "proposed by Personal World (assistant draft),
-  approved by the owner." Reason: helpful is not the same thing as
-  authorized.
-
-- **2026-09-12 — GitHub open-PR and open-issue counts are exact or
-  unknown.** Counts come from GitHub search `total_count` (never a
-  `per_page`-bounded list length, which caps at 100); any search
-  failure yields honest `null` counts, never zeros. Reason: an
-  approximation that presents itself as exact is a lie.
+## Source of truth
 
 - **2026-09-12 — Project Worlds does not compute repository
   publication state itself. It consumes the read-only agent-sync
@@ -102,3 +59,42 @@ dated entry superseding the old one (append-only, like the journal).
   Reason: helpful understanding and dangerous reach must be built as
   separate layers — the seam stays closed until it can open with
   provenance.
+
+## Container distribution
+
+- **2026-09-12 — Project Worlds is distributed as a versioned OCI
+  image through GitHub Container Registry.** The portable Compose
+  deployment consumes the published image; machine-specific
+  integrations live in optional overrides. Tags: `:latest`
+  (mutable convenience, refreshed on each successful main publish)
+  and `:sha-<full SHA>` (immutable; documented rollback handle).
+  Workflow `.github/workflows/publish-image.yml` triggers via
+  `workflow_run` after `validate` passes on `main`; it uses
+  `GITHUB_TOKEN` with `packages: write` + `contents: read`, no PAT.
+  Compose layout: `compose.yaml` is the portable base (image-only,
+  no host paths); `compose.dev.yaml` adds `build: .` for local
+  development; `compose.homelab.yaml` carries the optional Rylee-only
+  enrichment (Lab CLI + Kilo auth file) that previously lived in the
+  base file. Rollback by pinning `PW_IMAGE` to a known-good
+  `:sha-...` tag. Reason: a single CI build produces an appliance
+  that boots on any Docker/Podman host with only a token and a data
+  volume; the previous recipe required cloning the source tree and
+  binding WSL-only host paths, both of which made the appliance
+  non-portable in practice despite its header.
+
+- **2026-09-12 — The published image is `linux/amd64` only.** The
+  single host that currently runs Project Worlds is amd64; ARM is not
+  in scope. Multi-arch would roughly double CI build cost and time
+  without a real consumer. Revisit when an ARM deployment target
+  appears. Reason: cheapest path that still meets the actual use;
+  Play-Nice `dependency-discipline` and `search-before-inventing`
+  forbid speculating complexity.
+
+- **2026-09-12 — The GHCR package is public.** The image carries
+  source only — no secrets, no private endpoints, no deployment
+  topology (verified preflight against `SECURITY.md` and
+  `tests/test_public_safety.py`). Discoverability is a feature, not a
+  boundary. Reversible from the GHCR web UI at any time. Reason:
+  no security boundary is crossed by publishing the source image
+  publicly; private visibility would add an access-handling layer
+  for no defensive gain.

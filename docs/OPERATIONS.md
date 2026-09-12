@@ -74,29 +74,67 @@ parity cutover. No action is needed now.
 
 ## Containers
 
-The provided Compose file builds the API/dashboard appliance and persists state
-in a Docker volume. Create `.env` from [env.example](../env.example), fill it with
-a unique token, and keep it private.
+The provided Compose file is the portable appliance: it pulls the published
+GHCR image and persists state in a Docker volume. No source tree, no homelab
+checkout, no Kilo auth file, and no WSL paths are required to boot.
 
 ```bash
-cp env.example .env
-# Set PW_API_TOKEN in .env using a private editor or secret-management workflow.
-docker compose config -q
-docker compose up -d --build
+export PW_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+docker compose pull
+docker compose up -d
+docker compose ps
 ```
 
-Review the Compose configuration first: its current port mapping publishes port
-8000 on all host interfaces, and it mounts tracked `config/`. A local-only setup
-should bind to `127.0.0.1` and mount your private configuration directory at
-`/config:ro` in a local deployment copy. These are deployment choices; do not
-assume the supplied Compose file is an internet deployment security boundary.
-Remote use needs TLS, access controls and a reviewed authentication setup.
+Then open `http://127.0.0.1:8000/`. A local-only setup should bind to
+`127.0.0.1` instead of `0.0.0.0`; remote use needs TLS, access controls, and a
+reviewed authentication setup — these are deployment choices, not defaults in
+the tracked Compose.
 
-The tracked Compose also contains host-specific Lab and credential-file bind
-mounts. It is not currently a fully portable zero-provider recipe despite its
-header. Inspect those paths privately and adapt a local deployment copy before
-running elsewhere; do not publish deployment paths or credentials. The framework
-validator and Compose parsing do not prove those mounts are available or safe.
+### Image tags
+
+| Tag | Source | Use |
+| --- | --- | --- |
+| `ghcr.io/rylee-bee/personal-world:latest` | Each successful main publish | Convenience tag for fresh installs |
+| `ghcr.io/rylee-bee/personal-world:sha-<full SHA>` | Same publish | Immutable; preferred for reproducible deploys and rollback |
+
+Pin `latest` for ordinary use. Pin a `sha-...` tag when you need a
+reproducible deployment or want to roll back to a known-good image.
+
+### Rollback
+
+```bash
+PW_IMAGE=ghcr.io/rylee-bee/personal-world:sha-<known-good> \
+    docker compose up -d
+```
+
+Or set `PW_IMAGE` in `.env` and `docker compose up -d`. No separate rollback
+machinery is needed.
+
+### Local development (build from source)
+
+The portable base only ever pulls. To iterate against the Dockerfile and
+the live code without a GHCR push, use the dev override:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up --build
+```
+
+The dev override sets `build: .`, `image: personal-world:dev`, and
+`pull_policy: never` — it never reaches GHCR. Developers do not need to
+edit the production Compose file.
+
+### Optional Rylee / homelab enrichment
+
+The portable base does not bind any host paths. On the laptop / homelab
+host that has the kilo2/homelab checkout and a Kilo auth file, opt in
+with the homelab override (read-only binds, no other changes):
+
+```bash
+docker compose -f compose.yaml -f compose.homelab.yaml up -d
+```
+
+Outside that host, do not use this override. Both bind paths in it are
+machine-specific and intentionally non-portable.
 
 ## Health, failures and state
 

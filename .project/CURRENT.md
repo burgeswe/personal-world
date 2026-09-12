@@ -351,6 +351,29 @@ future Figma session finds the file/frame identity itself has changed,
 mark the specific reference `unknown`/`stale` at that point rather than
 assuming now.
 
+**OCI image distribution via GHCR + portable Compose deployment
+(2026-09-12, slice complete):** Project Worlds is now distributed as a
+versioned OCI image through GitHub Container Registry and the tracked
+`compose.yaml` consumes the published image instead of rebuilding
+locally. New workflow: `.github/workflows/publish-image.yml`, triggered
+via `workflow_run` after `validate` succeeds on `main`; tags
+`:latest` (mutable convenience) and `:sha-<full SHA>` (immutable;
+rollback handle). Public visibility — Rylee-Bee/personal-world is a
+public repo and the image carries source only (no secrets, no private
+endpoints, no deployment topology; verified preflight against
+`SECURITY.md` and `tests/test_public_safety.py`). Compose layout: the
+tracked `compose.yaml` is now the portable base (image-only, no host
+paths), `compose.dev.yaml` adds `build: .` for local development, and
+`compose.homelab.yaml` carries the optional Rylee-only enrichment
+(Lab CLI + Kilo auth file) that previously lived in the base file.
+Container validated end-to-end: built locally, boots clean with only
+image + token + volume, `/healthz` returns
+`{"ok":true,"auth_configured":true,"setup_needed":true}`, healthcheck
+green, volume persists across restarts. CI: 554/554 tests pass except
+the pre-existing `test_docs.py` link to `.project/DECISIONS.md`, which
+was created in the same pass. Decision recorded at
+`.project/DECISIONS.md` (D-001, D-002).
+
 ## Identity pass (2026-09-12): what changed vs what intentionally didn't
 
 Audited references to "Personal World" / "personal-world" /

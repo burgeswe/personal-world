@@ -156,6 +156,28 @@ auth, Vault, state ownership, API, and backup limits. The
 [finish line](docs/PERSONAL-WORLD-FINISH-LINE.md) defines the broader
 target — those items are not completed by the current foundations.
 
+## Container deployment
+
+Pull the published image and run with a unique token:
+
+```bash
+export PW_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+docker compose pull
+docker compose up -d
+```
+
+Then:
+
+```bash
+docker compose ps
+```
+
+The portable base image (`compose.yaml`) carries no host paths; it
+boots with only the image, a `world-data` volume, and the token. See
+[Operations → Containers](docs/OPERATIONS.md#containers) for the full
+deployment guide, including the optional homelab enrichment override
+and rollback by SHA tag.
+
 ## Deeper documentation
 
 | Interest | Entry point |
