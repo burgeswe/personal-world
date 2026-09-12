@@ -88,6 +88,24 @@ verbatim on request; zero fetches in the calm default view. Finishes
 the "understand exactly what happened" + nerd-mode transparency rows
 for journal.
 
+**Journal correction/supersede workflow (2026-09-12, `c563efd`,
+second propose→approve→act workflow):** any journal entry can be
+corrected without erasing it. "Correct this entry" opens an inline
+approval panel (original vs proposed, effect/risk/recovery, "Nothing
+has changed yet"); explicit approval appends a corrected entry that
+links back via `supersedes` — the original row is NEVER rewritten
+(append-only NDJSON; currency is derived from links). The calm view
+shows only current versions; each corrected entry carries a "Corrected"
+note and a "View history" disclosure exposing the full chain with
+reasons and timestamps. Idempotent retries (same target + same text →
+already-applied, no duplicate); conflicting second corrections are
+rejected honestly; failures leave the original current. Every
+correction journals an APPROVAL audit event answering what/old/new/
+proposer/approver/reason/mechanism/when. Repeated corrections are
+linear (A→B→C; branching rejected). Backend tests (11) + frontend
+tests (6) + live 10-point browser walkthrough incl. keyboard, focus
+ring, 200% reflow, reduced motion.
+
 **First propose→approve→act workflow (2026-09-12, `1152301`):**
 from a selected repository on Projects, the screen proposes a
 read-only status re-check and explains WHAT/WHY/TOOL/RISK/EXPECTED;
@@ -264,13 +282,13 @@ unrelated to any pass, still untouched.
 Everything below needs owner input, external infrastructure, or a
 product decision — not silently guessable from repo truth:
 
-- **Further approval workflows** (beyond the first repository-refresh
-  workflow): the propose→approve→act pattern now exists and is proven;
-  subsequent actions (journal corrections, provider changes, later
-  destructive-with-step-up operations) are new bounded workflows — each
-  needs its own proposal copy + risk classification, and destructive
-  Git operations remain explicitly out of scope until the owner says
-  otherwise.
+- **Further approval workflows:** two are now proven (repository
+  status refresh; journal correction/supersede). Journal cleanup
+  capabilities NOT yet implemented: bulk deletion (deliberately —
+  deletion is a separate owner decision), mass corrections, retention
+  policy, and assistant-drafted correction suggestions (the endpoint
+  would accept them, but no assistant proposal UI exists yet). Destructive
+  Git actions remain out of scope until the owner says otherwise.
 - **Interests / Candy Dispenser and Media sections**: require real
   discovery/media provider connections (external infrastructure) or
   explicit interest-feed configuration; honest EmptyStates remain until
