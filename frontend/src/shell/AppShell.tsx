@@ -106,6 +106,14 @@ export function AppShell({ children }: AppShellProps) {
   const sectionsQuery = useSections();
   const routeSectionId =
     location.pathname === "/" ? "today" : location.pathname.replace(/^\//, "").split("/")[0];
+  // Selected object (Finish Line: context profile's "currently
+  // selected object"): the URL search param names it today (?repo= on
+  // Projects); other sections grow their own params when they gain
+  // selection. Observed UI state, sent as provenance.
+  const selectedEntity =
+    routeSectionId === "projects"
+      ? new URLSearchParams(location.search).get("repo")
+      : null;
   // The standalone /chat route is the GLOBAL conversation surface
   // (Finish Line: global chat "capable of crossing the entire"
   // product): the shell gives it no section context, matching the
@@ -119,6 +127,7 @@ export function AppShell({ children }: AppShellProps) {
         route: location.pathname,
         sectionId: routeSectionId,
         label: routeSection?.label ?? "your world",
+        entity: selectedEntity,
       };
 
   return (

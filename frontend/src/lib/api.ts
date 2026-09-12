@@ -793,6 +793,10 @@ export interface ChatResult {
 export interface ChatUiContext {
   route: string;
   section_id: string;
+  /** Currently selected object in the section (Finish Line context
+   * profile: "the currently selected object, project, repo, …").
+   * Observed UI state, never authority. */
+  entity?: string;
 }
 
 export async function sendChatMessage(

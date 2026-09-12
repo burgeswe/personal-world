@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "../shell/EmptyState";
 import { ErrorState } from "../shell/ErrorState";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
@@ -94,7 +94,14 @@ function RepoHistory({ repo }: { repo: string }) {
 
 export default function ProjectsScreen() {
   const query = useSourceControlStatus();
-  const [openRepo, setOpenRepo] = useState<string | null>(null);
+  // Selected repo = ?repo=<name> (shareable, refresh-stable); no extra
+  // state — the URL IS the selection. The assistant context below reads
+  // the same value the drill-in shows.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openRepo = searchParams.get("repo");
+  const setOpenRepo = (name: string | null) => {
+    setSearchParams(name ? { repo: name } : {}, { replace: true });
+  };
 
   if (query.isLoading) {
     return (

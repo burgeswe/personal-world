@@ -576,6 +576,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
             route = str(ui.get("route") or "") or None
             sid = str(ui.get("section_id") or "") or None
             spec = sections_mod.BY_ID.get(sid) if sid else None
+            entity = str(ui.get("entity") or "") or None
             ui_block = build_ui_context(
                 route=route,
                 section_id=sid,
@@ -586,6 +587,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
                     ) if spec else None
                 ),
                 section_capabilities=(list(spec.capabilities) if spec else None),
+                entity=entity,
             )
         if ui_block:
             context = context + "\n\n" + ui_block

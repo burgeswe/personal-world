@@ -324,3 +324,62 @@ class TestBuildUiContext:
     def test_empty_is_none(self):
         from personal_world.chat_context import build_ui_context
         assert build_ui_context(None, None, None, None, None) is None
+
+
+class TestChatUiEntity:
+    """The context envelope may carry the selected object (Finish Line
+    context profile: "the currently selected object, project, repo")."""
+
+    @pytest.fixture
+    def client(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+
+        from personal_world.api import create_app
+        import personal_world.api as api_mod
+
+        monkeypatch.setenv("PW_API_TOKEN", "t")
+        fake = FakeChat(reply="entity ok")
+
+        real_build_registry = api_mod.build_registry
+
+        def patched_build_registry(world, registry, config_dir):
+            reg = real_build_registry(world, registry, config_dir)
+            reg.register("reasoning", "fake-chat", fake,
+                         health_check=lambda: True, writes="none")
+            return reg
+
+        monkeypatch.setattr(api_mod, "build_registry", patched_build_registry)
+        app = create_app(tmp_path, tmp_path)
+        return TestClient(app), fake
+
+    def _headers(self):
+        return {"Authorization": "Bearer t"}
+
+    def test_entity_injected_as_selected(self, client):
+        c, fake = client
+        r = c.post(
+            "/api/chat",
+            json={
+                "message": "what about this repo?",
+                "context": {
+                    "route": "/projects",
+                    "section_id": "projects",
+                    "entity": "personal-world",
+                },
+            },
+            headers=self._headers(),
+        )
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "selected: personal-world" in system
+
+    def test_entity_without_section_degrades(self, client):
+        c, fake = client
+        r = c.post(
+            "/api/chat",
+            json={"message": "hi", "context": {"entity": "x"}},
+            headers=self._headers(),
+        )
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "Where the person is" not in system

@@ -59,7 +59,13 @@ export interface ChatPanelProps {
    * chat. Sent as provenance; shown so the person can see what the
    * assistant was told about their location.
    */
-  sectionContext?: { route: string; sectionId: string; label: string };
+  sectionContext?: {
+    route: string;
+    sectionId: string;
+    label: string;
+    /** Selected object within the section, if any (e.g. ?repo=). */
+    entity?: string | null;
+  };
 }
 
 const HISTORY_STORAGE_PREFIX = "pw_chat_history_";
@@ -227,7 +233,13 @@ export function ChatPanel({
           text,
           history,
           sectionContext
-            ? { route: sectionContext.route, section_id: sectionContext.sectionId }
+            ? {
+                route: sectionContext.route,
+                section_id: sectionContext.sectionId,
+                ...(sectionContext.entity
+                  ? { entity: sectionContext.entity }
+                  : {}),
+              }
             : undefined
         );
         if (data.ok === false) {
@@ -313,8 +325,15 @@ export function ChatPanel({
       {sectionContext ? (
         <p className="pw-chat-context-line">
           You opened this from{" "}
-          <strong>{sectionContext.label}</strong> — questions about
-          “here” mean that page.
+          <strong>{sectionContext.label}</strong>
+          {sectionContext.entity ? (
+            <>
+              {" "}
+              looking at <strong>{sectionContext.entity}</strong>
+            </>
+          ) : null}{" "}
+          — questions about “here” mean that page
+          {sectionContext.entity ? " and that repository" : ""}.
         </p>
       ) : null}
       <Disclosure summary="Conversation details" level={2}>

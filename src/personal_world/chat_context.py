@@ -107,6 +107,7 @@ def build_ui_context(
     section_label: str | None,
     section_status: str | None,
     section_capabilities: tuple[str, ...] | list[str] | None,
+    entity: str | None = None,
 ) -> str | None:
     """Render the caller's observed UI location for the system prompt.
 
@@ -129,6 +130,7 @@ def build_ui_context(
         f"- section: {section_id or 'unknown'} ({label})",
         f"- section status: {status}",
         f"- section capabilities: {caps}",
+        f"- selected: {entity}" if entity else "",
         "If the person asks about 'here' or 'this page', they mean this "
         "section. Answer from the canonical context block; if the answer "
         "is not there, say so plainly.",

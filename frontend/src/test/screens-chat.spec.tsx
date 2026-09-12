@@ -349,6 +349,33 @@ describe("ChatPanel (T12, parity row 7)", () => {
     });
   });
 
+  it("sectionContext with entity → context carries the selected object", async () => {
+    renderPanel({
+      sectionContext: {
+        route: "/projects?repo=personal-world",
+        sectionId: "projects",
+        label: "Projects",
+        entity: "personal-world",
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/Conversation provider/)).toBeTruthy()
+    );
+    expect(screen.getByText(/looking at/)).toBeTruthy();
+    expect(screen.getByText("personal-world")).toBeTruthy();
+    const input = composerInput() as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "what branch is this on?" } });
+      fireEvent.submit(input.closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(chatCalls.length).toBe(1));
+    expect(chatCalls[0].body.context).toEqual({
+      route: "/projects?repo=personal-world",
+      section_id: "projects",
+      entity: "personal-world",
+    });
+  });
+
   it("no sectionContext → no context field in the body, global starters", async () => {
     renderPanel();
     await waitFor(() =>
