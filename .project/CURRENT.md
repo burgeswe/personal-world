@@ -66,6 +66,18 @@ no card-chrome composition drift on Today/Journal/Vault; the two
 previously-shipping accessibility bugs below are fixed everywhere, not
 just on the branch that found them.
 
+**Projects workspace v1 (2026-09-12, `35204b6`):** the Projects
+section now renders the REAL repository table from the native
+source-control baseline (`GET /api/source-control/status`): one row
+per discovered repo with branch, dirty/ahead/behind, last commit; a
+quiet glance line (counts only; clean stays quiet); per-repo
+provenance (path/revision/remote) and recent-commit drill-in
+(`GET /api/source-control/history`). No search paths configured →
+the same honest EmptyState + knob as before. The e2e fixture points
+the baseline at the repo itself, so CI exercises real git — no
+fabricated rows anywhere. Frontend type now mirrors the backend
+`repository_status()` exactly (9 previously-dropped fields recovered).
+
 **Context-aware World Assistant (2026-09-12, implementation run
 `ac9c18d`):** the Drawer-hosted assistant now knows which section it
 was opened from. The shell derives route/section (GET /api/sections
