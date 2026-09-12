@@ -5,23 +5,25 @@
 schema: play-nice/adoption-v1
 project: personal-world
 source:
-  repository: burgeswe/play-nice-contracts
-  revision: 805f58b46fb59adefd1dee85dd99178d9dbaa1d9   # play-nice-contracts v0.5.0
-  # Bumped 2026-09-12 (contract-refresh pass) from 0c0ab7c5 (v0.3.0).
+  repository: Rylee-Bee/play-nice-contracts   # renamed from burgeswe/play-nice-contracts (account rename, 2026-09-12); old URL redirects
+  revision: 21b6841a50a1b0d459a760861385e99679852430   # play-nice-contracts v0.6.0
+  # Bumped 2026-09-12 (Project Worlds trunk-unification pass) from
+  # 805f58b46f (v0.5.0), which was itself bumped from 0c0ab7c5 (v0.3.0).
   # Verified against the live repository (GitHub API: commit exists,
   # message matches, contracts.lock.json fetched and diffed against the
   # previous pin) before pinning — never taken on assertion.
 
 always:
-  - ask-for-help                    # 1.0.0 -> 1.2.0 at this revision
+  - ask-for-help                    # 1.0.0 -> 1.3.0 at this revision
   - truth-and-evidence
   - human-reliability                # 1.0.0 -> 1.1.0 at this revision
   - recovery-and-reversibility
   - provenance-and-audit
   - explicit-state
   - stable-truth-replaceable-machinery
-  - participation-and-contribution   # new in v0.4.0; always-applicable per its own frontmatter
-  - mutual-contribution              # new in v0.5.0; always-applicable per its own frontmatter
+  - participation-and-contribution   # new in v0.4.0; 1.0.0 -> 1.2.0 at this revision
+  - mutual-contribution              # new in v0.5.0; 1.0.0 -> 1.1.0 at this revision
+  - collaborative-good-faith         # new in v0.6.0; always-applicable per its own frontmatter
 
 triggers:
   human-facing:
