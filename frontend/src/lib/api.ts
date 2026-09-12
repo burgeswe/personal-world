@@ -528,6 +528,32 @@ export async function fetchSourceControlHistory(
   );
 }
 
+/**
+ * POST /api/source-control/refresh (step-up gated): the ACT of the
+ * first propose→approve→act workflow. The UI must collect an explicit
+ * approval BEFORE calling this — the endpoint performs the read-only
+ * native git status refresh for the named repo and journals the audit
+ * answer (api.py source_control_refresh).
+ */
+export type SourceControlRefreshEnvelope = {
+  ok: boolean;
+  status: string;
+  warnings?: string[];
+  data: { repo: string; status: SourceControlRepo } | null;
+};
+export async function refreshSourceControlStatus(
+  repo: string
+): Promise<SourceControlRefreshEnvelope> {
+  return apiFetchEnvelope<SourceControlRefreshEnvelope>(
+    "/api/source-control/refresh",
+    {
+      method: "POST",
+      headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+      body: JSON.stringify({ repo }),
+    }
+  );
+}
+
 export async function fetchActors(): Promise<unknown[]> {
   return apiFetch<unknown[]>("/api/actors");
 }

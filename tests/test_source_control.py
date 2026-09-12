@@ -398,3 +398,103 @@ class TestRecursiveDiscovery:
         # observed data shape: {"repositories": N}; both outer repo and
         # the nested one are counted, and a 2-depth walk finds both.
         assert result.data == {"repositories": 2}
+
+
+class TestRefreshWorkflow:
+    """First propose→approve→act workflow (Finish Line "Actions,
+    approvals"): an explicitly approved, single-repo, read-only
+    status refresh. The endpoint is the ACT — approval happens in the
+    UI before this call; the audit answer (proposer, what, tool,
+    result, when) lands in the journal."""
+
+    def _client(self, tmp_path, monkeypatch, repos=True):
+        from fastapi.testclient import TestClient
+
+        from personal_world.api import create_app
+
+        monkeypatch.setenv("PW_API_TOKEN", "t")
+        config = tmp_path / "config"
+        config.mkdir(exist_ok=True)
+        if repos:
+            repo = tmp_path / "demo"
+            repo.mkdir(exist_ok=True)
+            import subprocess
+            subprocess.run(["git", "-C", str(repo), "init", "-q"],
+                           check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "--allow-empty",
+                 "-q", "-m", "seed"],
+                check=True, capture_output=True,
+                env={**__import__("os").environ,
+                     "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                     "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
+            # Documented config shape (config/README.local.md): point
+            # search_paths at the repo directory itself, not its parent.
+            (config / "connections.json").write_text(
+                '{"source_control": {"search_paths": [%s]}}'
+                % json.dumps(str(tmp_path / "demo"))
+            )
+        app = create_app(tmp_path, config)
+        return TestClient(app), tmp_path
+
+    def _headers(self):
+        return {"Authorization": "Bearer t"}
+
+    def test_refresh_journals_the_audit_answer(self, tmp_path, monkeypatch):
+        c, data = self._client(tmp_path, monkeypatch)
+        r = c.post("/api/source-control/refresh", json={"repo": "demo"},
+                    headers=self._headers())
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert body["data"]["repo"] == "demo"
+        assert body["data"]["status"]["name"] == "demo"
+        assert body["data"]["status"]["dirty"] is False
+        # The audit answer exists: who proposed, what was approved,
+        # which tool, what came back.
+        from personal_world.journal import Journal
+        events = Journal(data / "journal.ndjson").recent(5)
+        match = [e for e in events if "repository status refresh" in e.summary]
+        assert match, "no audit event recorded"
+        s = match[-1].summary
+        assert "proposed by the Projects screen" in s
+        assert "approved explicitly" in s
+        assert "native git baseline" in s
+        assert "demo" in s
+        assert match[-1].kind.value == "provider_action"
+
+    def test_refresh_unknown_repo_journals_failure_honestly(self, tmp_path, monkeypatch):
+        c, data = self._client(tmp_path, monkeypatch)
+        r = c.post("/api/source-control/refresh", json={"repo": "nope"},
+                    headers=self._headers())
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is False
+        assert body["status"] == "not_configured"
+        from personal_world.journal import Journal
+        events = Journal(data / "journal.ndjson").recent(5)
+        match = [e for e in events if "rejected" in e.summary and "nope" in e.summary]
+        assert match
+        assert match[-1].kind.value == "failure"
+
+    def test_refresh_requires_auth(self, tmp_path, monkeypatch):
+        c, _ = self._client(tmp_path, monkeypatch)
+        r = c.post("/api/source-control/refresh", json={"repo": "demo"})
+        assert r.status_code in (401, 503)
+
+    def test_refresh_requires_repo(self, tmp_path, monkeypatch):
+        c, _ = self._client(tmp_path, monkeypatch)
+        r = c.post("/api/source-control/refresh", json={"repo": "  "},
+                    headers=self._headers())
+        assert r.status_code == 400
+
+    def test_refresh_repeated_use_behaves_sensibly(self, tmp_path, monkeypatch):
+        c, _ = self._client(tmp_path, monkeypatch)
+        for _ in range(3):
+            r = c.post("/api/source-control/refresh", json={"repo": "demo"},
+                        headers=self._headers())
+            assert r.status_code == 200 and r.json()["ok"] is True
+        from personal_world.journal import Journal
+        events = Journal(tmp_path / "journal.ndjson").recent(10)
+        match = [e for e in events if "repository status refresh" in e.summary]
+        assert len(match) == 3

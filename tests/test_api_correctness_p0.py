@@ -43,7 +43,7 @@ class TestLogin:
         r = c.get("/login")
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
-        assert "<title>Personal World — Login</title>" in r.text
+        assert "<title>Project Worlds — Login</title>" in r.text
         assert 'data-setup-needed="false"' in r.text
 
     def test_login_flags_fresh_install(self, env):

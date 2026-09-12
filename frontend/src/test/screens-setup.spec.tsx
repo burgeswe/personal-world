@@ -150,7 +150,7 @@ describe("SetupWizard (T12, parity row 8)", () => {
     mockHappyPath();
     const { container } = renderWizard();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Welcome to your Personal World" })).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1, name: "Welcome to your Project Worlds" })).toBeTruthy();
     });
     const status = wizardCalls.find((c) => c.path.startsWith("/api/setup/status"));
     expect(status).toBeTruthy();
@@ -221,7 +221,7 @@ describe("SetupWizard (T12, parity row 8)", () => {
     const fact = wizardCalls.find((c) => c.path.startsWith("/api/world/fact"));
     expect(fact).toBeTruthy();
     expect(fact?.body.key).toBe("world.name");
-    expect(fact?.body.value).toBe("My Personal World");
+    expect(fact?.body.value).toBe("My Project Worlds");
 
     // 4. Signed in: pw_token stored through the login path.
     expect(localStorage.getItem("pw_token")).toBe("wizard-token-1");

@@ -54,7 +54,7 @@ class ThemePack(BaseModel):
 DEFAULT_PACK = ThemePack(
     name="world-keeper",
     display_name="World Keeper (Globe)",
-    author="Personal World",
+    author="Project Worlds",
     companion=CompanionStates(
         idle="/static/companions/personal-world.svg",
         hello="/static/companions/personal-world.svg",

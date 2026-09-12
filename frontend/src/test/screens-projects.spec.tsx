@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { MemoryRouter } from "react-router-dom";
 import { CompanionProvider } from "../lib/companion-context";
@@ -210,5 +210,125 @@ describe("ProjectsScreen (workspace v1)", () => {
     ).toBeTruthy();
     expect(screen.queryByText(/repositories watched/)).toBeNull();
     expect(await axeNoContrast(container)).toHaveNoViolations();
+  });
+});
+describe("Projects approval workflow (propose → approve → act → audit)", () => {
+  let refreshCalls: Array<Record<string, unknown>> = [];
+
+  beforeEach(() => {
+    refreshCalls = [];
+    fetchMock = vi.fn().mockImplementation((input: unknown, init?: RequestInit) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/refresh")) {
+        refreshCalls.push(JSON.parse(String(init?.body ?? "{}")));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              status: "healthy",
+              data: {
+                repo: "personal-world",
+                status: repo({ dirty: false, branch: "main" }),
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (path.includes("/api/source-control/history")) {
+        return Promise.resolve(historyEnvelope("personal-world"));
+      }
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(statusEnvelope([repo()]));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: null }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  it("proposes with WHAT/WHY/TOOL/RISK/EXPECTED and nothing happens before approval", async () => {
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() => expect(screen.getByText("personal-world")).toBeTruthy());
+    // Select the repo to reveal the proposal.
+    fireEvent.click(screen.getByRole("button", { name: "personal-world" }));
+    await waitFor(() =>
+      expect(screen.getByText("Refresh repository status")).toBeTruthy()
+    );
+    const panel = screen.getByRole("heading", { name: "Refresh repository status" }).closest("section")!;
+    expect(panel.getAttribute("data-pw-refresh")).toBe("proposed");
+    // The five explanation rows.
+    expect(within(panel).getByText(/Why:/)).toBeTruthy();
+    expect(within(panel).getByText(/Uses:/)).toBeTruthy();
+    expect(within(panel).getByText(/Risk:/)).toBeTruthy();
+    expect(within(panel).getByText(/Expected:/)).toBeTruthy();
+    expect(within(panel).getByText(/Re-check/)).toBeTruthy();
+    // Explicit has-not-happened + zero server calls before approval.
+    expect(within(panel).getByText(/Nothing has happened yet/)).toBeTruthy();
+    expect(refreshCalls).toEqual([]);
+  });
+
+  it("explicit approval triggers exactly one act, then result is shown", async () => {
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() => expect(screen.getByText("personal-world")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "personal-world" }));
+    const approve = await screen.findByText("Approve and refresh");
+    fireEvent.click(approve);
+    await waitFor(() =>
+      expect(screen.getByText(/Done — personal-world re-checked/)).toBeTruthy()
+    );
+    expect(refreshCalls).toEqual([{ repo: "personal-world" }]);
+    expect(screen.getByText(/is clean/)).toBeTruthy();
+  });
+
+  it("failed refresh is honest and offers the way back", async () => {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: false,
+              status: "not_configured",
+              warnings: ["repository 'x' not found"],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.resolve(statusEnvelope([repo()]));
+    });
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() => expect(screen.getByText("personal-world")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "personal-world" }));
+    fireEvent.click(await screen.findByText("Approve and refresh"));
+    await waitFor(() =>
+      expect(screen.getByText(/The refresh did not finish/)).toBeTruthy()
+    );
+    expect(screen.getByText(/repository 'x' not found/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to the proposal" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Nothing has happened yet/)).toBeTruthy()
+    );
+  });
+
+  it("repeated use behaves sensibly: refresh again re-proposes, not auto-runs", async () => {
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() => expect(screen.getByText("personal-world")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "personal-world" }));
+    fireEvent.click(await screen.findByText("Approve and refresh"));
+    await waitFor(() =>
+      expect(screen.getByText(/Done — personal-world re-checked/)).toBeTruthy()
+    );
+    expect(refreshCalls.length).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh again" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Nothing has happened yet/)).toBeTruthy()
+    );
+    // Still exactly one act until approved again.
+    expect(refreshCalls.length).toBe(1);
   });
 });

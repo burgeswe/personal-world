@@ -49,7 +49,7 @@ function LoginScreen() {
 
   return (
     <section aria-labelledby="login-heading" className="pw-login">
-      <h1 id="login-heading">Personal World</h1>
+      <h1 id="login-heading">Project Worlds</h1>
       <p className="pw-login-lede">Paste your access code to open your world.</p>
       <form
         onSubmit={(e: FormEvent) => {

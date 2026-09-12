@@ -18,7 +18,7 @@ TOKEN = "instancetoken-do-not-leak-7f3a"  # pw-safety: synthetic
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 INDEX_HTML = (
-    "<!doctype html><html><head><title>Personal World</title></head>"
+    "<!doctype html><html><head><title>Project Worlds</title></head>"
     '<body><div id="root" data-marker="fake-dist"></div></body></html>'
 )
 
@@ -75,7 +75,7 @@ class TestLegacyDefault:
         client, _ = _legacy(tmp_path, monkeypatch)
         r = client.get("/")
         assert r.status_code == 200
-        assert "Personal World — Today" in r.text
+        assert "Project Worlds — Today" in r.text
 
     def test_unknown_page_is_404(self, tmp_path, monkeypatch):
         monkeypatch.delenv("PW_FRONTEND", raising=False)
@@ -218,7 +218,7 @@ class TestMissingDist:
         monkeypatch.setenv("PW_FRONTEND", "react")
         client, _ = _app(tmp_path, monkeypatch, dist=empty)
         r = client.get("/")
-        assert "<h1>Personal World's interface is not built</h1>" in r.text
+        assert "<h1>Project Worlds' interface is not built</h1>" in r.text
 
 
 class TestInvalidMode:
@@ -230,4 +230,4 @@ class TestInvalidMode:
         assert "/{full_path:path}" not in paths
         r = client.get("/")
         assert r.status_code == 200
-        assert "Personal World — Today" in r.text
+        assert "Project Worlds — Today" in r.text

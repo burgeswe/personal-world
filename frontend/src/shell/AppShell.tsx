@@ -148,7 +148,7 @@ export function AppShell({ children }: AppShellProps) {
             className="pw-brand"
             style={{ fontFamily: "var(--pw-typography-font-expressive)" }}
           >
-            Personal World
+            Project Worlds
           </span>
         </span>
         {bucket === "banner" ? (

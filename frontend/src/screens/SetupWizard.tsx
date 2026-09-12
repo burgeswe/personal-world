@@ -17,7 +17,7 @@ import "./setup-wizard.css";
  * SetupWizard (P1 T12, FOUNDATION-SPEC §5 shell row + §7 row 8): ONE
  * first-run flow, a separate page that is not a main-navigation
  * destination. Steps, mirroring the legacy wizard (api.py WIZARD_HTML):
- *   1. world name (a fact, default "My Personal World")
+ *   1. world name (a fact, default "My Project Worlds")
  *   2. companion choice (saved as the companion pref)
  *   3. login token (≥8 chars, generated option, shown once)
  *   4. optional vault passphrase (skip is fine)
@@ -36,7 +36,7 @@ import "./setup-wizard.css";
  */
 
 const WORLD_NAME_FACT_KEY = "world.name";
-const DEFAULT_WORLD_NAME = "My Personal World";
+const DEFAULT_WORLD_NAME = "My Project Worlds";
 const COMPANION_IDS = Object.keys(COMPANIONS);
 
 const COMPANION_CHOICES = COMPANION_IDS.map((id) => ({
@@ -155,7 +155,7 @@ function SetupWizard() {
     return (
       <section aria-labelledby="setup-done-heading" className="pw-setup">
         <div className="pw-setup-card">
-          <h1 id="setup-done-heading">Your Personal World is already set up</h1>
+          <h1 id="setup-done-heading">Your Project Worlds is already set up</h1>
           <p>
             This world has been configured before. Open it with your access
             code on the sign-in page.
@@ -171,7 +171,7 @@ function SetupWizard() {
   return (
     <section aria-labelledby="setup-heading" className="pw-setup">
       <div className="pw-setup-card">
-        <h1 id="setup-heading">Welcome to your Personal World</h1>
+        <h1 id="setup-heading">Welcome to your Project Worlds</h1>
         <p className="pw-setup-step-label" aria-live="polite">
           Step {step} of 5
         </p>

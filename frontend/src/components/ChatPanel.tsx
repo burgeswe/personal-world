@@ -415,7 +415,7 @@ export function ChatPanel({
             <div key={`a${i}`} className="pw-chat-msg pw-chat-msg-assistant">
               <p>{turn.content}</p>
               <Disclosure summary="Sources" level={3}>
-                <p>Read-only Personal World snapshot</p>
+                <p>Read-only Project Worlds snapshot</p>
                 {turn.model ? <p>Conversation model: {turn.model}</p> : null}
                 {turn.thinking ? (
                   <TechnicalDetails
@@ -488,7 +488,7 @@ export function ChatPanel({
         </button>
       </form>
       <p className="pw-chat-footnote">
-        <Sparkles size={12} aria-hidden={true} /> Powered by your Personal World
+        <Sparkles size={12} aria-hidden={true} /> Powered by your Project Worlds
       </p>
     </div>
   );

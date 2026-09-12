@@ -17,7 +17,7 @@ class TestDashboardStructure:
         assert 'lang="en"' in DASHBOARD_HTML
 
     def test_useful_page_title(self):
-        assert "<title>Personal World — Today</title>" in DASHBOARD_HTML
+        assert "<title>Project Worlds — Today</title>" in DASHBOARD_HTML
 
     def test_skip_to_content_link_is_first_focusable(self):
         # The skip link must come before any other interactive element
@@ -116,7 +116,7 @@ class TestDashboardEndpoint:
         r = c.get("/")
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
-        assert "Personal World — Today" in r.text
+        assert "Project Worlds — Today" in r.text
 
 
 class TestDashboardStyleInjection:
@@ -232,7 +232,7 @@ class TestDashboardLoadStates:
         # Every exit path sets an explicit human message; the shell never
         # leaves a generic loading label as the only explanation.
         assert "setMsg('Opening your world" in DASHBOARD_HTML
-        assert "setMsg('Personal World could not be reached" in DASHBOARD_HTML
+        assert "setMsg('Project Worlds could not be reached" in DASHBOARD_HTML
         assert "setMsg('That access code did not unlock your world" in DASHBOARD_HTML
-        assert "setMsg('Personal World is not ready for access yet" in DASHBOARD_HTML
+        assert "setMsg('Project Worlds is not ready for access yet" in DASHBOARD_HTML
         assert "setMsg('Your world is ready.', true)" in DASHBOARD_HTML

@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "../shell/EmptyState";
 import { ErrorState } from "../shell/ErrorState";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
 import { useSourceControlStatus, useSourceControlHistory } from "../lib/hooks";
 import { Loader2 } from "../lib/icons";
-import type { SourceControlRepo } from "../lib/api";
+import { refreshSourceControlStatus, type SourceControlRepo } from "../lib/api";
+import { useAnnounce } from "../primitives/LiveRegion";
 
 /**
  * ProjectsScreen (Finish Line "Projects workspace", first vertical
@@ -92,6 +94,156 @@ function RepoHistory({ repo }: { repo: string }) {
   );
 }
 
+
+/**
+ * RepoRefreshApproval (first propose→approve→act workflow; Finish
+ * Line "Actions, approvals, and trusted automation"):
+ *
+ * PROPOSE → the Projects screen proposes a read-only status re-check
+ * for the selected repo and explains WHAT will happen, WHY, WHICH tool,
+ * the RISK LEVEL, and the EXPECTED RESULT — all in plain language.
+ *
+ * APPROVAL BOUNDARY — agreement is not authorization: nothing runs
+ * until the person presses "Approve and refresh". No timer, no
+ * auto-approve, no assistant shortcut around it.
+ *
+ * ACT → one POST /api/source-control/refresh (step-up header; the
+ * backend journals the audit answer).
+ *
+ * RESULT → the outcome is explicit: nothing has happened yet, the
+ * refresh is running, it finished with what came back, or it failed
+ * with why. Repeated use re-proposes fresh (state resets to "not
+ * happened yet" on each new proposal). Inline — no modal trap.
+ */
+type RefreshState =
+  | { phase: "proposed" }
+  | { phase: "running" }
+  | { phase: "done"; ok: boolean; detail: string }
+  | { phase: "failed"; detail: string };
+
+export function RepoRefreshApproval({
+  repo,
+  onRefreshed,
+}: {
+  repo: string;
+  onRefreshed: () => void;
+}) {
+  const { announce } = useAnnounce();
+  const [state, setState] = useState<RefreshState>({ phase: "proposed" });
+
+  const approve = async () => {
+    if (state.phase === "running") return;
+    setState({ phase: "running" });
+    try {
+      const env = await refreshSourceControlStatus(repo);
+      if (env.ok && env.data) {
+        const st = env.data.status;
+        const bits: string[] = [`branch ${st.branch ?? "unknown"}`];
+        bits.push(st.dirty ? "has uncommitted changes" : "is clean");
+        if (st.ahead || st.behind) {
+          bits.push(`${st.ahead ?? 0} ahead / ${st.behind ?? 0} behind remote`);
+        }
+        setState({ phase: "done", ok: true, detail: bits.join(", ") });
+        announce("Repository status refreshed.", {
+          kind: "action_completed",
+          key: "repo-refresh",
+        });
+        onRefreshed();
+      } else {
+        setState({
+          phase: "failed",
+          detail: env.warnings?.[0] ?? "The refresh could not complete.",
+        });
+        announce("Repository status refresh failed.", {
+          kind: "error",
+          key: "repo-refresh",
+        });
+      }
+    } catch {
+      setState({
+        phase: "failed",
+        detail: "The refresh could not complete. Nothing else changed.",
+      });
+      announce("Repository status refresh failed.", {
+        kind: "error",
+        key: "repo-refresh",
+      });
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby="repo-refresh-heading"
+      data-pw-refresh={state.phase}
+      className="mt-2 rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-4"
+    >
+      <h3 id="repo-refresh-heading" className="text-base font-semibold">
+        Refresh repository status
+      </h3>
+      {/* WHAT / WHY / TOOL / RISK / EXPECTED — plain, short, no color-only
+          meaning. Explicit has/has-not-happened on every phase. */}
+      {state.phase === "proposed" ? (
+        <>
+          <p className="mt-1 text-sm text-[var(--pw-color-text-secondary)]">
+            Re-check <strong>{repo}</strong> for its current branch,
+            uncommitted changes, and ahead/behind counts.
+          </p>
+          <ul className="mt-1 space-y-0.5 text-sm text-[var(--pw-color-text-secondary)]">
+            <li>Why: the status shown may be from an earlier look.</li>
+            <li>Uses: the built-in git status reader. Nothing is written.</li>
+            <li>Risk: low — read-only and reversible.</li>
+            <li>Expected: fresh branch and change state, recorded in your journal.</li>
+          </ul>
+          <p className="mt-2 text-sm">
+            Nothing has happened yet. Only your approval runs it.
+          </p>
+          <button
+            type="button"
+            data-pw-refresh-approve
+            onClick={() => void approve()}
+            className="mt-2 inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm font-medium text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+          >
+            Approve and refresh
+          </button>
+        </>
+      ) : state.phase === "running" ? (
+        <p className="mt-1 text-sm" role="status">
+          Refreshing {repo} now — this usually takes a moment…
+        </p>
+      ) : state.phase === "done" ? (
+        <>
+          <p className="mt-1 text-sm" role="status">
+            Done — {repo} re-checked: {state.detail}.
+          </p>
+          <p className="mt-1 text-xs text-[var(--pw-color-text-secondary)]">
+            Recorded in your journal with full provenance.
+          </p>
+          <button
+            type="button"
+            onClick={() => setState({ phase: "proposed" })}
+            className="mt-2 inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+          >
+            Refresh again
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm" role="status">
+            The refresh did not finish: {state.detail}
+          </p>
+          <button
+            type="button"
+            onClick={() => setState({ phase: "proposed" })}
+            className="mt-2 inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+          >
+            Back to the proposal
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function ProjectsScreen() {
   const query = useSourceControlStatus();
   // Selected repo = ?repo=<name> (shareable, refresh-stable); no extra
@@ -103,7 +255,10 @@ export default function ProjectsScreen() {
     setSearchParams(name ? { repo: name } : {}, { replace: true });
   };
 
-  if (query.isLoading) {
+  if (query.isLoading && !query.data) {
+    // First load only: a refetch (e.g. after an approved refresh) must
+    // never unmount the workflow result — the person would lose the
+    // "what actually happened" answer the moment it arrived.
     return (
       <div data-pw-projects="loading">
         <EmptyState
@@ -248,6 +403,10 @@ export default function ProjectsScreen() {
           expanded repo at a time keeps the default view calm. */}
       {openRepo ? (
         <div data-pw-projects-detail={openRepo} className="mt-4 space-y-2">
+          <RepoRefreshApproval
+            repo={openRepo}
+            onRefreshed={() => void query.refetch()}
+          />
           <Disclosure
             summary={`Recent commits — ${openRepo}`}
             level={2}

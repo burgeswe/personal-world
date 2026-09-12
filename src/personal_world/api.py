@@ -30,6 +30,7 @@ from .providers.registry import Registry
 from .source_control import (
     discover_repositories,
     repository_history,
+    repository_status,
     status_all,
 )
 from .world import MutationDenied, World
@@ -41,7 +42,7 @@ WIZARD_HTML = """
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personal World — Setup wizard</title>
+<title>Project Worlds — Setup wizard</title>
 <meta name="theme-color" content="#0a0810">
 <meta name="color-scheme" content="dark">
 <link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
@@ -98,15 +99,15 @@ a.finish { color: var(--accent); }
 </head>
 <body>
 <div class="wizard">
-<h1>Welcome to your Personal World</h1>
+<h1>Welcome to your Project Worlds</h1>
 <div id="steplabel" class="step-label">Step 1 of 5</div>
 
 <div class="step active" data-step="1">
   <div class="big">What would you like to call this world?</div>
   <div class="hint">Just a friendly name. You can change it later in the
-  dashboard. Leave it blank and we'll use "My Personal World".</div>
+  dashboard. Leave it blank and we'll use "My Project Worlds".</div>
   <input id="w-name" type="text" maxlength="60" autocomplete="off"
-         placeholder="My Personal World">
+         placeholder="My Project Worlds">
 </div>
 
 <div class="step" data-step="2">
@@ -196,7 +197,7 @@ $("next-btn").addEventListener("click", async () => {
     const p1 = $("v1").value, p2 = $("v2").value;
     if (p1 || p2) { if (p1 !== p2) { $("finish-msg").textContent = "Passphrases do not match."; return; } state.pass = p1; }
     else state.pass = "";
-    $("sum-name").textContent = state.name || "My Personal World";
+    $("sum-name").textContent = state.name || "My Project Worlds";
     $("sum-comp").textContent = state.comp;
     $("sum-tok").textContent = "(" + state.token.length + " characters)";
     $("sum-pv").textContent = state.pass ? "set" : "skipped for now";
@@ -220,9 +221,9 @@ $("next-btn").addEventListener("click", async () => {
     } catch (e) { /* companion pref is cosmetic; never block setup */ }
     localStorage.setItem("pw-token", state.token);
     // Persist the world name as an instance fact (canonical key "world.name"),
-    // default "My Personal World" if left blank.
+    // default "My Project Worlds" if left blank.
     try {
-      const nm = state.name || "My Personal World";
+      const nm = state.name || "My Project Worlds";
       await fetch("/api/world/fact", { method: "POST",
         headers: { "Content-Type": "application/json",
           "Authorization": "Bearer " + state.token },
@@ -355,7 +356,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
     journal = Journal(data_dir / "journal.ndjson")
 
     from .model import JournalKind
-    app = FastAPI(title="Personal World", version="0.2.0")
+    app = FastAPI(title="Project Worlds", version="0.2.0")
     # issue #8, phase 0: the identity seam state lives on app.state so
     # single-mode behavior is byte-identical and multi-mode lights up
     # without changing how the client calls the API.
@@ -528,7 +529,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     @app.post("/api/chat", dependencies=[Depends(require_auth)])
     async def chat(request: Request) -> dict:
-        """Conversational interface to Personal World.
+        """Conversational interface to Project Worlds.
 
         Read-only: the model observes a rendered world snapshot and
         returns text. No tool execution, no mutations. With no chat
@@ -843,6 +844,78 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         commits = repository_history(matches[0]["path"], limit)
         return {"ok": True, "status": "healthy",
                 "data": {"repo": repo, "commits": commits}}
+
+    # ── First propose→approve→act workflow (Finish Line "Actions,
+    # approvals, and trusted automation"). The FIRST action is
+    # intentionally low-risk: re-run the native read-only git status
+    # for ONE repository. Agreement is not authorization: the client
+    # must show what/why/tool/risk/expected and collect an explicit
+    # approval BEFORE this endpoint is called; the endpoint itself is
+    # the act (step-up gated). The audit answer — who proposed (the UI
+    # proposal), what was approved (the named repo refresh), what
+    # happened, which tool (the native git baseline), what came back,
+    # and when (provenance timestamp) — is journaled as a
+    # PROVIDER_ACTION; no secrets, no paths beyond the repo name. ──
+    @app.post("/api/source-control/refresh", dependencies=[Depends(require_step_up)])
+    async def source_control_refresh(request: Request) -> dict:
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        repo = (body.get("repo") or "").strip() if isinstance(body, dict) else ""
+        if not repo:
+            raise HTTPException(status_code=400, detail="repo is required")
+        paths = _sc_paths()
+        matches = [
+            e for e in discover_repositories(paths)
+            if e["is_repository"] and e["name"] == repo
+        ]
+        if not matches:
+            journal.record(
+                JournalKind.FAILURE,
+                f"proposed repository status refresh rejected: "
+                f"repository '{repo}' not found in configured search paths",
+                source="projects",
+            )
+            return {
+                "ok": False,
+                "status": "not_configured",
+                "warnings": [
+                    f"repository '{repo}' not found in "
+                    "configured search paths"
+                ],
+            }
+        status = repository_status(matches[0]["path"])
+        if status.get("error"):
+            journal.record(
+                JournalKind.FAILURE,
+                f"repository status refresh ran for '{repo}' but git "
+                f"reported: {status['error']}",
+                source="projects",
+            )
+            return {
+                "ok": False,
+                "status": "unavailable",
+                "warnings": [str(status["error"])],
+            }
+        state_bits = [
+            f"branch {status.get('branch') or 'unknown'}",
+            "uncommitted changes" if status.get("dirty") else "clean",
+        ]
+        if status.get("ahead") or status.get("behind"):
+            state_bits.append(
+                f"{status.get('ahead') or 0} ahead / "
+                f"{status.get('behind') or 0} behind"
+            )
+        journal.record(
+            JournalKind.PROVIDER_ACTION,
+            f"approved action: repository status refresh for '{repo}' "
+            f"(proposed by the Projects screen, approved explicitly, "
+            f"executed by the native git baseline) — "
+            f"{', '.join(state_bits)}",
+            source="projects",
+        )
+        return {"ok": True, "status": "healthy", "data": {"repo": repo, "status": status}}
 
     @app.get("/api/lab/state", dependencies=[Depends(require_auth)])
     async def lab_state() -> dict:
@@ -1388,7 +1461,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personal World — Setup</title>
+<title>Project Worlds — Setup</title>
 <meta name="theme-color" content="#0a0810">
 <meta name="color-scheme" content="dark">
 <link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
@@ -1416,7 +1489,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </head>
 <body>
 <div class="setup">
-<h1>Welcome to Personal World</h1>
+<h1>Welcome to Project Worlds</h1>
 <p>This is your first run. Set an API token to protect your world. You'll use this token to log in.</p>
 <label for="token">API token (min 8 characters)</label>
 <input id="token" type="password" placeholder="Choose a token">
@@ -1473,7 +1546,7 @@ document.getElementById('go').addEventListener('click', async () => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personal World — Login</title>
+<title>Project Worlds — Login</title>
 <meta name="theme-color" content="#0a0810">
 <meta name="color-scheme" content="dark">
 <link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
@@ -1498,7 +1571,7 @@ button { background: var(--accent); color: var(--bg); border: none; border-radiu
 </head>
 <body>
 <div class="login">
-<h1>Personal World</h1>
+<h1>Project Worlds</h1>
 <input id="token" type="password" placeholder="API token" autofocus>
 <button id="go">Enter</button>
 <div id="err" class="error"></div>
@@ -1641,10 +1714,10 @@ PREFS_STYLE_MARKER = "<!--PW-PREFS-STYLE-->"
 # private dist path must never be echoed to a browser.
 SPA_NOT_BUILT_HTML = """<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Personal World — interface not built</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Project Worlds — interface not built</title></head>
 <body>
 <main id="main-content">
-<h1>Personal World's interface is not built</h1>
+<h1>Project Worlds' interface is not built</h1>
 <p>The web interface files were not found. Build the frontend (<code>npm run build</code> in <code>frontend/</code>) or point <code>PW_FRONTEND_DIST</code> at a built <code>dist/</code> directory, then restart.</p>
 <p>The API is still available; nothing else is affected.</p>
 </main>
@@ -1655,7 +1728,7 @@ DASHBOARD_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personal World — Today</title>
+<title>Project Worlds — Today</title>
 <meta name="theme-color" content="#0a0810">
 <meta name="color-scheme" content="dark">
 <link rel="icon" type="image/svg+xml" href="/companions/personal-world.svg">
@@ -2023,7 +2096,7 @@ details.provenance summary { cursor: pointer; color: var(--muted);
 <div class="brand-lockup">
 <span class="brand-companion" data-pw-companion-slot="brand"><img
  src="/companions/personal-world.svg" alt="" width="32" height="32"></span>
-<p id="brand" class="brand-title">Personal World</p>
+<p id="brand" class="brand-title">Project Worlds</p>
 </div>
 <nav aria-label="Main">
 <a href="#today" data-route="today">Today</a>
@@ -2047,7 +2120,7 @@ details.provenance summary { cursor: pointer; color: var(--muted);
 <div class="greeting">
 <div>
 <h1 id="today-h1">Today</h1>
-<div class="meta-row"><span id="today-date">{TODAY}</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Personal World Appliance active</span></div>
+<div class="meta-row"><span id="today-date">{TODAY}</span><span class="meta-dot" aria-hidden="true"></span><span id="today-state-line">Project Worlds Appliance active</span></div>
 </div>
 <span class="motif-badge"><span class="motif-planet" aria-hidden="true"></span>Home world</span>
 </div>
@@ -2818,7 +2891,7 @@ function appendChatMessage(role, text, source) {
   if (role === 'assistant' && source) {
     const details = el('details', null, {class: 'provenance'});
     details.appendChild(el('summary', 'Sources'));
-    details.appendChild(el('p', 'Read-only Personal World snapshot'));
+    details.appendChild(el('p', 'Read-only Project Worlds snapshot'));
     if (source.model) details.appendChild(el('p', 'Conversation model: ' + source.model));
     message.appendChild(details);
   }
@@ -2969,7 +3042,7 @@ async function load() {
     prefsRes = await api(token, '/api/prefs');
   } catch (e) {
     if (authBox) authBox.hidden = false;
-    setMsg('Personal World could not be reached. Your access code is still safe here.');
+    setMsg('Project Worlds could not be reached. Your access code is still safe here.');
     releaseAuth();
     return;
   }
@@ -2981,13 +3054,13 @@ async function load() {
   }
   if (prefsRes.error === 'no_auth') {
     if (authBox) authBox.hidden = false;
-    setMsg('Personal World is not ready for access yet.');
+    setMsg('Project Worlds is not ready for access yet.');
     releaseAuth();
     return;
   }
   if (prefsRes.error) {
     if (authBox) authBox.hidden = false;
-    setMsg('Personal World could not be reached. Everything you entered is still here.');
+    setMsg('Project Worlds could not be reached. Everything you entered is still here.');
     releaseAuth();
     return;
   }
@@ -3046,7 +3119,7 @@ function syncRoute() {
   const h = (location.hash || '#today').replace('#', '');
   const routes = ['today', 'chat', 'world', 'journal', 'vault', 'settings'];
   const r = routes.includes(h) ? h : 'today';
-  document.title = 'Personal World — ' + r[0].toUpperCase() + r.slice(1);
+  document.title = 'Project Worlds — ' + r[0].toUpperCase() + r.slice(1);
   for (const x of routes) {
     const v = $('view-' + x); if (v) v.classList.toggle('active', x === r);
   }
