@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "../shell/EmptyState";
 import { ErrorState } from "../shell/ErrorState";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
-import { useSourceControlStatus, useSourceControlHistory, useSourceControlEnrichment } from "../lib/hooks";
+import { useSourceControlStatus, useSourceControlHistory, useSourceControlEnrichment, useAgentSyncProjects } from "../lib/hooks";
 import { Loader2 } from "../lib/icons";
-import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment } from "../lib/api";
+import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment, type AgentSyncProject } from "../lib/api";
 import { useAnnounce } from "../primitives/LiveRegion";
 
 /**
@@ -324,6 +324,244 @@ function RepoEnrichment({ repo }: { repo: string }) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────
+ * Project status (agent-sync estate sensor): the five summary
+ * categories, deliberately NOT collapsed into one warning.
+ *   quiet          published and clean — nothing to say
+ *   local work     published but the tree has uncommitted work
+ *                  (NOT broken; presented calmly)
+ *   unpublished    local commits not on the remote (ahead), or
+ *                  behind / diverged — needs attention
+ *   unknown        the remote could not be reached; honest
+ *                  unknown, never healthy or unhealthy
+ *   attention       the plain-language sentence for a repo that
+ *                  needs the person (diverged/unpublished)
+ */
+
+type ProjectCategory =
+  | "quiet"
+  | "local_work"
+  | "unpublished"
+  | "diverged"
+  | "unknown";
+
+function projectCategory(p: AgentSyncProject): ProjectCategory {
+  if (p.publish_state === "diverged") return "diverged";
+  if (p.publish_state === "ahead" || p.publish_state === "behind") {
+    return "unpublished";
+  }
+  if (p.publish_state === null) return "unknown";
+  // published (match): is there local work?
+  const tree = p.working_tree;
+  const dirty =
+    tree.staged + tree.modified + tree.untracked + tree.conflicted;
+  return dirty > 0 ? "local_work" : "quiet";
+}
+
+/** One plain-language sentence per repo that is NOT quiet. Never a
+ *  raw Git term without its human meaning; never a suggested
+ *  command (explaining is not authorizing). */
+function projectSentence(p: AgentSyncProject): string | null {
+  const cat = projectCategory(p);
+  switch (cat) {
+    case "diverged":
+      return `${p.project}: local and remote histories have diverged — both sides have work the other doesn't have.`;
+    case "unpublished":
+      if (p.publish_state === "ahead") {
+        return `${p.project}: local work is not published yet — the remote hasn't seen your latest commits.`;
+      }
+      return `${p.project}: the remote has newer history than this copy.`;
+    case "local_work":
+      return `${p.project}: published state is safe; local work is still in progress.`;
+    case "unknown":
+      return `${p.project}: the remote could not be reached, so publication state is unknown.`;
+    default:
+      return null; // quiet projects get no sentence (calm summary)
+  }
+}
+
+const CATEGORY_ORDER: Record<ProjectCategory, number> = {
+  diverged: 0,
+  unpublished: 1,
+  unknown: 2,
+  local_work: 3,
+  quiet: 4,
+};
+
+/** The estate panel: agent-sync's own summary level — one calm
+ *  glance line (only categories that exist), then per-project
+ *  human sentences for everything not quiet, then the technical
+ *  guts (SHAs, tree counts, safe-to-leave, Play-Nice, work state,
+ *  observed time) behind a disclosure where they belong. */
+function ProjectStatusPanel() {
+  const query = useAgentSyncProjects();
+  if (query.isLoading && !query.data) {
+    return (
+      <p data-pw-projects-status="loading" className="text-sm text-[var(--pw-color-text-secondary)]">
+        <Loader2 size={14} aria-hidden={true} className="pw-spin" /> Checking your
+        projects with agent-sync…
+      </p>
+    );
+  }
+  if (query.isError || !query.data || query.data.ok === false) {
+    return (
+      <p data-pw-projects-status="absent" className="text-sm text-[var(--pw-color-text-secondary)]">
+        Project status from agent-sync is not available right now. Everything
+        else on this page still works.
+      </p>
+    );
+  }
+  const data = query.data?.ok === true ? query.data.data : null;
+  if (!data || !Array.isArray(data.projects)) {
+    return (
+      <p data-pw-projects-status="absent" className="text-sm text-[var(--pw-color-text-secondary)]">
+        Project status from agent-sync is not available right now. Everything
+        else on this page still works.
+      </p>
+    );
+  }
+  const projects = data.projects;
+  if (projects.length === 0) {
+    return (
+      <p data-pw-projects-status="empty" className="text-sm text-[var(--pw-color-text-secondary)]">
+        agent-sync observes no projects yet — its project registry is empty.
+      </p>
+    );
+  }
+  const cats = projects.map(projectCategory);
+  const count = (c: ProjectCategory) => cats.filter((x) => x === c).length;
+  const needsAttention = count("diverged") + count("unpublished");
+  const sentences = projects
+    .map((p) => ({ p, sentence: projectSentence(p) }))
+    .filter((x) => x.sentence !== null)
+    .sort((a, b) =>
+      CATEGORY_ORDER[projectCategory(a.p)] - CATEGORY_ORDER[projectCategory(b.p)]);
+
+  // The calm glance: one composed sentence, only categories that
+  // exist; "all settled" when nothing needs saying (attention
+  // contract: quiet machinery is quiet; ordinary development is
+  // never alarm).
+  const bits: string[] = [];
+  if (needsAttention > 0) {
+    bits.push(
+      needsAttention === 1 ? "1 needs attention" : `${needsAttention} need attention`
+    );
+  }
+  if (count("local_work") > 0) {
+    bits.push(
+      count("local_work") === 1
+        ? "1 has local work in progress"
+        : `${count("local_work")} have local work in progress`
+    );
+  }
+  if (count("unknown") > 0) {
+    bits.push(
+      count("unknown") === 1
+        ? "1 could not reach its remote"
+        : `${count("unknown")} could not reach their remotes`
+    );
+  }
+  const quietCount = count("quiet");
+  const glance =
+    (quietCount > 0 ? `${quietCount} quiet — ` : "") + bits.join(" · ");
+  if (bits.length === 0) {
+    return (
+      <section data-pw-projects-status="quiet" className="mt-4" aria-label="Project status">
+        <p>
+          {projects.length === 1
+            ? "Your project is settled."
+            : `All ${projects.length} projects are settled.`}
+        </p>
+        <p className="text-xs text-[var(--pw-color-text-secondary)]">
+          {`Observed ${data.observed_at ? `at ${data.observed_at}` : "just now"} by agent-sync — a dated observation, not live truth.`}
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section data-pw-projects-status="healthy" className="mt-4" aria-label="Project status">
+      <p>{glance}</p>
+      {sentences.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-sm" data-pw-projects-status-list>
+          {sentences.map(({ p, sentence }) => (
+            <li
+              key={p.project}
+              data-pw-projects-status-item={projectCategory(p)}
+              className="text-[var(--pw-color-text-primary)]"
+            >
+              {sentence}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="text-xs text-[var(--pw-color-text-secondary)]">
+        {`Observed ${data.observed_at ? `at ${data.observed_at}` : "just now"} by agent-sync — a dated observation, not live truth.`}
+      </p>
+      {/* Technical guts: exactly where they belong — one disclosure
+          below the calm summary, never on the first glance. */}
+      <Disclosure summary="Project details (technical)" level={2}>
+        <ul className="mt-2 space-y-2">
+          {[...projects]
+            .sort((a, b) =>
+              CATEGORY_ORDER[projectCategory(a)] - CATEGORY_ORDER[projectCategory(b)])
+            .map((p) => {
+              const tree = p.working_tree;
+              return (
+                <li key={p.project} data-pw-projects-guts={p.project}>
+                  <TechnicalDetails
+                    provider={`agent-sync · ${p.project}`}
+                    raw={JSON.stringify(p, null, 2)}
+                  />
+                  <dl className="grid gap-1 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Publish state</dt>
+                      <dd>{p.publish_state ?? "unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Safe to leave</dt>
+                      <dd>{p.safe_to_leave}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Local head</dt>
+                      <dd>{p.local_head?.slice(0, 7) ?? "unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Remote head</dt>
+                      <dd>{p.remote_head?.slice(0, 7) ?? "unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Working tree</dt>
+                      <dd>
+                        {tree.staged} staged, {tree.modified} modified,{" "}
+                        {tree.untracked} untracked, {tree.conflicted} conflicted
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Work state</dt>
+                      <dd>{p.work_state}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Play-Nice</dt>
+                      <dd>
+                        {p.play_nice.present
+                          ? `adopted${p.play_nice.revision ? ` @ ${p.play_nice.revision.slice(0, 7)}` : ""}`
+                          : "not adopted"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--pw-color-text-secondary)]">Observed</dt>
+                      <dd>{data.observed_at ?? "unknown"}</dd>
+                    </div>
+                  </dl>
+                </li>
+              );
+            })}
+        </ul>
+      </Disclosure>
+    </section>
+  );
+}
+
 export default function ProjectsScreen() {
   const query = useSourceControlStatus();
   // Selected repo = ?repo=<name> (shareable, refresh-stable); no extra
@@ -404,6 +642,10 @@ export default function ProjectsScreen() {
           ? " — everything clean"
           : ""}
       </p>
+
+      {/* agent-sync estate status: Rylee's whole project world in
+          five calm categories, one layer above the repo table. */}
+      <ProjectStatusPanel />
 
       {list.length === 0 ? (
         <p data-pw-projects="empty">

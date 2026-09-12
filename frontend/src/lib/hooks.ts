@@ -14,9 +14,11 @@ import {
   fetchSourceControlStatus,
   fetchSourceControlHistory,
   fetchSourceControlEnrichment,
+  fetchAgentSyncProjects,
   type   SourceControlHistoryData,
   type SourceControlEnrichmentEnvelope,
   type SourceControlStatusEnvelope,
+  type AgentSyncProjectsEnvelope,
   fetchSections,
   fetchActors,
   fetchBackup,
@@ -245,6 +247,16 @@ export function useSourceControlEnrichment(repo: string) {
     () => fetchSourceControlEnrichment(repo),
     [repo],
     ["source-control-enrichment", repo]
+  );
+}
+
+/** GET /api/projects/status: the agent-sync estate observation
+ * (Projects "project status" panel; presentation-only). */
+export function useAgentSyncProjects() {
+  return useApiQuery<AgentSyncProjectsEnvelope>(
+    () => fetchAgentSyncProjects(),
+    [],
+    ["agent-sync-projects"]
   );
 }
 

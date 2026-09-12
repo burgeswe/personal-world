@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { CompanionProvider } from "../lib/companion-context";
 import { LiveRegionProvider } from "../primitives/LiveRegion";
 import ProjectsScreen from "../screens/ProjectsScreen";
-import type { SourceControlRepo } from "../lib/api";
+import type { SourceControlRepo, AgentSyncProject } from "../lib/api";
 
 /**
  * Projects workspace v1 (Finish Line "Projects workspace", first
@@ -92,6 +92,40 @@ function historyEnvelope(repo: string) {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let historyCalls: string[] = [];
+
+/** One agent-sync project record (mirrors the sensor's normalized
+ *  model) with per-test overrides. */
+function estateProject(overrides: Partial<AgentSyncProject> = {}): AgentSyncProject {
+  return {
+    project: "demo",
+    path: "/repos/demo",
+    is_git_repo: true,
+    branch: "main",
+    local_head: "aaaaaaa",
+    remote_name: "origin",
+    remote_url: "https://example.com/acme/demo.git",
+    remote_head: "aaaaaaa",
+    publish_state: "match",
+    working_tree: { staged: 0, modified: 0, untracked: 0, conflicted: 0 },
+    play_nice: { present: false, revision: null, source_repository: null },
+    work_state: "unknown",
+    safe_to_leave: "yes",
+    error: null,
+    ...overrides,
+  };
+}
+
+function estateEnvelope(
+  projects: AgentSyncProject[],
+  observed_at = "2026-09-12T12:48:38Z",
+  ok = true,
+  status = "healthy"
+) {
+  return new Response(
+    JSON.stringify({ ok, status, warnings: [], data: { observed_at, projects } }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
+}
 
 function stubProviders(ui: React.ReactElement) {
   return render(
@@ -448,5 +482,127 @@ describe("Projects GitHub enrichment (optional remote facts, quiet degradation)"
     expect(panel?.getAttribute("data-pw-projects-enrichment")).toBe("absent");
     // Non-GitHub is a valid answer, not an error: no error vocabulary inside the panel.
     expect(panel?.textContent).not.toMatch(/error/i);
+  });
+});
+
+describe("ProjectsScreen (agent-sync project status panel)", () => {
+  /** Route both endpoints: native table keeps answering, estate panel
+   *  renders from /api/projects/status. */
+  function stubBoth(projects: AgentSyncProject[]) {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/projects/status")) {
+        return Promise.resolve(estateEnvelope(projects));
+      }
+      if (path.includes("/api/source-control/history")) {
+        return Promise.resolve(historyEnvelope(""));
+      }
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(statusEnvelope([repo()]));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: null }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+  }
+
+  it("all quiet: settled sentence, no manufactured attention", async () => {
+    stubBoth([estateProject(), estateProject({ project: "second" })]);
+    const { container } = stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/All 2 projects are settled\./)).toBeTruthy()
+    );
+    expect(
+      screen.queryByText(/needs attention|attention/)
+    ).toBeNull();
+    expect(
+      screen.getByText(/Observed at 2026-09-12T12:48:38Z by agent-sync/)
+    ).toBeTruthy();
+    expect(await axeNoContrast(container)).toHaveNoViolations();
+  });
+
+  it("five categories stay distinct in the calm summary", async () => {
+    stubBoth([
+      estateProject({ project: "settled" }),
+      estateProject({ project: "wip", working_tree: { staged: 1, modified: 2, untracked: 0, conflicted: 0 }, safe_to_leave: "published-with-local-work" }),
+      estateProject({ project: "unshared", publish_state: "ahead", safe_to_leave: "no" }),
+      estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" }),
+      estateProject({ project: "offline", remote_head: null, publish_state: null, safe_to_leave: "unknown" }),
+    ]);
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/1 quiet — 2 need attention · 1 has local work in progress · 1 could not reach its remote/)).toBeTruthy()
+    );
+    expect(screen.getByText(/wip: published state is safe; local work is still in progress\./)).toBeTruthy();
+    expect(screen.getByText(/unshared: local work is not published yet/)).toBeTruthy();
+    expect(screen.getByText(/split: local and remote histories have diverged/)).toBeTruthy();
+    expect(screen.getByText(/offline: the remote could not be reached/)).toBeTruthy();
+  });
+
+  it("a published dirty project is local work, never an alarm", async () => {
+    stubBoth([
+      estateProject({ project: "vefr", working_tree: { staged: 0, modified: 3, untracked: 1, conflicted: 0 }, safe_to_leave: "published-with-local-work" }),
+    ]);
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/1 has local work in progress/)).toBeTruthy()
+    );
+    expect(screen.queryByText(/needs? attention/)).toBeNull();
+    expect(screen.getByText(/vefr: published state is safe/)).toBeTruthy();
+  });
+
+  it("degrades quietly when agent-sync is unavailable (absent)", async () => {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/projects/status")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ ok: false, status: "unavailable", warnings: ["agent-sync observation unavailable"], data: null }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (path.includes("/api/source-control/history")) {
+        return Promise.resolve(historyEnvelope(""));
+      }
+      return Promise.resolve(statusEnvelope([repo()]));
+    });
+    stubProviders(<ProjectsScreen />);
+    const panel = (await screen.findByText(/not available right now/)).closest("[data-pw-projects-status]");
+    expect(panel?.getAttribute("data-pw-projects-status")).toBe("absent");
+    // the native table keeps answering — the sensor's absence never breaks Projects
+    await waitFor(() =>
+      expect(screen.getByText(/1 repository watched/)).toBeTruthy()
+    );
+  });
+
+  it("empty registry is honest, not an error", async () => {
+    stubBoth([]);
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/agent-sync observes no projects yet/)).toBeTruthy()
+    );
+  });
+
+  it("observed time stays visible (dated observation, not timeless truth)", async () => {
+    stubBoth([estateProject()]);
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/Observed at 2026-09-12T12:48:38Z/)).toBeTruthy()
+    );
+    expect(screen.getByText(/a dated observation, not live truth/)).toBeTruthy();
+  });
+
+  it("keyboard reachable and non-color: the panel is plain text", async () => {
+    stubBoth([estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" })]);
+    const { container } = stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/1 needs attention/)).toBeTruthy()
+    );
+    // sentences carry their meaning in words (no color-only signal)
+    expect(screen.getByText(/histories have diverged/)).toBeTruthy();
+    expect(await axeNoContrast(container)).toHaveNoViolations();
   });
 });

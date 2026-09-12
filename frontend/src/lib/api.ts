@@ -434,6 +434,49 @@ export type SourceControlHistoryData = {
   repo: string;
   commits: SourceControlCommit[];
 };
+/** One normalized project record from GET /api/projects/status —
+ * agent-sync's honest play-nice/repo-status-v1 observation as
+ * Project Worlds presents it. Unknown stays null/'unknown';
+ * publish_state/safe_to_leave/work_state are closed vocabularies
+ * mirrored from the sensor. */
+export interface AgentSyncProject {
+  project: string;
+  path: string | null;
+  is_git_repo: boolean;
+  branch: string | null;
+  local_head: string | null;
+  remote_name: string | null;
+  remote_url: string | null;
+  remote_head: string | null;
+  publish_state: "match" | "ahead" | "behind" | "diverged" | null;
+  working_tree: {
+    staged: number;
+    modified: number;
+    untracked: number;
+    conflicted: number;
+  };
+  play_nice: {
+    present: boolean;
+    revision: string | null;
+    source_repository: string | null;
+  };
+  work_state: string;
+  safe_to_leave: string;
+  error: string | null;
+}
+export type AgentSyncProjectsData = {
+  observed_at: string | null;
+  projects: AgentSyncProject[];
+};
+/** GET /api/projects/status keeps its honest {ok, status, data}
+ * envelope (ok:false unavailable = agent-sync absent/timed out/
+ * malformed — Project Worlds stays fully useful). */
+export type AgentSyncProjectsEnvelope = {
+  ok: boolean;
+  status: string;
+  warnings?: string[];
+  data: AgentSyncProjectsData | null;
+};
 /** One entry of GET /api/chat/providers (api.py `chat_providers`). */
 export interface ChatProviderInfo {
   name: string;
@@ -590,6 +633,12 @@ export async function fetchSourceControlEnrichment(
   return apiFetchEnvelope<SourceControlEnrichmentEnvelope>(
     `/api/source-control/enrichment?repo=${encodeURIComponent(repo)}`
   );
+}
+
+/** GET /api/projects/status: the agent-sync estate observation
+ * (read-only; envelope kept so honest degraded states survive). */
+export async function fetchAgentSyncProjects(): Promise<AgentSyncProjectsEnvelope> {
+  return apiFetchEnvelope<AgentSyncProjectsEnvelope>("/api/projects/status");
 }
 
 export async function fetchBackup(): Promise<unknown> {
