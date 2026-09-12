@@ -1,12 +1,12 @@
 # LottieFiles Animation Handoff — the operator's Mermaid Companion
 
-**Personal World Theme Pack · Animation Brief**
+**Project Worlds Theme Pack · Animation Brief**
 
 ---
 
 ## What We're Building
 
-Personal World is a personal digital appliance with a companion character system. You already designed and animated the default **World Keeper globe** — it's beautiful and sets the quality bar. Now we need the same treatment for **the operator's personal mermaid companion**, a custom theme pack character.
+Project Worlds is a personal digital appliance with a companion character system. You already designed and animated the default **World Keeper globe** — it's beautiful and sets the quality bar. Now we need the same treatment for **the operator's personal mermaid companion**, a custom theme pack character.
 
 The mermaid is based on the operator's real tattoo — a fine-tip pen doodle style character with flowing rainbow-gradient hair and a teal tail. She's warm, personal, and meaningful. She needs to feel like she belongs in the same world as the globe.
 

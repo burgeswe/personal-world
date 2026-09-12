@@ -6,7 +6,7 @@ project continuity, and substantial engineering work in this repository.
 
 ## Purpose
 
-Personal World must remain safe, understandable, recoverable, and
+Project Worlds must remain safe, understandable, recoverable, and
 calmly operable when the person using or maintaining it is not
 operating at maximum attention, memory, energy, or tolerance for
 complexity.
@@ -216,7 +216,7 @@ explicitly as unresolved work.
 The goal is not to eliminate complexity. The goal is to make
 complexity navigable.
 
-A successful Personal World can support deep engineering when the
+A successful Project Worlds can support deep engineering when the
 person wants depth while remaining calm, safe, and understandable when
 the person needs simplicity.
 

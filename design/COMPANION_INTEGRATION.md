@@ -1,4 +1,7 @@
-# Companion System & Chat — Personal World UI Architecture
+# Companion System & Chat — Project Worlds UI Architecture
+
+(Formerly "Personal World" — product renamed 2026-09-12; the companion
+character named "Personal World" keeps its name. Technical identifiers unchanged.)
 
 **Date:** 2026-09-07
 **Status:** Companion design reference with current implementation and target distinctions
@@ -6,7 +9,7 @@
 
 ## Overview
 
-Personal World has five companion residents — real characters, not placeholders.
+Project Worlds has five companion residents — real characters, not placeholders.
 The domain/theme mappings below describe design intent. Current runtime supports
 companion selection and a standalone Chat page; it does not implement all the
 contextual identities, tool workflows, or response treatments in the exported screens.

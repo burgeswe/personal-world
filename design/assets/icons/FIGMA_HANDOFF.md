@@ -1,4 +1,7 @@
-# Figma handoff — Personal World production icon system
+# Figma handoff — Project Worlds production icon system
+
+(Formerly "Personal World" — product renamed 2026-09-12; the companion
+icon "Personal World" keeps its name.)
 
 **Prepared:** September 2026  
 **Repository:** `burgeswe/personal-world`  
@@ -9,7 +12,7 @@
 
 Turn the supplied production SVG pack into a reusable Figma Design icon library without redrawing, tracing, auto-generating, or recoloring the source geometry. The generated icon sheets were art direction only; these SVGs are the reviewed production masters.
 
-Chat is a first-class Personal World surface. Its complete family must remain easy to find beside Today, Worlds, Journal, Projects, and Settings.
+Chat is a first-class Project Worlds surface. Its complete family must remain easy to find beside Today, Worlds, Journal, Projects, and Settings.
 
 ## Pinned sources
 
@@ -82,7 +85,7 @@ Check optical centering, apparent weight, accidental fills, malformed paths, cor
 - Color, position, motion, glow, and expression never carry meaning alone.
 - Keep focus treatment on the control.
 - Visible icons may be 16–24px; targets remain at least 44×44 CSS px.
-- Do not add animation; Personal World defaults to reduced motion.
+- Do not add animation; Project Worlds defaults to reduced motion.
 - Let interface glyphs inherit platform foreground in forced-colors mode.
 
 ## Publish

@@ -1,12 +1,15 @@
-# Personal World — Finish Line
+# Project Worlds — Finish Line
 
-This document defines what “finished enough to live in every day” means for Personal World.
+(Formerly "Personal World" — product renamed 2026-09-12; the filename and
+cross-links keep the historical identifier. Technical identifiers unchanged.)
+
+This document defines what “finished enough to live in every day” means for Project Worlds.
 
 It is product intent, not a promise that every future idea belongs in the current release. When planning toward completion, this finish line outranks speculative roadmap items. Existing architecture, security, accessibility, and human-reliability contracts still apply.
 
 ## Product goal
 
-Personal World should be the place Rylee can stay in all day for the ordinary parts of her digital life.
+Project Worlds should be the place Rylee can stay in all day for the ordinary parts of her digital life.
 
 It is not just a dashboard and not just a chat app. It is a personal operating environment that combines:
 
@@ -74,13 +77,13 @@ Examples:
 - Project chat understands the selected repository, CI state, runtime, logs, issues, and project docs.
 - Lab chat understands services, health, deployments, and repair actions.
 
-There should also be a global chat capable of crossing the entire Personal World when authorized.
+There should also be a global chat capable of crossing the entire Project Worlds when authorized.
 
 Different capabilities may intentionally use different providers/models. Media discovery does not need the same brain as Git operations. Provider/model choice is backend policy and configuration, not hard-coded frontend behavior.
 
 ## Actions, approvals, and trusted automation
 
-Personal World supports both:
+Project Worlds supports both:
 
 - propose → explain → user approves → act
 - user-defined trusted automation that may act within previously approved boundaries
@@ -93,7 +96,7 @@ High-risk or destructive changes, access to sensitive vault material, and securi
 
 ## Native mini-apps, not clones
 
-Personal World should provide the useful everyday subset of the systems it integrates with.
+Project Worlds should provide the useful everyday subset of the systems it integrates with.
 
 Examples:
 
@@ -105,7 +108,7 @@ Examples:
 
 The native view should handle common daily work. Advanced or uncommon operations may open the original application.
 
-Underlying systems should not be completely hidden. Personal World should make their important state understandable in an easy-to-digest form and expose the technical guts when requested.
+Underlying systems should not be completely hidden. Project Worlds should make their important state understandable in an easy-to-digest form and expose the technical guts when requested.
 
 ## Projects workspace
 
@@ -113,7 +116,7 @@ Projects is a reusable mission-control shell.
 
 Selecting a project or repository re-contextualizes the whole workspace to that project.
 
-For the selected project, Personal World should be able to surface, when applicable:
+For the selected project, Project Worlds should be able to surface, when applicable:
 
 - repository and branch state
 - pull requests and issues
@@ -128,11 +131,11 @@ For the selected project, Personal World should be able to surface, when applica
 - project-specific chat and tools
 - safe build/test/deploy actions
 
-Switching from Personal World to VEFR, Burrito Journalism, MUNR, or another project should reuse the same conceptual shell while loading that project’s own context and capabilities.
+Switching from Project Worlds to VEFR, Burrito Journalism, MUNR, or another project should reuse the same conceptual shell while loading that project’s own context and capabilities.
 
 ## Interests and Candy Dispenser
 
-Personal World should contain a curated, non-critical discovery space for things Rylee enjoys.
+Project Worlds should contain a curated, non-critical discovery space for things Rylee enjoys.
 
 This includes, for example:
 
@@ -145,7 +148,7 @@ This includes, for example:
 The experience should support both:
 
 - things Rylee explicitly follows/configures
-- things Personal World predicts she may enjoy
+- things Project Worlds predicts she may enjoy
 
 Each item should support simple feedback such as thumbs up, thumbs down, save, and mute/not interested.
 
@@ -172,11 +175,11 @@ It should support:
 
 Routine healthy infrastructure stays quiet; problems surface clearly.
 
-Maintenance agents such as Tiny Gherkin should operate as bounded Personal World capabilities rather than as a separate destination.
+Maintenance agents such as Tiny Gherkin should operate as bounded Project Worlds capabilities rather than as a separate destination.
 
 ## Memory, journal, lore, and rewind
 
-Personal World must make it easy to recover context after time away.
+Project Worlds must make it easy to recover context after time away.
 
 Durable human-readable files, especially Markdown, are preferred as the canonical memory/lore layer where practical. Search indexes, vector stores, semantic caches, and derived indexes are acceleration and should be rebuildable rather than becoming hidden sources of truth.
 
@@ -196,7 +199,7 @@ The journal should make it possible to understand exactly what happened and why.
 
 The default interface should be calm and easy to digest.
 
-When requested, Personal World should become very technical.
+When requested, Project Worlds should become very technical.
 
 Progressive disclosure may expose details such as:
 
@@ -218,7 +221,7 @@ Do not hide important uncertainty merely to preserve a clean UI.
 
 ## Vault and secrets
 
-Personal World must include a usable native vault experience while preserving a provider-neutral secret boundary.
+Project Worlds must include a usable native vault experience while preserving a provider-neutral secret boundary.
 
 The UI should make it easy to use the built-in vault or connect/swap to an external vault provider without requiring an agent or manual code edits.
 
@@ -230,7 +233,7 @@ Sensitive vault access requires appropriate re-authentication/step-up behavior.
 
 Authentication is a finish-line requirement, not a later nice-to-have.
 
-Personal World should have a provider-neutral authentication layer capable of integrating with existing identity systems.
+Project Worlds should have a provider-neutral authentication layer capable of integrating with existing identity systems.
 
 The first finished version must prove a secure real-world SSO path. Authelia may be one supported deployment, but the architecture must not depend on Authelia specifically.
 
@@ -250,7 +253,7 @@ Native multi-user operation, household sharing, and collaboration are not requir
 
 Settings is a first-class product surface, not an afterthought.
 
-The product should expose coherent controls for as much of the Personal World as safely practical, including:
+The product should expose coherent controls for as much of the Project Worlds as safely practical, including:
 
 - section visibility/order/layout
 - provider/model per capability or surface
@@ -272,7 +275,7 @@ The product should expose coherent controls for as much of the Personal World as
 
 Extensibility itself is part of the product.
 
-It should be possible to adapt useful interaction patterns or components from other tools into Personal World without turning the product into a pile of unrelated embedded web apps.
+It should be possible to adapt useful interaction patterns or components from other tools into Project Worlds without turning the product into a pile of unrelated embedded web apps.
 
 The user-facing experience should remain internally coherent even when implementation components are swapped.
 
@@ -280,7 +283,7 @@ The user-facing experience should remain internally coherent even when implement
 
 Cuteness is non-negotiable.
 
-Personal World should be:
+Project Worlds should be:
 
 - modern
 - polished
@@ -327,7 +330,7 @@ Voice is desirable. Include it in the finish-line implementation only if it can 
 
 ## Definition of done
 
-Personal World is “finished enough” when Rylee can realistically choose it as her normal daily environment instead of routinely opening Homepage, source-control UIs, SOPS-over-SSH workflows, notes tools, separate media managers, infrastructure dashboards, and scattered project tools for ordinary tasks.
+Project Worlds is “finished enough” when Rylee can realistically choose it as her normal daily environment instead of routinely opening Homepage, source-control UIs, SOPS-over-SSH workflows, notes tools, separate media managers, infrastructure dashboards, and scattered project tools for ordinary tasks.
 
 Opening a specialized upstream application should feel like an exception for deep or unique functionality, not the normal path.
 
@@ -335,7 +338,7 @@ The finished experience should make Rylee want to stay in it all day: calm when 
 
 ## Guidance for planning agents
 
-When asked to plan or finish Personal World:
+When asked to plan or finish Project Worlds:
 
 1. Inspect the real current implementation before assuming roadmap items are missing.
 2. Compare actual behavior to this finish line.

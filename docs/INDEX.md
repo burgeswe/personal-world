@@ -1,4 +1,6 @@
-# Personal World — Documentation Index
+# Project Worlds — Documentation Index
+
+(Formerly "Personal World" — product renamed 2026-09-12; technical identifiers unchanged.)
 
 The map. Every document is one sentence away; depth lives behind the
 links. If a path you need is missing from this index, that is a bug —

@@ -1,4 +1,6 @@
-# Personal World — Screen Reader Walkthrough
+# Project Worlds — Screen Reader Walkthrough
+
+(Formerly "Personal World" — product renamed 2026-09-12; the observed title pattern below reflects the interface as built under the old name.)
 
 This walkthrough describes the current dashboard in `src/personal_world/api.py`
 (`_DASHBOARD_HTML` and `syncRoute`), implementation baseline `5017865`.

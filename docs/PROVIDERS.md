@@ -137,7 +137,7 @@ gives it useful local meaning with **zero providers connected**
 If you are writing design handoff documentation, keep it tool-neutral.
 Suggested verbatim section:
 
-> Personal World design semantics are core-owned and live in the
+> Project Worlds design semantics are core-owned and live in the
 > repository: `design/tokens.json` (semantic tokens:
 > `surface.canvas`, `text.primary`, `status.healthy`, `focus.ring`,
 > `motion.reduced`), the `Accessibility` model (motion, contrast,

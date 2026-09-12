@@ -9,7 +9,7 @@ and `tests/test_framework.py`.
 > **Native baseline. Optional enrichment. No mandatory ecosystem
 > dependency.**
 
-Personal World is a standalone OSS product with its own CLI, API, and
+Project Worlds is a standalone OSS product (formerly "Personal World", renamed 2026-09-12; technical identifiers unchanged) with its own CLI, API, and
 dashboard. External systems — Gitea, GitHub, Forgejo, Traefik, Komodo,
 OpenWebUI, Home Assistant, candy-dispenser, model runtimes, Figma —
 may enrich it. None may become a hidden requirement.
@@ -22,7 +22,7 @@ like surgery, the boundary is wrong.
 
 ## 2. Capability ownership (the core invariant)
 
-> A capability belongs to Personal World.
+> A capability belongs to Project Worlds.
 > A provider implements or enriches that capability.
 > The provider does not define the capability.
 
@@ -171,7 +171,7 @@ reinterpreted.
 
 ## 10. UI implications
 
-Personal World navigation and presentation are organized around World
+Project Worlds navigation and presentation are organized around World
 concepts and user tasks (currently Today / Chat / World / Journal / Vault / Settings), never
 third-party product names. An Apps/Services view and provider deep
 links are secondary navigation. The generic capability contract is
@@ -184,7 +184,7 @@ Design semantics are core-owned; design tools are replaceable
 machinery. The same principle extends to design tooling:
 
 ```text
-Personal World design contract
+Project Worlds design contract
         ↓
 portable semantic artifacts (design/tokens.json, docs, tests)
         ↓
@@ -205,7 +205,7 @@ design provider / implementation tool
 - Accessibility semantics (motion, contrast, text_scale, density,
   targets) live in the core `Accessibility` model. A design tool
   implements them; it does not own them.
-- A contributor must be able to clone Personal World, inspect its
+- A contributor must be able to clone Project Worlds, inspect its
   design and accessibility contract, and implement or redesign it
   without any design tool. `DESIGN-HANDOFF.md` is a tool-neutral
   *design implementation handoff*; a Figma-specific section within
@@ -257,7 +257,7 @@ CLI initialization remains supported without completing a wizard.
 The framework supports this richer target flow:
 
 ```text
-What would you like Personal World to help with?
+What would you like Project Worlds to help with?
         ↓
 enable capability → native baseline available immediately
         ↓
@@ -273,7 +273,7 @@ Never: "choose between 37 vendor integrations before you can begin."
 | Provider-shaped core | `source_control == Gitea` |
 | Required optional services | core cannot boot without Traefik |
 | Vendor-specific canonical schemas | canonical ingress object == raw Traefik router JSON |
-| UI duplication | Personal World implements an entire Git client |
+| UI duplication | Project Worlds implements an entire Git client |
 | Capability disappearance | Gitea removed → source control concept vanishes |
 | Silent degradation | provider offline → old observation shown as healthy |
 | Secret-bearing manifests | providers.yaml contains API tokens |

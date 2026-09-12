@@ -1,6 +1,6 @@
 # Contributing and support
 
-Personal World is in active development. Start with the [README](README.md)
+Project Worlds is in active development. Start with the [README](README.md)
 and [architecture](docs/ARCHITECTURE.md); the full map is the
 [documentation index](docs/INDEX.md), and design work starts at the
 [handoff index](design/handoff/README.md). Public issues are suitable for

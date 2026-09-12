@@ -1,4 +1,7 @@
-# Personal World — VEFR-inspired book tree & Norse squirrel
+# Project Worlds — VEFR-inspired book tree & Norse squirrel
+
+
+(Formerly "Personal World" — product renamed 2026-09-12.)
 
 **Source:** `world-tree-squirrel-source-rig.svg` · 512 × 512 · transparent background.
 **Preview:** `world-tree-squirrel-preview.png` (reference only; import the SVG).

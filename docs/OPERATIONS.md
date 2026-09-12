@@ -65,7 +65,7 @@ environment variable:
 `frontend/dist` relative to the repository in a local install and
 `/app/frontend/dist` in the container image, where the image build
 produces it. When the dist directory has no `index.html`, page requests
-answer `503` with an HTML explanation ("Personal World's interface is
+answer `503` with an HTML explanation ("Project Worlds' interface is
 not built") and the API remains fully available; the response never
 contains filesystem or environment values.
 

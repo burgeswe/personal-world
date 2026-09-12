@@ -43,7 +43,7 @@ on her own hardware, with portable state she owns.
 | Interest | Entry point |
 |---|---|
 | Understand the application | [Architecture](docs/ARCHITECTURE.md) and [native baseline](docs/NATIVE-BASELINE-AND-ENRICHMENT.md) |
-| Understand the target daily-use experience | [Personal World finish line](docs/PERSONAL-WORLD-FINISH-LINE.md) |
+| Understand the target daily-use experience | [Project Worlds finish line](docs/PERSONAL-WORLD-FINISH-LINE.md) |
 | Explore the design | [Handoff index](design/handoff/README.md) and [frame index](design/handoff/FRAME_INDEX.md) |
 | Browse companions and animation | [Asset index](design/assets/README.md) and [companion collection](design/assets/companions/README.md) |
 | Everything, one page | [Documentation index](docs/INDEX.md) |
@@ -51,7 +51,7 @@ on her own hardware, with portable state she owns.
 | Contribute or get help | [Contributing and support](CONTRIBUTING.md) |
 | Report a security concern | [Private security reporting](SECURITY.md) |
 
-![Personal World companion artwork: robot, book-tree squirrel and taco news truck](design/assets/companions/companion-trio-preview.png)
+![Project Worlds companion artwork: robot, book-tree squirrel and taco news truck](design/assets/companions/companion-trio-preview.png)
 
 ## What works today
 

@@ -1,6 +1,6 @@
 # Agent Contract Index
 
-Personal World uses canonical contracts to define how humans and AI
+Project Worlds uses canonical contracts to define how humans and AI
 agents work within it.
 
 Before substantial work, read this index and load every contract

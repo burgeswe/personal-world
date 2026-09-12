@@ -1,4 +1,7 @@
-# Personal World — Little helper robot
+# Project Worlds — Little helper robot
+
+
+(Formerly "Personal World" — product renamed 2026-09-12.)
 
 **Source:** `robot-source-rig.svg` · 512 × 512 · transparent background.
 **Preview:** `robot-preview.png` (reference only; import the SVG).

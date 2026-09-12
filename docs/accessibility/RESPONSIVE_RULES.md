@@ -1,4 +1,6 @@
-# Personal World — Responsive Rules
+# Project Worlds — Responsive Rules
+
+(Formerly "Personal World" — product renamed 2026-09-12.)
 
 Current behavior is grounded in `_DASHBOARD_HTML` in
 `src/personal_world/api.py`, implementation baseline `5017865`.

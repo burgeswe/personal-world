@@ -1,4 +1,7 @@
-# Personal World Architecture
+# Project Worlds Architecture
+
+(Formerly "Personal World" — product renamed 2026-09-12; technical
+identifiers unchanged. Historical docs may still use the old name.)
 
 Stable truth. Replaceable machinery.
 
@@ -113,7 +116,7 @@ may be a deployment layer, but it does not replace application authorization.
 
 **Finish-line target:** authentication becomes provider-neutral at the
 application seam. A real SSO/identity provider may supply normal sign-in,
-while Personal World retains its own authorization/ownership rules. The
+while Project Worlds retains its own authorization/ownership rules. The
 finished path must support step-up authentication for severe/destructive
 changes and sensitive vault/secure-note access, plus recoverable
 bootstrap/break-glass access when an external identity provider is
@@ -220,7 +223,7 @@ The lab already runs a de-facto epistemic taxonomy across three
 systems — rylee_lore claim states (`candidate/accepted/superseded/
 rejected/unknown`), rylee-context provenance triples (`source ×
 confidence × status`), and VEFR's propose-validate-apply Spark
-contract. Personal World's lore states (`confirmed/derived/suggested/
+contract. Project Worlds' lore states (`confirmed/derived/suggested/
 ephemeral`) align with all of them, and the shared promotion rule is
 identical everywhere: **agents append evidence; only an explicit human
 action promotes to canon.** The core's `MutationDenied` gate enforces

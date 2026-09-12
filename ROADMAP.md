@@ -1,6 +1,6 @@
 # Roadmap
 
-Direction, not promises. Personal World is developed by one human with
+Direction, not promises. Project Worlds is developed by one human with
 an AI-agent workflow; items move between horizons freely and nothing
 here is a delivery commitment. Dates exist only where a milestone has
 already happened.

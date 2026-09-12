@@ -7,7 +7,7 @@
 
 Redrawn from the uploaded reference recovered from “Catch Up On Benchmarks.” Preserve the cute pastel pink/lilac/mint/blue hair, warm skin, teal tail and aubergine-brown outlines. The deliberate changes are a smaller head relative to the full silhouette, a visible neck/torso/waist, a long curved tapering tail and two distinct fins. Keep this unmistakable mermaid silhouette rather than returning to an oval lower body. Flat pastel regions replace gradient/raster treatments for a simple source.
 
-She is a quiet companion in Personal World: friendly, observant and calm. Movement should feel alive without demanding attention.
+She is a quiet companion in Project Worlds: friendly, observant and calm. Movement should feel alive without demanding attention.
 
 ## Layer map
 

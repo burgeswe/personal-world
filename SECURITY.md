@@ -1,6 +1,6 @@
 # Security policy
 
-Personal World is an early, single-user application. Security fixes target the
+Project Worlds is an early, single-user application. Security fixes target the
 current `main` branch; there is no supported stable release series yet.
 
 ## Report privately

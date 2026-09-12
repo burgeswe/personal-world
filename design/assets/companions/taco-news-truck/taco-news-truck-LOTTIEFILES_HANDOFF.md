@@ -1,4 +1,7 @@
-# Personal World — Taco truck & newspaper stand
+# Project Worlds — Taco truck & newspaper stand
+
+
+(Formerly "Personal World" — product renamed 2026-09-12.)
 
 **Source:** `taco-news-truck-source-rig.svg` · 512 × 512 · transparent background.
 **Preview:** `taco-news-truck-preview.png` (reference only; import the SVG).

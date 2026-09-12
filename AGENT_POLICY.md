@@ -1,6 +1,8 @@
-# Agent Policy — Personal World Decision Kernel
+# Agent Policy — Project Worlds Decision Kernel
 
-This is the mandatory entry point for AI agents working on Personal World.
+(Formerly "Personal World" — product renamed 2026-09-12; technical identifiers unchanged.)
+
+This is the mandatory entry point for AI agents working on Project Worlds.
 
 ## Mandatory preflight
 
@@ -17,13 +19,13 @@ Before planning, researching, designing, modifying, reviewing, merging, or relea
 
 ## Product rule
 
-Personal World is a personal appliance, not an administration console.
+Project Worlds is a personal appliance, not an administration console.
 
 Technology should disappear behind understandable human concepts.
 
 Prefer:
 
-`human intent → native Personal World concept → adapter`
+`human intent → native Project Worlds concept → adapter`
 
 over:
 
@@ -117,7 +119,7 @@ Administrative capability must not automatically imply routine access to private
 
 ## Simplicity
 
-Before adding a new service, framework, database, agent system, or UI, ask whether an existing Personal World or Lab abstraction already owns the responsibility.
+Before adding a new service, framework, database, agent system, or UI, ask whether an existing Project Worlds or Lab abstraction already owns the responsibility.
 
 Prefer:
 
@@ -125,7 +127,7 @@ Prefer:
 - explicit schemas
 - boring APIs
 - deterministic logic
-- native Personal World concepts
+- native Project Worlds concepts
 - provider adapters
 - ordinary Git
 - visible state
@@ -164,4 +166,4 @@ Substantial work ends with:
 
 > **Make honesty cheaper than fabrication.**
 
-Personal World should make the safe, accessible, truthful, understandable path the natural path—for its users and for the agents building it.
+Project Worlds should make the safe, accessible, truthful, understandable path the natural path—for its users and for the agents building it.

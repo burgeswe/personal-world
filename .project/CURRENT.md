@@ -156,16 +156,42 @@ blindly rename all of them. Classification used:
   `design/handoff/*` (archived Figma spec package), `docs/p1/FOUNDATION-SPEC.md`,
   ADRs, dated handoffs. These remain truthful to the period they
   describe; rewriting them would falsify history for no benefit.
-- **Deliberately deferred, not yet touched:** the canonical policy docs
-  under `docs/` (`ACCESSIBILITY_CONTRACT.md`, `ARCHITECTURE.md`,
+- **Identity cleanup complete (2026-09-12, second pass):** the
+  deferred policy-doc prose above was updated in a bounded follow-up
+  pass (`docs/ACCESSIBILITY_CONTRACT.md` → under
+  `docs/accessibility/`, `ARCHITECTURE.md`,
   `HUMAN_RELIABILITY_CONTRACT.md`, `PERSONAL-WORLD-FINISH-LINE.md`,
-  `PERSONAL-WORLD-COMPLETION-PLAN.md`, etc.) still say "Personal World"
-  in prose throughout. Their *content* (the actual rules/architecture)
-  is unaffected by the rename and remains fully canonical and in force
-  — only the product-name prose is stale. Updating dozens of live
-  policy documents' flavor text was judged out of scope for a bounded
-  trunk-unification + identity-anchoring pass; a future bounded
-  documentation pass can do this without touching any rule content.
+  `PERSONAL-WORLD-COMPLETION-PLAN.md`, `INDEX.md`, `NATIVE-BASELINE-
+  AND-ENRICHMENT.md`, `OPERATIONS.md`, `PROVIDERS.md`, `DESIGN-HANDOFF.md`,
+  `ROADMAP.md`, `SECURITY.md`, `README.md`, `AGENT_POLICY.md`,
+  `AGENT_CONTRACTS.md`, `CONTRIBUTING.md`, `frontend/README.md`, current
+  `design/` docs, issue templates, `compose.yaml` header comment). Each
+  occurrence was classified first; rule/technical content is unchanged.
+- **Still intentionally old — runtime UI strings:** user-facing strings
+  inside the application itself (`src/personal_world/api.py` legacy HTML
+  titles/headings, `frontend/src/` screen headings, brand lockup, chat
+  footnote, journal/today humanizers, `theme_pack.py` author metadata)
+  still say "Personal World". They are runtime code coupled to tests and
+  shipped bundles, not prose documentation — renaming them is a
+  code-and-tests pass with its own verification cycle, deliberately
+  deferred to the owner. The companion character name (below) must be
+  settled first so a runtime pass doesn't guess wrong.
+- **Historical Personal World references intentionally retained:**
+  `CHANGELOG.md`, `docs/adr/`, `docs/p1/FOUNDATION-SPEC.md`,
+  `design/handoff/` (archived Figma package), `docs/FIGMA-HANDOFF-LESSONS.md`,
+  dated postmortems (`design/SVG_POLISH_NOTES.md`), the
+  `PERSONAL-WORLD-*` **filenames** and their cross-links (stable
+  identifiers, not prose), the screen-reader walkthrough's observed
+  `Personal World — <page>` runtime title pattern (it describes the
+  built interface), and every technical identifier. These are legitimate
+  history or deliberate stability, not stale prose.
+- **Technical identifiers intentionally remain `personal-world`:** repo
+  slug, Python package, CLI command, npm package, compose service
+  names, schema URIs (`personal-world/…`), CI images, config paths.
+  Renaming any of these is a separate future migration decision.
+- **New product work may begin** — trunk unified, identity cleanup
+  complete; the only open identity question is the companion name below
+  (which does not block product work).
 
 ## In-flight / untracked
 
@@ -174,11 +200,18 @@ unrelated to any pass, still untouched.
 
 ## UNKNOWN
 
-- Whether the default-companion-vs-product-name overlap
-  ("Personal World" the character) should be resolved by renaming the
-  companion, keeping it as-is, or something else — owner decision, not
-  inferred here.
+- **UNKNOWN / OWNER DECISION: Should the companion named "Personal
+  World" retain that name?** The default companion character is
+  properly named "Personal World" (see
+  `design/COMPANION_INTEGRATION.md`, the five-residents table, and
+  `design/assets/companions/personal-world/`). The product rename to
+  Project Worlds does **not** rename the character; whether she keeps
+  her established name or takes a new one is the owner's call, not to be
+  inferred by an agent. This is the one open identity question; it
+  blocks nothing else (runtime strings above reference it only as a
+  ordering dependency).
 - Whether/when the repository slug, Python package, and CLI command
-  should follow the product rename — explicitly deferred, not decided.
+  should follow the product rename — explicitly deferred, not decided
+  (same for runtime UI strings; see identity-pass section).
 - Live production/deployment state of this trunk outside this checkout
   — not verified this pass (local + CI evidence only).

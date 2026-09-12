@@ -1,8 +1,11 @@
-# Personal World — Theme Pack Framework
+# Project Worlds — Theme Pack Framework
+
+(Formerly "Personal World" — product renamed 2026-09-12; the companion
+character named "Personal World" keeps its name.)
 
 **Companion, Palette & Identity Packs — v1.0**
 
-Personal World ships with a default companion (World Keeper globe) but supports swappable Theme Packs. A pack personalizes the experience without touching the accessibility contract.
+Project Worlds ships with a default companion (World Keeper globe) but supports swappable Theme Packs. A pack personalizes the experience without touching the accessibility contract.
 
 ---
 
@@ -143,7 +146,7 @@ All animated companions must respect these constraints:
 
 ## Default Pack
 
-The default pack ships with Personal World:
+The default pack ships with Project Worlds:
 
 - **Companion:** World Keeper globe (teal, orbital ring, continent patches)
 - **Primary accent:** `#72B1B1` (teal)

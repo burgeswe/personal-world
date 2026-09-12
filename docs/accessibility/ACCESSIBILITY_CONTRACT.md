@@ -1,4 +1,6 @@
-# Personal World Accessibility Contract
+# Project Worlds Accessibility Contract
+
+(Formerly "Personal World" — product renamed 2026-09-12; technical identifiers unchanged.)
 
 **Version 1.0 -- September 2026**
 
@@ -91,7 +93,7 @@ Canonical. Commit to repository. Engineering preserves these rules regardless of
 ```
 PLATFORM / ASSISTIVE REQUIREMENT
         |
-PERSONAL WORLD ACCESSIBILITY FLOOR
+PROJECT WORLDS ACCESSIBILITY FLOOR
         |
 USER COMFORT PREFERENCE
         |
@@ -100,7 +102,7 @@ DECORATIVE ENHANCEMENT
 
 A lower layer may never violate a requirement above it.
 
-6.2. OS `prefers-reduced-motion` is respected unconditionally. It overrides Personal World animation preferences.
+6.2. OS `prefers-reduced-motion` is respected unconditionally. It overrides Project Worlds animation preferences.
 
 6.3. Browser zoom is never disabled. User text scaling is never prevented.
 
@@ -108,9 +110,9 @@ A lower layer may never violate a requirement above it.
 
 6.5. The interface never requires a specific orientation.
 
-6.6. Forced-colors / platform high-contrast mode: do not override in ways that destroy platform accessibility. Personal World's high-contrast treatment is additive, not a replacement for OS-level forced colors.
+6.6. Forced-colors / platform high-contrast mode: do not override in ways that destroy platform accessibility. Project Worlds' high-contrast treatment is additive, not a replacement for OS-level forced colors.
 
-6.7. Personal World preferences may increase comfort but may never lower the accessibility floor.
+6.7. Project Worlds preferences may increase comfort but may never lower the accessibility floor.
 
 ---
 

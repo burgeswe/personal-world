@@ -1,6 +1,6 @@
 {
   "meta": {
-    "name": "Personal World Preference Schema",
+    "name": "Project Worlds Preference Schema",
     "version": "1.0",
     "description": "User comfort preferences. No value combination violates the accessibility floor."
   },
@@ -46,7 +46,7 @@
   },
   "resolution_hierarchy": [
     "Platform / assistive requirement (highest priority)",
-    "Personal World accessibility floor",
+    "Project Worlds accessibility floor",
     "User comfort preference",
     "Decorative enhancement (lowest priority)"
   ],

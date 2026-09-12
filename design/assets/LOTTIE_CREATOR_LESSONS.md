@@ -1,6 +1,6 @@
 # LottieFiles Creator — Production Lessons
 
-> Durable lessons from building the Personal World Mermaid companion animation.
+> Durable lessons from building the Project Worlds Mermaid companion animation.
 > Keep this document as the starting checklist for future animated companion work.
 
 ## Why this exists
@@ -9,7 +9,7 @@ The Mermaid animation was completed successfully, but the process exposed severa
 mechanical limitations in the Figma/SVG → LottieFiles Creator workflow.
 
 These lessons should be applied **before animation work begins** on the next
-Personal World companion.
+Project Worlds companion.
 
 ---
 
@@ -325,7 +325,7 @@ specific architectural reason to do so.
 
 # Future Companion Preflight
 
-Before animating the next Personal World resident:
+Before animating the next Project Worlds resident:
 
 - [ ] Canonical source identified and immutable
 - [ ] Direct import tested

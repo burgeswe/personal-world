@@ -1,6 +1,9 @@
-# Personal World frontend (React)
+# Project Worlds frontend (React)
 
-Tracked frontend for Personal World (P1 foundation). Built to `dist/` and
+(Formerly "Personal World" — product renamed 2026-09-12; npm package
+identifier unchanged.)
+
+Tracked frontend for Project Worlds (P1 foundation). Built to `dist/` and
 served by the backend in react mode (`PW_FRONTEND=react`; the P1 default
 stays `legacy` until parity).
 

@@ -1,7 +1,7 @@
 /**
  * T14 gates e2e (§7 rows 15–17): the full-route walk proving zero
  * cross-origin requests, zero console errors, and external-resource
- * absence (fonts/icons served from the Personal World origin only).
+ * absence (fonts/icons served from the Project Worlds origin only).
  */
 import { test, expect } from "playwright/test";
 import {
@@ -32,7 +32,7 @@ test.describe("no external requests (row 16)", () => {
     await bootWait(page);
     const html = await page.content();
     expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic|cdn\.|analytics|gtag|doubleclick/i);
-    // fonts resolve from the Personal World origin
+    // fonts resolve from the Project Worlds origin
     const fontHrefs = await page.evaluate(() =>
       Array.from(document.querySelectorAll("link[href]"))
         .map((l) => (l as HTMLLinkElement).href)

@@ -1,4 +1,7 @@
-# Personal World — Completion Plan
+# Project Worlds — Completion Plan
+
+(Formerly "Personal World" — product renamed 2026-09-12; the filename and
+cross-links keep the historical identifier. Technical identifiers unchanged.)
 
 **Status:** Canonical plan (authoritative ordering and acceptance toward the
 finish line). **Version 1, 2026-09-10.**
@@ -196,7 +199,7 @@ rylee_lore integration may read and produce review/evidence receipts.
 ### D5 — Lab truth source and calendar
 
 The `lab` CLI exists in `burgeswe/homelab` at `scripts/lab`; the real
-deployment mounts it read-only into the container. Personal World owns the
+deployment mounts it read-only into the container. Project Worlds owns the
 human-facing Lab capability/UI; `scripts/lab` is the provider underneath.
 Do not recreate the control plane. Inability to see the tool from a
 development checkout is an environment condition, not evidence of absence.
@@ -458,7 +461,7 @@ door.**
   severe actions after break-glass.
 - Loopback is a bonus recovery path, never the only one (D2).
 
-**Deployment requirement (coordination item C1).** Personal World performs
+**Deployment requirement (coordination item C1).** Project Worlds performs
 its own OIDC, so its Traefik router carries **no** Authelia forward-auth
 middleware; otherwise break-glass is unreachable during an IdP outage. If
 homelab policy insists on forward-auth, exempt `/auth/local*` and
@@ -831,9 +834,9 @@ rules and feedback weights · Jellyfin adapter (only if observed).
 
 ## Part F — Coordination items (cross-repository work, not decisions)
 
-- **C1 — homelab:** Traefik router for Personal World without Authelia
-  forward-auth (Personal World performs OIDC itself), or exempt
-  `/auth/local*` and `/healthz`. Register Personal World as an OIDC client
+- **C1 — homelab:** Traefik router for Project Worlds without Authelia
+  forward-auth (Project Worlds performs OIDC itself), or exempt
+  `/auth/local*` and `/healthz`. Register Project Worlds as an OIDC client
   in Authelia (redirect URI, PKCE, ID-token signing algorithm). Owned by P2.
 - **C2 — homelab:** confirm `scripts/lab` verbs for logs/restart/redeploy
   and their JSON output schema; confirm the container mount location under

@@ -1,6 +1,9 @@
-# Personal World icon system
+# Project Worlds icon system
 
-Production vector icons for Personal World. Concept sheets established the friendly, rounded direction and taxonomy; every glyph here was rebuilt as deterministic geometry on a 24x24 grid.
+(Formerly "Personal World" — product renamed 2026-09-12; the companion
+slot/icon named "Personal World" keeps its name; schema identifiers unchanged.)
+
+Production vector icons for Project Worlds. Concept sheets established the friendly, rounded direction and taxonomy; every glyph here was rebuilt as deterministic geometry on a 24x24 grid.
 
 ## Contents
 

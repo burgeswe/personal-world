@@ -1,4 +1,7 @@
-# Personal World — Design Handoff (V0.1)
+# Project Worlds — Design Handoff (V0.1)
+
+(Formerly "Personal World" — product renamed 2026-09-12; the design it
+describes is unchanged. Technical identifiers unchanged.)
 
 **Status: canonical design reference** (as of V0.1; superseded sections
 are marked inline). **For: the Figma design stage.** This document describes
@@ -36,7 +39,7 @@ the Figma implementation brief.
 
 ## A. Product purpose
 
-Personal World is the operator's **world-centric personal dashboard and
+Project Worlds is the operator's **world-centric personal dashboard and
 control surface** — the front door to her lab, designed to answer
 *her* questions ("what matters today?") rather than to list
 installed services.
@@ -72,7 +75,7 @@ CLI/API uses — not a separate application architecture.
 
 ### A.0 Workflows over products (binding for design)
 
-Personal World is not primarily an integration dashboard. It is a
+Project Worlds is not primarily an integration dashboard. It is a
 small personal toolkit built around **understandable workflows**.
 Design every surface by first asking *"what is the person trying to
 know or do?"* — provider identity is provenance, secondary.
@@ -87,7 +90,7 @@ know or do?"* — provider identity is provenance, secondary.
 | Reasoning / assistance | OpenWebUI UI |
 
 External products may provide richer implementations of these
-workflows; they do not define how Personal World presents them.
+workflows; they do not define how Project Worlds presents them.
 
 ### A.0.1 CLI first; UI as another view
 
@@ -109,7 +112,7 @@ smallest human-understandable terms appropriate to their jobs.
 Advanced provider details belong in disclosure/detail surfaces or
 specialist external tools. Avoid language and metaphors that
 require understanding infrastructure products merely to use
-Personal World.
+Project Worlds.
 
 ### A.0.3 Local-first, external-capable
 
@@ -117,7 +120,7 @@ All of these configurations are equally legitimate and NONE may
 look like the "real" one while others look incomplete:
 
 ```text
-Personal World only / + local model / + cloud AI / + paid service /
+Project Worlds only / + local model / + cloud AI / + paid service /
 + self-hosted provider stack
 ```
 
@@ -144,7 +147,7 @@ reduced capability.
 
 ### A.1 Product direction (binding for design)
 
-Personal World should be designed as a coherent personal
+Project Worlds should be designed as a coherent personal
 dashboard/control surface, **not as a prettier service launcher or
 collection of embedded third-party admin panels.** Do NOT design the
 IA around "one installed service = one card." The desired conceptual
@@ -165,8 +168,8 @@ APPS/SERVICES— where are the specialist tools when I need them?
 An Apps/Services surface still exists — for launching specialist
 applications and provider diagnostics — but it is the bottom of the
 hierarchy, not the primary model. The existing homepage service
-launcher stays until Personal World proves itself through
-dogfooding; Personal World neither depends on it nor reproduces it.
+launcher stays until Project Worlds proves itself through
+dogfooding; Project Worlds neither depends on it nor reproduces it.
 
 ### A.2 Framework contract (normative for design)
 
@@ -339,7 +342,7 @@ writes, secrets-broker use.
 - **Wrong/missing inner token** → inline "Authentication failed —
   check the token." (API returns 401; unconfigured server returns
   503 with "Auth not configured on the server.")
-- **Backend down** → "Personal World is unreachable — the core may
+- **Backend down** → "Project Worlds is unreachable — the core may
   be down." (network error text).
 - **Session failure** → API calls begin 401-ing; shell shows the
   auth-failed message again.
@@ -388,7 +391,7 @@ Implemented today (all verified in tests):
 - `role="status" aria-live="polite"` load/result messaging
 - Dark default; low-saturation light override via
   `prefers-color-scheme`
-- Useful title ("Personal World — Today"), meaningful error text
+- Useful title ("Project Worlds — Today"), meaningful error text
 
 Design must add: reading-load shaping (tables/lists over prose),
 static layouts (predictable shape/position), no ALL-CAPS headers
@@ -517,7 +520,7 @@ preference exists in the schema.
     "Source Control" or "Safe secrets", never a Gitea/Vault panel.
 13. CLI parity: every concept must be understandable and operable
     without the web UI; the UI is a view, never the source of truth.
-14. No configuration may look like the "real" one — Personal World
+14. No configuration may look like the "real" one — Project Worlds
     only, + local model, + cloud AI, + paid service, and
     + self-hosted stack are all equally legitimate presentations.
 15. Expansion without regression: enrichment must present as an
@@ -552,7 +555,7 @@ embedded here to keep this document shareable.
 ## P. Open design questions (for the operator + Figma, NOT engineering)
 
 - Visual identity: harmonize with the operator Lab aubergine/teal, LRW
-  warm charcoal/pink, or a new Personal World personality?
+  warm charcoal/pink, or a new Project Worlds personality?
 - Navigation style: top nav vs sidebar vs segmented tabs?
 - Default density: comfortable vs compact?
 - Personality: mascot usage (mermaid? a new world-keeper

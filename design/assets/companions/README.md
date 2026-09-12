@@ -1,4 +1,8 @@
-# Personal World companion source collection
+# Project Worlds companion source collection
+
+(Formerly "Personal World" — product renamed 2026-09-12; the companion
+character named "Personal World" and the `personal-world/` rig directory
+keep their established names.)
 
 Layered SVG source artwork, static previews and animation handoffs. These are starting rigs, not finished Lottie animations or an installed application change.
 

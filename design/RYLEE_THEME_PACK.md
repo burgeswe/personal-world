@@ -6,7 +6,7 @@
 
 ## Identity
 
-the operator's Mermaid is a personal mascot based on the operator's real tattoo. She serves as the digital resident, comforting companion, and status indicator across all personal servers, services, and homelab portals. In Personal World, she replaces the default World Keeper globe as the companion character.
+the operator's Mermaid is a personal mascot based on the operator's real tattoo. She serves as the digital resident, comforting companion, and status indicator across all personal servers, services, and homelab portals. In Project Worlds, she replaces the default World Keeper globe as the companion character.
 
 **Style:** Delicate, fine-tip pen doodle feel. Clean, continuous lines (1.5px–2px strokes) paired with soft, desaturated pastels. Never loud or neon.
 
@@ -28,7 +28,7 @@ the operator's Mermaid is a personal mascot based on the operator's real tattoo.
 
 ## Accent Overrides
 
-When the the operator pack is active, Personal World's accent tokens change:
+When the the operator pack is active, Project Worlds' accent tokens change:
 
 | Token | Default (World Keeper) | the operator (Mermaid) |
 |---|---|---|

@@ -1,4 +1,4 @@
-# Personal World — supported standalone deployment.
+# Project Worlds — supported standalone deployment. (Product formerly "Personal World"; service identifiers unchanged.)
 # One appliance: core/API + dashboard served by one process, plus a
 # persistent volume. No homelab, Gitea, Komodo, or any provider is
 # required to boot; optional providers are wired via config/connections.json.

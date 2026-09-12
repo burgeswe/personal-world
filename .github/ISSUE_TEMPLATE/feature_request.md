@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Personal World is direction-driven, not backlog-driven — see the
+        Project Worlds is direction-driven, not backlog-driven — see the
         [roadmap](https://github.com/burgeswe/personal-world/blob/main/ROADMAP.md).
         Ideas that fit the core invariant (capabilities core-owned, providers
         optional) land faster than ones that add mandatory dependencies.
