@@ -88,6 +88,19 @@ verbatim on request; zero fetches in the calm default view. Finishes
 the "understand exactly what happened" + nerd-mode transparency rows
 for journal.
 
+**First propose→approve→act workflow (2026-09-12, `1152301`):**
+from a selected repository on Projects, the screen proposes a
+read-only status re-check and explains WHAT/WHY/TOOL/RISK/EXPECTED;
+nothing runs before the explicit "Approve and refresh" button. The
+act is `POST /api/source-control/refresh` (step-up gated) which
+re-runs the native git status for that repo and journals a
+PROVIDER_ACTION audit event answering who proposed, what was
+approved, which tool ran, what came back, and when. The panel shows
+explicit has/has-not-happened state through proposed→running→done/
+failed; repeated use re-proposes rather than auto-running. This is
+the FIRST approval workflow only — the pattern (not an engine) for
+later, higher-risk actions.
+
 **Context-aware World Assistant (2026-09-12, implementation run
 `ac9c18d`):** the Drawer-hosted assistant now knows which section it
 was opened from. The shell derives route/section (GET /api/sections
@@ -201,15 +214,15 @@ blindly rename all of them. Classification used:
   `AGENT_CONTRACTS.md`, `CONTRIBUTING.md`, `frontend/README.md`, current
   `design/` docs, issue templates, `compose.yaml` header comment). Each
   occurrence was classified first; rule/technical content is unchanged.
-- **Still intentionally old — runtime UI strings:** user-facing strings
-  inside the application itself (`src/personal_world/api.py` legacy HTML
-  titles/headings, `frontend/src/` screen headings, brand lockup, chat
-  footnote, journal/today humanizers, `theme_pack.py` author metadata)
-  still say "Personal World". They are runtime code coupled to tests and
-  shipped bundles, not prose documentation — renaming them is a
-  code-and-tests pass with its own verification cycle, deliberately
-  deferred to the owner. The companion character name (below) must be
-  settled first so a runtime pass doesn't guess wrong.
+- **Runtime brand pass COMPLETE (2026-09-12, `1152301`):** every
+  PRODUCT-BRAND runtime string now says "Project Worlds" — the shell
+  brand lockup, login h1, setup headings + default world name ("My
+  Project Worlds"), SPA/index titles, legacy dashboard titles and
+  error copy, chat provenance/footnote, FastAPI title, theme-pack
+  author. COMPANION references intentionally keep "Personal World"
+  (companion selection lists, "A conversation with Personal World"
+  humanizers, companion-context names). TECHNICAL IDENTIFIERS and
+  HISTORICAL TEXT unchanged, as before.
 - **Historical Personal World references intentionally retained:**
   `CHANGELOG.md`, `docs/adr/`, `docs/p1/FOUNDATION-SPEC.md`,
   `design/handoff/` (archived Figma package), `docs/FIGMA-HANDOFF-LESSONS.md`,
@@ -234,16 +247,12 @@ unrelated to any pass, still untouched.
 
 ## UNKNOWN
 
-- **UNKNOWN / OWNER DECISION: Should the companion named "Personal
-  World" retain that name?** The default companion character is
-  properly named "Personal World" (see
-  `design/COMPANION_INTEGRATION.md`, the five-residents table, and
-  `design/assets/companions/personal-world/`). The product rename to
-  Project Worlds does **not** rename the character; whether she keeps
-  her established name or takes a new one is the owner's call, not to be
-  inferred by an agent. This is the one open identity question; it
-  blocks nothing else (runtime strings above reference it only as a
-  ordering dependency).
+- **RESOLVED (owner decision, 2026-09-12): the companion keeps the
+  name "Personal World".** Interpretation: "Project Worlds is the
+  environment. Personal World is the companion inside it." The
+  character, her slots/artwork/rig, the companion-selection lists, and
+  the "A conversation with Personal World" journal humanizers all keep
+  her name. This unblocked the runtime brand pass (below).
 - Whether/when the repository slug, Python package, and CLI command
   should follow the product rename — explicitly deferred, not decided
   (same for runtime UI strings; see identity-pass section).
@@ -255,11 +264,13 @@ unrelated to any pass, still untouched.
 Everything below needs owner input, external infrastructure, or a
 product decision — not silently guessable from repo truth:
 
-- **Actions / approvals / trusted-automation UI** (Finish Line
-  "Actions, approvals"): the backend has step-up auth and the
-  StepUpPrompt primitive, but no propose→approve→act workflow surface
-  exists yet. Needs product design (what first actions, what approval
-  copy) — Rylee-owned.
+- **Further approval workflows** (beyond the first repository-refresh
+  workflow): the propose→approve→act pattern now exists and is proven;
+  subsequent actions (journal corrections, provider changes, later
+  destructive-with-step-up operations) are new bounded workflows — each
+  needs its own proposal copy + risk classification, and destructive
+  Git operations remain explicitly out of scope until the owner says
+  otherwise.
 - **Interests / Candy Dispenser and Media sections**: require real
   discovery/media provider connections (external infrastructure) or
   explicit interest-feed configuration; honest EmptyStates remain until
