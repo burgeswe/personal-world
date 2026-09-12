@@ -16,6 +16,7 @@ from .world import World
 
 CONTEXT_HISTORY_EVENTS = 12
 SOURCE_CONTROL_REPOS_IN_CONTEXT = 12
+PROJECTS_IN_CONTEXT = 12
 
 
 def _fmt_caps(statuses: dict) -> list[str]:
@@ -102,6 +103,7 @@ def build_world_context(
         parts.extend(
             _source_control_block(Path(config_dir))
         )
+        parts.extend(_projects_block())
 
     return "\n".join(parts)
 
@@ -141,6 +143,56 @@ def build_ui_context(
         "is not there, say so plainly.",
     ]
     return "\n".join(lines)
+
+
+def _projects_block() -> list[str]:
+    """Bounded, compact project-estate projection from the
+    agent-sync sensor (the same read-only observation the Projects
+    screen serves). Context budget: one line per project that is NOT
+    quiet (state word + tree summary), quiet projects as ONE count
+    line, SHAs never (they enter context only when the person asks
+    and the assistant reads the Projects details). Sensor absent ->
+    no block at all (the estate is unknown, not empty). The assistant
+    may summarize/explain/point to Projects; it may NOT mutate,
+    and this block carries no authority to do anything."""
+    from .providers.agent_sync import AgentSyncProjectSensor
+    try:
+        result = AgentSyncProjectSensor().observe_projects()
+    except Exception:
+        return []
+    if not result.ok or not result.data:
+        return []
+    projects = result.data.get("projects") or []
+    if not projects:
+        return []
+    quiet = 0
+    lines = []
+    for p in projects:
+        publish = p.get("publish_state")
+        tree = p.get("working_tree") or {}
+        dirty = (tree.get("staged", 0) + tree.get("modified", 0)
+                 + tree.get("untracked", 0) + tree.get("conflicted", 0))
+        state: str | None = {
+            "diverged": "diverged",
+            "ahead": "unpublished (local ahead)",
+            "behind": "behind remote",
+            "match": None,
+            None: "unknown (remote unreachable)",
+        }.get(publish, "unknown")
+        if publish == "match" and dirty > 0:
+            state = "published; local work"
+        if state is None:
+            quiet += 1
+            continue
+        lines.append(
+            f"- {p.get('project')}: {state}"
+            + (f"; {dirty} uncommitted file(s)" if dirty else "; clean tree")
+        )
+    if quiet:
+        lines.append(f"- {quiet} quiet")
+    if result.data.get("observed_at"):
+        lines.append(f"Observed: {result.data['observed_at']}")
+    return ["\n## Projects (agent-sync observation)"] + lines
 
 
 def _source_control_block(config_dir) -> list[str]:
