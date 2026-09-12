@@ -104,13 +104,16 @@ class GitHubEnrichment(StatusContract):
         The result never contains commit text, file paths, or tokens.
         Any failure is a structured state; 'not_github' is a valid,
         non-error answer for remotes hosted elsewhere."""
-        if _gh_binary() is None:
-            return fail("unavailable",
-                        warnings=["gh CLI not found on this host"])
+        # The remote's identity is a LOCAL fact (from the git remote
+        # URL): a non-GitHub remote is honestly 'not_github' even when
+        # gh is entirely absent. Only remote-observed fields need gh.
         slug = self._slug(remote_url)
         if slug is None:
             return fail("not_github", data={"remote": remote_url or None},
                         warnings=["remote is not a GitHub remote"])
+        if _gh_binary() is None:
+            return fail("unavailable",
+                        warnings=["gh CLI not found on this host"])
         repo = self._api(f"repos/{slug}")
         if not isinstance(repo, dict):
             return fail("unavailable",
