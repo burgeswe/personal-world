@@ -66,17 +66,27 @@ no card-chrome composition drift on Today/Journal/Vault; the two
 previously-shipping accessibility bugs below are fixed everywhere, not
 just on the branch that found them.
 
-**Projects workspace v1 (2026-09-12, `35204b6`):** the Projects
+**Projects workspace v1 (2026-09-12, `35204b6` + `dff360f`):** the Projects
 section now renders the REAL repository table from the native
 source-control baseline (`GET /api/source-control/status`): one row
 per discovered repo with branch, dirty/ahead/behind, last commit; a
 quiet glance line (counts only; clean stays quiet); per-repo
 provenance (path/revision/remote) and recent-commit drill-in
-(`GET /api/source-control/history`). No search paths configured →
-the same honest EmptyState + knob as before. The e2e fixture points
-the baseline at the repo itself, so CI exercises real git — no
-fabricated rows anywhere. Frontend type now mirrors the backend
-`repository_status()` exactly (9 previously-dropped fields recovered).
+(`GET /api/source-control/history`). Selecting a repo is a shareable
+`?repo=` deep link, and the World Assistant context carries it as the
+observed selected entity ("looking at personal-world"). No search
+paths configured → the same honest EmptyState + knob as before. The
+e2e fixture points the baseline at the repo itself, so CI exercises
+real git — no fabricated rows anywhere. Frontend type now mirrors the
+backend `repository_status()` exactly (9 previously-dropped fields
+recovered).
+
+**Journal audit trail (2026-09-12, `fd5c519`):** the Journal screen
+gained a lazy Level-4 "Audit trail" disclosure — the backend
+AuditRenderer's full technical log (provenance on every line), shown
+verbatim on request; zero fetches in the calm default view. Finishes
+the "understand exactly what happened" + nerd-mode transparency rows
+for journal.
 
 **Context-aware World Assistant (2026-09-12, implementation run
 `ac9c18d`):** the Drawer-hosted assistant now knows which section it
@@ -239,3 +249,30 @@ unrelated to any pass, still untouched.
   (same for runtime UI strings; see identity-pass section).
 - Live production/deployment state of this trunk outside this checkout
   — not verified this pass (local + CI evidence only).
+
+## Remaining implementation gaps (surveyed 2026-09-12, implementation run)
+
+Everything below needs owner input, external infrastructure, or a
+product decision — not silently guessable from repo truth:
+
+- **Actions / approvals / trusted-automation UI** (Finish Line
+  "Actions, approvals"): the backend has step-up auth and the
+  StepUpPrompt primitive, but no propose→approve→act workflow surface
+  exists yet. Needs product design (what first actions, what approval
+  copy) — Rylee-owned.
+- **Interests / Candy Dispenser and Media sections**: require real
+  discovery/media provider connections (external infrastructure) or
+  explicit interest-feed configuration; honest EmptyStates remain until
+  then. Feed-building-via-chat is design work.
+- **SSO / provider-neutral authentication**: a secure real-world path
+  needs a chosen identity provider (Authelia or other) and deployment
+  decisions — security-sensitive, owner-scoped.
+- **Legacy dashboard deletion (T15-style cutover)**: the legacy
+  server-rendered UI remains the `PW_FRONTEND` default; flipping the
+  default/deleting legacy is an owner gate.
+- **Lab repair workflows, dependency/topology, service config UI**:
+  depend on the real Lab CLI deployment and what homelab operations
+  Rylee wants surfaced; backend routes exist for several but the
+  product shape is owner input.
+- **Runtime UI brand strings** still say "Personal World" in places —
+  deliberately deferred pending the companion-name decision above.
