@@ -5,7 +5,7 @@ current `main` branch; there is no supported stable release series yet.
 
 ## Report privately
 
-Use [GitHub private vulnerability reporting](https://github.com/burgeswe/personal-world/security/advisories/new)
+Use [GitHub private vulnerability reporting](https://github.com/Rylee-Bee/personal-world/security/advisories/new)
 for vulnerabilities or suspected exposed credentials. Do not open a public issue
 or pull request containing a secret, personal data, private address, or exploit
 against a live deployment. Include affected paths/commit IDs and a minimal

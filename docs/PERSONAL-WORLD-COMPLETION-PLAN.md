@@ -195,7 +195,7 @@ rylee_lore integration may read and produce review/evidence receipts.
 
 ### D5 — Lab truth source and calendar
 
-The `lab` CLI exists in `burgeswe/homelab` at `scripts/lab`; the real
+The `lab` CLI exists in `Rylee-Bee/homelab` at `scripts/lab`; the real
 deployment mounts it read-only into the container. Personal World owns the
 human-facing Lab capability/UI; `scripts/lab` is the provider underneath.
 Do not recreate the control plane. Inability to see the tool from a

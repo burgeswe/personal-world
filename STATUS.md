@@ -10,8 +10,8 @@ landed across the homelab-family repos) is tracked in the **homelab
 repository's agent checkoff**:
 
 ```text
-burgeswe/homelab  →  docs/agent/CHECKOFF.md      (current epoch rows)
-burgeswe/homelab  →  docs/agent/handoffs/LATEST.md   (detailed deltas)
+Rylee-Bee/homelab  →  docs/agent/CHECKOFF.md      (current epoch rows)
+Rylee-Bee/homelab  →  docs/agent/handoffs/LATEST.md   (detailed deltas)
 ```
 
 Personal World work appears there as rows tagged with this repo. This

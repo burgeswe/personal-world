@@ -19,7 +19,7 @@ local files.
 ## 1. Clone + install
 
 ```bash
-git clone https://github.com/burgeswe/personal-world.git
+git clone https://github.com/Rylee-Bee/personal-world.git
 cd personal-world
 uv sync --frozen --extra test --extra crypto
 ```
@@ -60,7 +60,7 @@ rm .env-tmp
 recursion); point them at the repo dir itself:
 
 ```bash
-docker exec personal-world sh -c \\\"git clone --bare https://github.com/burgeswe/personal-world.git /data/repos/personal-world.git\\\" || true
+docker exec personal-world sh -c \\\"git clone --bare https://github.com/Rylee-Bee/personal-world.git /data/repos/personal-world.git\\\" || true
 ```
 
 (or plain `git clone` non-bare: same result for status).
