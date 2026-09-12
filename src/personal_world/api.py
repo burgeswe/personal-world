@@ -483,7 +483,10 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         _require_person(getattr(request.state, "principal", None))
         _, _, uj = _state_for(request)
         target = journal if uj == journal.path else Journal(uj)
-        events = target.recent(n)
+        # Calm view: each chain's CURRENT version only (superseded
+        # originals stay in history + audit; the correction workflow
+        # links them).
+        events = target.current_events(n)
         return {"ok": True,
                 "data": [e.model_dump(mode="json") for e in events]}
 
@@ -503,6 +506,102 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         target = journal if uj == journal.path else Journal(uj)
         target.record(kind=JournalKind.OBSERVATION, summary=text, source="user")
         return {"ok": True, "data": {"written": len(text)}}
+
+    # ── Journal correction workflow (second propose→approve→act
+    # workflow; same trust model as the repository-status refresh).
+    # The UI proposes + explains + collects explicit approval BEFORE
+    # this endpoint is called; the endpoint is the ACT (step-up
+    # gated, same as every write). Append-only: the original entry is
+    # never rewritten — the corrected entry links back via
+    # `supersedes` and readers derive currency from those links.
+    # Idempotency: a retry carrying the same target and the same
+    # corrected text returns the ALREADY-CURRENT entry instead of
+    # appending a duplicate (double-click/retry/refresh safe). ──
+    @app.post("/api/journal/supersede", dependencies=[Depends(require_step_up)])
+    async def journal_supersede(request: Request) -> dict:
+        _require_person(getattr(request.state, "principal", None))
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="body must be JSON")
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be an object")
+        target_ts = str(body.get("supersedes") or "").strip()
+        corrected = str(body.get("text") or "").strip()
+        reason = str(body.get("reason") or "").strip()
+        if not target_ts or not corrected:
+            raise HTTPException(
+                status_code=422,
+                detail="supersedes (entry timestamp) and text are required",
+            )
+        if len(corrected) > 2000:
+            raise HTTPException(status_code=422, detail="text must be 1-2000 chars")
+        _, _, uj = _state_for(request)
+        target = journal if uj == journal.path else Journal(uj)
+        old = target.by_ts(target_ts)
+        if old is None:
+            # Missing/invalid entry: nothing changes; say so honestly.
+            return {
+                "ok": False,
+                "status": "not_configured",
+                "warnings": [f"no journal entry found at {target_ts}"],
+            }
+        # Idempotent retry: the target's current replacement already
+        # says exactly this → return it; no duplicate append.
+        for later in target.events():
+            if later.supersedes == old.ts:
+                if later.summary == corrected:
+                    return {
+                        "ok": True,
+                        "status": "healthy",
+                        "data": {
+                            "current": later.model_dump(mode="json"),
+                            "superseded": old.model_dump(mode="json"),
+                            "already_applied": True,
+                        },
+                    }
+                break  # a different correction owns it → conflict below
+        try:
+            current, audit = target.supersede(
+                target_ts, corrected, reason or None,
+                proposed_by="the Journal screen",
+            )
+        except ValueError as exc:
+            return {
+                "ok": False,
+                "status": "unavailable",
+                "warnings": [str(exc)],
+            }
+        return {
+            "ok": True,
+            "status": "healthy",
+            "data": {
+                "current": current.model_dump(mode="json"),
+                "superseded": old.model_dump(mode="json"),
+                "audit": audit.model_dump(mode="json"),
+                "already_applied": False,
+            },
+        }
+
+    @app.get("/api/journal/history", dependencies=[Depends(require_auth)])
+    async def journal_history(request: Request, ts: str) -> dict:
+        """Full correction chain for one entry (progressive disclosure
+        backing store): oldest → newest, with reasons."""
+        _, _, uj = _state_for(request)
+        target = journal if uj == journal.path else Journal(uj)
+        entry = target.by_ts(ts)
+        if entry is None:
+            return {
+                "ok": False,
+                "status": "not_configured",
+                "warnings": [f"no journal entry found at {ts}"],
+            }
+        chain = target.history_of(entry)
+        return {
+            "ok": True,
+            "status": "healthy",
+            "data": {"entries": [e.model_dump(mode="json") for e in chain]},
+        }
 
     @app.get("/api/journal/audit", dependencies=[Depends(require_auth)])
     async def journal_audit(request: Request) -> dict:

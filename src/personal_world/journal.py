@@ -50,6 +50,110 @@ class Journal:
     def recent(self, n: int = 20) -> list[JournalEvent]:
         return list(self.events())[-n:]
 
+    def by_ts(self, ts) -> JournalEvent | None:
+        """One entry by its UTC timestamp key, or None."""
+        from datetime import datetime
+        key = ts if isinstance(ts, datetime) else datetime.fromisoformat(str(ts))
+        for e in self.events():
+            if e.ts == key:
+                return e
+        return None
+
+    def supersede(
+        self,
+        target_ts,
+        corrected_text: str,
+        reason: str | None,
+        proposed_by: str = "journal",
+    ) -> tuple[JournalEvent, JournalEvent]:
+        """Append-only correction: the record is never rewritten.
+
+        Appends the corrected entry (supersedes=target, reason) AND an
+        APPROVAL-kind audit event naming what changed, who proposed,
+        what approved it, and when. The TARGET row itself is never
+        mutated on disk; readers derive currency from superseded_by.
+
+        Raises KeyError when the target does not exist, and ValueError
+        when the target is already superseded (branching corrections
+        are not supported — correct the current entry instead).
+        """
+        from datetime import datetime, timezone
+        old = self.by_ts(target_ts)
+        if old is None:
+            raise KeyError(f"no journal entry at {target_ts}")
+        # Append-only currency: an entry is superseded when any later
+        # entry links to it. Branching corrections are rejected.
+        for later in self.events():
+            if later.supersedes == old.ts:
+                raise ValueError(
+                    f"entry at {target_ts} was already superseded — "
+                    "correct the current entry instead"
+                )
+        current = JournalEvent(
+            kind=old.kind,
+            summary=corrected_text,
+            provenance=Provenance(source=old.provenance.source,
+                                  authority="reported"),
+            classification=old.classification,
+            supersedes=old.ts,
+            supersede_reason=(reason or None),
+        )
+        self.append(current)
+        # The APPROVAL audit event answers: what entry changed, old vs
+        # new version, who proposed (the Journal screen), who approved
+        # (the explicit human action), why (when supplied), mechanism,
+        # when. IDs (timestamps) over content copies.
+        audit = JournalEvent(
+            kind=JournalKind.APPROVAL,
+            summary=(
+                f"journal correction approved: entry at {old.ts.isoformat()} "
+                f"superseded by {current.ts.isoformat()} — proposed by "
+                f"{proposed_by}, approved by the owner via the Journal "
+                f"screen"
+                + (f", reason: {reason}" if reason else "")
+            ),
+            provenance=Provenance(source="journal"),
+            classification=old.classification,
+        )
+        self.append(audit)
+        return current, audit
+
+    def current_events(self, n: int = 20) -> list[JournalEvent]:
+        """The calm view: newest-last list of the latest n entries
+        where each chain's CURRENT version only is shown. Superseded
+        entries are filtered out; a corrected entry renders in its
+        place with its own (later) timestamp."""
+        superseded_keys = {e.supersedes for e in self.events()
+                           if e.supersedes is not None}
+        out = []
+        for e in self.events():
+            if e.ts in superseded_keys:
+                continue
+            out.append(e)
+        return out[-n:]
+
+    def history_of(self, entry: JournalEvent) -> list[JournalEvent]:
+        """Full linear supersession chain for one entry, oldest
+        first: the entry itself back to the original it replaced
+        (transitively), plus any later correction of it."""
+        chain: list[JournalEvent] = [entry]
+        # Walk back through supersedes links.
+        cur = entry
+        back = 0
+        while cur.supersedes is not None and back < 100:
+            prev = self.by_ts(cur.supersedes)
+            if prev is None:
+                break
+            chain.insert(0, prev)
+            cur = prev
+            back += 1
+        # Include any correction that replaced THIS entry later.
+        evs = list(self.events())
+        for cand in evs:
+            if cand.supersedes == entry.ts and cand not in chain:
+                chain.append(cand)
+        return chain
+
     def for_story(
         self,
         include_private: bool = False,

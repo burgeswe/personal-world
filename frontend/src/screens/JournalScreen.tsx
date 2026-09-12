@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { saveJournalEntry, ApiError, type JournalEntry } from "../lib/api";
+import {
+  saveJournalEntry,
+  supersedeJournalEntry,
+  fetchJournalHistory,
+  ApiError,
+  type JournalEntry,
+} from "../lib/api";
 import { useJournalPage, useJournalKey, useJournalAudit } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { Disclosure } from "../primitives/Disclosure";
@@ -137,6 +143,13 @@ function JournalScreen() {
   );
 
   const canLoadMore = pageSize < PAGE_STEPS.length - 1;
+
+  // After an approved correction: re-query the calm view. The query
+  // keeps `data` while refetching (first-load-only loader), so the
+  // screen never unmounts mid-workflow (the Projects lesson).
+  const onEntryCorrected = () => {
+    void journal.refetch();
+  };
 
   const loadMore = () => {
     const next = Math.min(pageSize + 1, PAGE_STEPS.length - 1);
@@ -311,6 +324,11 @@ function JournalScreen() {
                     <p className="text-sm text-[var(--pw-color-text-muted)]">
                       Kind: {entry.kind}
                     </p>
+                    {entry.supersedes ? (
+                      <p className="text-sm text-[var(--pw-color-text-secondary)]" data-pw-corrected="true">
+                        Corrected — an earlier version of this entry is in its history.
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-2">
                       <Disclosure summary="Source" level={3}>
                         <div className="space-y-1 pt-1 text-sm">
@@ -321,6 +339,8 @@ function JournalScreen() {
                         </div>
                       </Disclosure>
                       <TechnicalProvenance entry={entry} />
+                      <EntryHistory entry={entry} />
+                      <CorrectEntryButton entry={entry} onCorrected={onEntryCorrected} />
                     </div>
                   </li>
                 ))}
@@ -405,6 +425,258 @@ function JournalAuditBody() {
         </pre>
       )}
     </Disclosure>
+  );
+}
+
+/**
+ * Correct this entry (second propose→approve→act workflow; same trust
+ * model as the Projects repository refresh). The button only REVEALS
+ * the correction panel — it performs nothing. Exactly one panel is
+ * open at a time (entry timestamp in JournalScreen-level state is
+ * unnecessary: each row owns its own toggle, and opening another
+ * row's button simply leaves this one closed).
+ */
+function CorrectEntryButton({
+  entry,
+  onCorrected,
+}: {
+  entry: JournalEntry;
+  onCorrected: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        data-pw-correct-entry={entry.ts}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm font-medium text-[var(--pw-color-text-secondary)] hover:text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+      >
+        {open ? "Close correction" : "Correct this entry"}
+      </button>
+      {open ? (
+        <EntryCorrectionPanelInner entry={entry} onCorrected={onCorrected} />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The approval panel (inline — no modal trap). PROPOSE: what/why/
+ * original/proposed/effect/risk/recovery, all plain language, then
+ * "Nothing has changed yet." APPROVE: the only trigger of the act.
+ * After approval the panel collapses back into the row and the calm
+ * list shows the corrected entry as current.
+ */
+function EntryCorrectionPanelInner({
+  entry,
+  onCorrected,
+}: {
+  entry: JournalEntry;
+  onCorrected: () => void;
+}) {
+  const { announce } = useAnnounce();
+  const [text, setText] = useState(entry.summary);
+  const [reason, setReason] = useState("");
+  const [state, setState] = useState<
+    { phase: "proposed" } | { phase: "running" } | { phase: "done" } | { phase: "failed"; detail: string }
+  >({ phase: "proposed" });
+
+  const approve = async () => {
+    if (state.phase === "running") return;
+    const corrected = text.trim();
+    if (!corrected || corrected === entry.summary) return;
+    setState({ phase: "running" });
+    try {
+      const env = await supersedeJournalEntry(entry.ts, corrected, reason.trim() || undefined);
+      if (env.ok && env.data) {
+        setState({ phase: "done" });
+        announce(
+          env.data.already_applied
+            ? "This correction was already in place."
+            : "Entry corrected. The original stays in history.",
+          { kind: "action_completed", key: "journal-supersede" }
+        );
+        // The calm list re-queries; the row re-renders with the
+        // corrected text + "Corrected" note (the visible result). The
+        // panel stays on Done so the person never has to infer what
+        // happened — closing it is their choice ("Close correction").
+        onCorrected();
+      } else {
+        setState({
+          phase: "failed",
+          detail: env.warnings?.[0] ?? "The correction could not be applied.",
+        });
+        announce("Correction failed. The original entry is unchanged.", {
+          kind: "error",
+          key: "journal-supersede",
+        });
+      }
+    } catch {
+      setState({
+        phase: "failed",
+        detail: "The correction could not be applied. Nothing else changed.",
+      });
+      announce("Correction failed. The original entry is unchanged.", {
+        kind: "error",
+        key: "journal-supersede",
+      });
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby={`correct-heading-${entry.ts}`}
+      data-pw-correction={state.phase}
+      className="mt-2 rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-4"
+    >
+      <h3 id={`correct-heading-${entry.ts}`} className="text-base font-semibold">
+        Correct this entry
+      </h3>
+      {state.phase === "proposed" ? (
+        <>
+          <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="font-semibold text-[var(--pw-color-text-primary)]">Original (stays in history)</dt>
+              <dd className="text-[var(--pw-color-text-secondary)]">{entry.summary}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-[var(--pw-color-text-primary)]">Proposed (becomes the current version)</dt>
+              <dd>
+                <label htmlFor={`correct-text-${entry.ts}`} className="sr-only">
+                  Corrected entry text
+                </label>
+                <textarea
+                  id={`correct-text-${entry.ts}`}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                  className="w-full resize-none rounded-lg border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-canvas)] p-2 text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+                />
+              </dd>
+            </div>
+          </dl>
+          <label htmlFor={`correct-reason-${entry.ts}`} className="mt-2 block text-sm text-[var(--pw-color-text-secondary)]">
+            Reason (optional — kept with the history)
+            <input
+              id={`correct-reason-${entry.ts}`}
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={200}
+              className="mt-1 w-full rounded-lg border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-canvas)] p-2 text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+            />
+          </label>
+          <ul className="mt-2 space-y-0.5 text-sm text-[var(--pw-color-text-secondary)]">
+            <li>Effect: this replaces the entry as the current version.</li>
+            <li>The original will stay in history, inspectable forever.</li>
+            <li>Risk: low — your own note, and nothing is erased.</li>
+            <li>Recovery: you can correct the corrected entry again anytime.</li>
+          </ul>
+          <p className="mt-2 text-sm" data-pw-correction-notice>
+            Nothing has changed yet. Only your approval applies it.
+          </p>
+          <button
+            type="button"
+            data-pw-correction-approve
+            disabled={!text.trim() || text.trim() === entry.summary}
+            onClick={() => void approve()}
+            className="mt-2 inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm font-medium text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2 disabled:opacity-50"
+          >
+            Approve and correct
+          </button>
+        </>
+      ) : state.phase === "running" ? (
+        <p className="mt-1 text-sm" role="status">
+          Applying the correction…
+        </p>
+      ) : state.phase === "done" ? (
+        <p className="mt-1 text-sm" role="status">
+          Done — the corrected entry is now the current version. The
+          original stays in history.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm" role="status">
+            The correction was not applied: {state.detail}
+          </p>
+          <button
+            type="button"
+            onClick={() => setState({ phase: "proposed" })}
+            className="mt-2 inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+          >
+            Back to the proposal
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * "View history" disclosure: renders for entries with a correction
+ * chain (supersedes set — i.e., this entry replaced an earlier one).
+ * Loads the chain on open (progressive disclosure; zero cost when
+ * collapsed). Non-color distinction: each version labeled
+ * Original / Corrected with timestamps.
+ */
+function EntryHistory({ entry }: { entry: JournalEntry }) {
+  const [chain, setChain] = useState<JournalEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!entry.supersedes) return null;
+
+  // Lazy: the chain loads the first time the disclosure opens (the
+  // summary click is the trigger — Disclosure toggles open state
+  // itself; this fetch is fire-and-remember).
+  const load = () => {
+    if (chain !== null || error !== null) return;
+    fetchJournalHistory(entry.ts)
+      .then(setChain)
+      .catch(() =>
+        setError("The history could not be loaded. The entry itself still works.")
+      );
+  };
+
+  return (
+    <span data-pw-history onClick={load}>
+    <Disclosure
+      summary="View history"
+      level={3}
+    >
+      <div className="pt-1 text-sm">
+        {error ? (
+          <p>{error}</p>
+        ) : chain === null ? (
+          <p role="status">Loading the earlier versions…</p>
+        ) : (
+          <ol className="space-y-2" data-pw-history-chain={entry.ts}>
+            {chain.map((v, i) => (
+              <li key={v.ts}>
+                <p className="font-semibold text-[var(--pw-color-text-primary)]">
+                  {i === 0
+                    ? "Original"
+                    : `Corrected version ${i}`}
+                  {" — "}
+                  <time dateTime={v.ts} className="font-normal text-[var(--pw-color-text-muted)]">
+                    {fullTime(v.ts)}
+                  </time>
+                </p>
+                <p className="text-[var(--pw-color-text-secondary)]">{v.summary}</p>
+                {v.supersede_reason ? (
+                  <p className="text-xs text-[var(--pw-color-text-muted)]">
+                    Reason: {v.supersede_reason}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </Disclosure>
+    </span>
   );
 }
 

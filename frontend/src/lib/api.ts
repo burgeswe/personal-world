@@ -277,6 +277,10 @@ export interface JournalEntry {
     authority: string;
   };
   classification: string;
+  /** Supersede support (append-only correction workflow): links to
+   * the entry this one replaces, and the short reason when given. */
+  supersedes?: string | null;
+  supersede_reason?: string | null;
 }
 
 /** Bare JSON — /healthz has no envelope (api.py `healthz`). */
@@ -746,6 +750,53 @@ export async function saveJournalEntry(text: string): Promise<unknown> {
     headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
     body: JSON.stringify({ text }),
   });
+}
+
+/**
+ * POST /api/journal/supersede (step-up gated): the ACT of the journal
+ * correction workflow. The UI must collect explicit approval BEFORE
+ * calling — the endpoint appends the corrected entry (original is
+ * never rewritten) and journals the audit answer. Idempotent: an
+ * identical retry returns already_applied=true without appending.
+ */
+export interface SupersedeResult {
+  ok: boolean;
+  status: string;
+  warnings?: string[];
+  data: {
+    current: JournalEntry;
+    superseded: JournalEntry;
+    audit?: JournalEntry;
+    already_applied?: boolean;
+  } | null;
+}
+export async function supersedeJournalEntry(
+  supersedes: string,
+  text: string,
+  reason?: string
+): Promise<SupersedeResult> {
+  return apiFetchEnvelope<SupersedeResult>("/api/journal/supersede", {
+    method: "POST",
+    headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
+    body: JSON.stringify({ supersedes, text, ...(reason ? { reason } : {}) }),
+  });
+}
+
+/** GET /api/journal/history?ts=: the full correction chain (oldest →
+ * newest) behind the per-entry history disclosure. */
+export async function fetchJournalHistory(
+  ts: string
+): Promise<JournalEntry[]> {
+  const payload = await apiFetch<{ entries: JournalEntry[] }>(
+    `/api/journal/history?ts=${encodeURIComponent(ts)}`
+  );
+  const entries = (payload as { entries?: JournalEntry[] }).entries;
+  if (!Array.isArray(entries)) {
+    throw new ApiError(500, "http_error", "History response was not the expected shape.", {
+      body: payload,
+    });
+  }
+  return entries;
 }
 
 /**

@@ -179,6 +179,18 @@ class JournalEvent(BaseModel):
     summary: str
     provenance: Provenance
     classification: Classification = Classification.PRIVATE
+    # ── Supersede support (journal correction workflow, 2026-09-12).
+    # Additive and optional so every pre-existing row validates
+    # unchanged. `ts` (UTC, unique per append in practice) is the
+    # natural entry key used for chain links. The journal is
+    # append-only: the ORIGINAL row is never rewritten — currency is
+    # derived by readers from supersedes links on the newer entries.
+    # Set on the NEW (current) entry naming what it replaces:
+    supersedes: datetime | None = None
+    # Short human reason for the correction, when one was supplied.
+    # Kept on the new entry so history answers "why" where the
+    # correction is read.
+    supersede_reason: str | None = None
 
 
 class Pack(BaseModel):
