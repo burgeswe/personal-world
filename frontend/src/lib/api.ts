@@ -562,6 +562,36 @@ export async function fetchActors(): Promise<unknown[]> {
   return apiFetch<unknown[]>("/api/actors");
 }
 
+/**
+ * GET /api/source-control/enrichment?repo=<name>: GitHub enrichment
+ * for ONE repository — remote facts local Git cannot know. Keeps the
+ * honest {ok, status, data} envelope: 'unavailable' (gh missing /
+ * unauthenticated / offline), 'not_github' (remote hosted elsewhere),
+ * 'not_configured' (repo not in search paths). Quiet degradation is
+ * the contract — the native table above is never affected.
+ */
+export interface SourceControlEnrichment {
+  slug: string | null;
+  url: string | null;
+  default_branch: string | null;
+  open_prs: number | null;
+  open_issues: number | null;
+  pushed_at: string | null;
+}
+export type SourceControlEnrichmentEnvelope = {
+  ok: boolean;
+  status: string;
+  warnings?: string[];
+  data: SourceControlEnrichment | { remote: string | null } | null;
+};
+export async function fetchSourceControlEnrichment(
+  repo: string
+): Promise<SourceControlEnrichmentEnvelope> {
+  return apiFetchEnvelope<SourceControlEnrichmentEnvelope>(
+    `/api/source-control/enrichment?repo=${encodeURIComponent(repo)}`
+  );
+}
+
 export async function fetchBackup(): Promise<unknown> {
   return apiFetch<unknown>("/api/backup");
 }

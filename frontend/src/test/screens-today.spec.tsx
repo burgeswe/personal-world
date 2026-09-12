@@ -37,7 +37,7 @@ const DAILY_BUSY = {
   warnings: ["reasoning: unavailable"],
   actions: [
     "drift: focus: 'resting' != intent 'shipping'",
-    "available: gitea (source_control) — not enabled for writes",
+    "available: forge-probe (source_control) — not enabled for writes",
   ],
   data: {
     world: { facts: 3, intents: 1, policies: 1, cemented_policies: 0, capabilities: 3, providers: 2, packs: 0 },
@@ -46,7 +46,7 @@ const DAILY_BUSY = {
     attention: [
       "reasoning: unavailable",
       "drift: focus: 'resting' != intent 'shipping'",
-      "available: gitea (source_control) — not enabled for writes",
+      "available: forge-probe (source_control) — not enabled for writes",
     ],
   },
 };
@@ -232,7 +232,7 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
     await bootToday(
       defaultHandlers({
         apps: [
-          { id: "gitea", name: "Gitea", url: "https://git.example.net" },
+          { id: "forge-probe", name: "Forge Probe", url: "https://git.example.net" },
           { id: "grafana", name: "Grafana", url: "https://metrics.example.net", category: "dashboards" },
         ],
       })
@@ -243,7 +243,7 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
         .getAllByText("More from your world")
         .find((el) => el.tagName === "SPAN") as HTMLElement
     );
-    expect(screen.getByRole("link", { name: /Gitea/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Forge Probe/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Grafana/ })).toBeTruthy();
   });
 
@@ -261,11 +261,11 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
 
   it("adding a service PUTs the full registry through step-up and the new service appears", async () => {
     const handlers = defaultHandlers({
-      apps: [{ id: "gitea", name: "Gitea", url: "https://git.example.net" }],
+      apps: [{ id: "forge-probe", name: "Forge Probe", url: "https://git.example.net" }],
     });
     let putCount = 0;
     let savedApps: unknown[] = [
-      { id: "gitea", name: "Gitea", url: "https://git.example.net" },
+      { id: "forge-probe", name: "Forge Probe", url: "https://git.example.net" },
     ];
     let putHeaders: Headers | null = new Headers();
     handlers["/api/apps"] = (_path: string, init?: RequestInit) => {
@@ -308,7 +308,7 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
     // Both attempts carry the step-up header (single withStepUp path)
     expect(putHeaders?.get("X-PW-StepUp")).toBe("1");
     expect(savedApps).toEqual([
-      { id: "gitea", name: "Gitea", url: "https://git.example.net" },
+      { id: "forge-probe", name: "Forge Probe", url: "https://git.example.net" },
       { id: "home-assistant", name: "Home Assistant", url: "https://ha.example.net/" },
     ]);
     expect(await screen.findByRole("link", { name: /Home Assistant/ })).toBeTruthy();
@@ -450,7 +450,7 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
     ).toBeTruthy();
     // entries that do not match that shape keep their recorded content verbatim
     expect(within(changes).getByText(/drift: focus: 'resting' != intent 'shipping'/)).toBeTruthy();
-    expect(within(changes).queryByText(/available: gitea/)).toBeNull();
+    expect(within(changes).queryByText(/available: forge-probe/)).toBeNull();
   });
 
   it("quiets the healthy majority behind one honest count line; problems stay individual", async () => {

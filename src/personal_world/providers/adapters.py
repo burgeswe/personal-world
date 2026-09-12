@@ -1,7 +1,9 @@
 """Concrete adapters. Each wraps an existing system WITHOUT modifying it.
 
 - http_status: generic HTTP health probe (facts for any URL)
-- gitea: real source_control provider over Gitea's HTTP API
+- forge: real source_control provider over a Gitea-style HTTP API
+  (substitution-proof machinery; the supported live source-control
+  enrichment is GitHub via providers/github.py)
 - fake_source_control: reference provider proving substitution through
   the same SourceControlContract
 - sops_broker: secret broker over the operator's SOPS store; values
@@ -53,13 +55,14 @@ class HttpStatus(StatusContract):
 
 
 class Gitea(SourceControlContract):
-    """Real source_control provider: read-only Gitea API.
+    """Forge-HTTP source_control provider (Gitea-style API).
 
-    Token comes from env indirection (GITEA_TOKEN); if absent, only
-    unauthenticated endpoints are used. Never writes.
-    """
+    Substitution-proof machinery kept for contract conformance; not a
+    supported live provider in the default deployment. Token comes from
+    env indirection (token_env); if absent, only unauthenticated
+    endpoints are used. Never writes."""
 
-    def __init__(self, base_url: str, token_env: str = "GITEA_TOKEN") -> None:
+    def __init__(self, base_url: str, token_env: str = "") -> None:
         self.base_url = base_url.rstrip("/")
         self.token_env = token_env
 

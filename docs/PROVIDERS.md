@@ -121,12 +121,15 @@ gives it useful local meaning with **zero providers connected**
   key of `config/connections.json` (a sibling of `connections`, not a
   provider entry). Absence or malformed config is the honest
   `not_configured` state, never a crash.
-- Enrichment seam: a Gitea (or other forge) connection may enrich the
-  capability with remote-side data — issues, PRs, sync state beyond
-  the local clone. The seam stays; enrichment must not change the
-  native canonical shape above, and removing the provider degrades
-  the world back to this baseline (`on_last_provider_removed`:
-  degrades to native baseline).
+- Enrichment seam: GitHub (via the authenticated `gh` CLI, read-only)
+  may enrich the capability with remote-side data — canonical
+  repository identity, open PRs, open issues, default branch, last
+  remote push (`GET /api/source-control/enrichment?repo=<name>`).
+  The seam stays; enrichment must not change the native canonical
+  shape above, and removing GitHub (or gh being absent entirely)
+  degrades the world back to this baseline — local truth survives the
+  remote provider (`on_last_provider_removed`: degrades to native
+  baseline).
 - Surfaces: `personal-world changes|history|sync-status` (--json for
   the stable envelope) and `GET /api/source-control/status`,
   `/api/source-control/history?repo=<name>` (same auth as every

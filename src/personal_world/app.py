@@ -218,7 +218,7 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
         elif ptype == "gitea":
             base = conn.get("base_url")
             if base:
-                impl = Gitea(base, conn.get("token_env", "GITEA_TOKEN"))
+                impl = Gitea(base, conn.get("token_env", ""))
                 registry.register(
                     capability, name, impl,
                     health_check=lambda: impl.observe().ok,
@@ -226,9 +226,12 @@ def build_registry(world: World, registry: Registry, config_dir: Path) -> Regist
                     mode=mode,
                     required=required,
                 )
-                # Gitea is enrichment: it adds remote-side richness on
-                # top of the native git baseline; the native canonical
-                # shape (source_control.py) is unchanged by it.
+                # Generic forge adapter (enrichment): adds remote-side
+                # richness on top of the native git baseline; the native
+                # canonical shape (source_control.py) is unchanged by it.
+                # Supported live source-control enrichment today is
+                # GitHub via the gh CLI (providers/github.py); this
+                # adapter stays as substitution-proof machinery.
         elif ptype == "langgraph":
             base = conn.get("base_url")
             if base:

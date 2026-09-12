@@ -1,6 +1,6 @@
 # Project Worlds — supported standalone deployment. (Product formerly "Personal World"; service identifiers unchanged.)
 # One appliance: core/API + dashboard served by one process, plus a
-# persistent volume. No homelab, Gitea, Komodo, or any provider is
+# persistent volume. No homelab, GitHub, Komodo, or any provider is
 # required to boot; optional providers are wired via config/connections.json.
 
 services:
@@ -21,8 +21,8 @@ services:
       XIAOMI_MIMO_API_KEY: ${XIAOMI_MIMO_API_KEY:-}
       # lab CLI location inside the container (mounted homelab checkout)
       PW_LAB_CLI: /homelab/scripts/lab
-      # Gitea enrichment token (source_control rollups), env indirect; matches XIAOMI pattern
-      GITEA_TOKEN: ${GITEA_TOKEN:-}
+      # GitHub enrichment (optional) uses the gh CLI session already
+      # present on the host — no token is managed here.
     volumes:
       - world-data:/data
       - ./config:/config:ro

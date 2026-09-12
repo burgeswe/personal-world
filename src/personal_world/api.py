@@ -1422,19 +1422,36 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
 
     # --- Source control enrichment ---
 
-    @app.get("/api/source-control/rollups", dependencies=[Depends(require_auth)])
-    async def source_control_rollups() -> dict:
-        """Commit activity rollups from Gitea."""
-        from .providers.gitea_enrichment import GiteaEnrichment
-        conn_path = config_dir / "connections.json"
-        if conn_path.exists():
-            conns = json.loads(conn_path.read_text())
-            for c in conns.get("connections", []):
-                if c.get("type") == "gitea":
-                    impl = GiteaEnrichment(c["base_url"], c.get("token_env", "GITEA_TOKEN"))
-                    r = impl.commit_rollups()
-                    return {"ok": r.ok, "status": r.status, "data": r.data, "warnings": r.warnings}
-        return {"ok": False, "status": "not_configured", "warnings": ["no gitea connection"]}
+    @app.get("/api/source-control/enrichment", dependencies=[Depends(require_auth)])
+    async def source_control_enrichment(repo: str = "") -> dict:
+        """GitHub enrichment for ONE repository (remote-side facts
+        local Git cannot know: canonical identity, open PRs, open
+        issues, default branch, last remote push).
+
+        Local Git stays canonical — this only ADDS remote facts; the
+        native status shape is unchanged. Quiet degradation is the
+        contract: gh missing / unauthenticated / offline / non-GitHub
+        remote each return their own honest status ('unavailable',
+        'not_github', 'not_configured'), never a crash and never a
+        guessed field. Read-only; no credentials are read, stored, or
+        logged here — the gh CLI's own session is used as-is."""
+        from .providers.github import GitHubEnrichment
+        paths = _sc_paths()
+        if not repo:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": ["repo query parameter is required"]}
+        matches = [
+            e for e in discover_repositories(paths)
+            if e["is_repository"] and e["name"] == repo
+        ]
+        if not matches:
+            return {"ok": False, "status": "not_configured",
+                    "warnings": [f"repository '{repo}' not found in "
+                                 "configured search paths"]}
+        status = repository_status(matches[0]["path"])
+        r = GitHubEnrichment().enrich_repo(status.get("remote"))
+        return {"ok": r.ok, "status": r.status, "data": r.data,
+                "warnings": r.warnings}
 
     @app.get("/api/identity/principal", dependencies=[Depends(require_auth)])
     async def identity_principal(request: Request) -> dict:
@@ -2239,11 +2256,6 @@ details.provenance summary { cursor: pointer; color: var(--muted);
 <div id="today-changes" class="muted">Checking recent changes…</div>
 </section>
 <hr class="hr">
-<section aria-labelledby="today-rollups-h2">
-<h2 id="today-rollups-h2">Discovery</h2>
-<div id="today-rollups" class="muted">Looking for recent activity…</div>
-</section>
-<hr class="hr">
 <section aria-labelledby="today-journal-h2">
 <h2 id="today-journal-h2">Journal</h2>
 <div class="composer">
@@ -2667,7 +2679,7 @@ function renderToday() {
       li.appendChild(document.createTextNode(eventSummary(event))); jl.appendChild(li);
     }
   }
-  renderServices(); renderQuota(); renderRollups();
+  renderServices(); renderQuota();
 }
 
 function renderServices() {
@@ -2715,33 +2727,6 @@ function renderQuota() {
   host.appendChild(ul);
 }
 
-function renderRollups() {
-  if (!state.srcRollups) return;
-  const host = $('today-rollups'); clear(host);
-  const rows = state.srcRollups.ok && state.srcRollups.data
-    ? state.srcRollups.data.rollups || [] : [];
-  if (!state.srcRollups.ok) {
-    host.appendChild(el('p', 'Discovery is quiet because current source activity could not be checked.'));
-    return;
-  }
-  if (rows.length === 0) {
-    host.appendChild(el('p', 'Nothing new surfaced here today.'));
-    return;
-  }
-  const ul = el('ul'); ul.className = 'cards';
-  for (const row of rows.slice(0, 5)) {
-    const li = el('li');
-    li.appendChild(el('strong', row.repo || 'Source work'));
-    li.appendChild(document.createTextNode(' — ' + row.commit_count + ' recent changes'));
-    if (row.last_commit) {
-      const details = el('details', null, {class: 'provenance'});
-      details.appendChild(el('summary', 'What changed'));
-      details.appendChild(el('p', row.last_commit)); li.appendChild(details);
-    }
-    ul.appendChild(li);
-  }
-  host.appendChild(ul);
-}
 /* ---- World ---- */
 function renderWorld() {
   const wf = $('world-facts'); clear(wf);
@@ -2914,7 +2899,6 @@ function renderWorld() {
       }
     }
   }
-  renderGiteaRollups();
 }
 /* ---- Journal ---- */
 function renderJournal() {
@@ -3176,7 +3160,6 @@ async function load() {
     loadPart('apps', '/api/apps', renderToday),
     loadPart('status', '/api/status', renderToday),
     loadPart('daily', '/api/daily', renderToday),
-    loadPart('srcRollups', '/api/source-control/rollups', renderToday),
     loadPart('lab', '/api/lab/state', () => {
       renderToday();
       if (state.world && state.actors && state.sourceControl && state.updates) renderWorld();
@@ -3520,20 +3503,6 @@ function renderQuickActions() {
     qaDiv.appendChild(btn);
   }
   sec.appendChild(qaDiv);
-}
-/* ---- Gitea rollups in World ---- */
-async function renderGiteaRollups() {
-  const src = $('world-src');
-  const res = await api(state.token, '/api/source-control/rollups');
-  if (res.error || !res.data || !res.data.ok) return;
-  const rollups = (res.data.data && res.data.data.rollups) || [];
-  if (rollups.length === 0) return;
-  const h = el('h3', 'Recent activity');
-  src.appendChild(h);
-  for (const r of rollups) {
-    const p = el('p', r.repo + ': ' + r.commit_count + ' commits — ' + (r.last_commit || 'no commits'));
-    src.appendChild(p);
-  }
 }
 </script>
 </body>

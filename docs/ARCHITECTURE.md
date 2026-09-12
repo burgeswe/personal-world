@@ -10,9 +10,9 @@ Stable truth. Replaceable machinery.
 A personal control plane with a small durable core — schemas, observed
 facts, intent, policies, lore, capability/provider registries, journal,
 packs, export contracts — surrounded by replaceable providers that do
-the actual work. The core never reimplements Git, Gitea, GitHub,
-Komodo, systemd, Docker, SOPS, OpenBao, OpenWebUI, LiteLLM, or any
-existing tool. Those are providers behind adapters.
+the actual work. The core never reimplements Git, GitHub, Komodo,
+systemd, Docker, SOPS, OpenBao, OpenWebUI, LiteLLM, or any existing
+tool. Those are providers behind adapters.
 
 ## World model
 
@@ -200,9 +200,16 @@ capability is optional and replaceable (local model, cloud, or none).
 ## Provider substitution proof
 
 `source_control` has two providers through one `SourceControlContract`:
-real Gitea (HTTP API) and a deterministic fake reference. Tests prove
-the registry transparently substitutes an unavailable real provider with
-the fake (`tests/test_core.py::TestProviderSubstitution`).
+a real forge adapter over an HTTP API and a deterministic fake
+reference. Tests prove the registry transparently substitutes an
+unavailable real provider with the fake
+(`tests/test_core.py::TestProviderSubstitution`).
+
+The supported remote enrichment for source control today is GitHub
+(`providers/github.py` via the authenticated `gh` CLI, read-only).
+The generic forge adapter in `adapters.py` remains as the
+substitution-proof machinery; it is no longer a supported live
+provider in the default deployment.
 
 ## Export contracts
 
@@ -244,8 +251,9 @@ src/personal_world/   core package
   journal.py          append-only event stream + renderers
   export.py           the four export contracts
   app.py              core capability definitions + provider wiring
-  providers/          contracts, registry, adapters.py (Gitea/HTTP/fake/SOPS),
-                      optional Lab, forge, and ingress enrichment adapters
+  providers/          contracts, registry, adapters.py (forge HTTP/HTTP/fake/SOPS),
+                      github.py (GitHub enrichment via gh CLI),
+                      optional Lab and ingress enrichment adapters
   api.py              FastAPI + bearer auth + dashboard shell
   cli.py              personal-world CLI (--json envelope)
   loop.py             the daily cycle

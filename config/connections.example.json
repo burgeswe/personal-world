@@ -27,12 +27,6 @@
       "model": "qwen3:8b",
       "timeout": 120,
       "display_name": "Qwen (local)"
-    },
-    {
-      "type": "gitea",
-      "name": "gitea",
-      "capability": "source_control",
-      "base_url": "https://git.example.invalid:3000"
     }
   ]
 }

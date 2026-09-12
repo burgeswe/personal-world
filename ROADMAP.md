@@ -63,7 +63,8 @@ by the current finish line:
 Relevant remaining work and partially implemented seams:
 
 - **Source-control enrichment.** Native Git feeds dashboard/chat context;
-  `providers/gitea_enrichment.py` and `/api/source-control/rollups` now exist.
+  GitHub enrichment (`providers/github.py` + `/api/source-control/enrichment`)
+  adds remote identity, open PRs/issues, default branch via the gh CLI.
   Broader project/repository mission control remains finish-line work.
 - **Ingress rollups.** `providers/traefik_ingress.py` and
   `/api/ingress/rollups` now exist. Verify configured-provider behavior in the

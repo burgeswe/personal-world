@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "../shell/EmptyState";
 import { ErrorState } from "../shell/ErrorState";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
-import { useSourceControlStatus, useSourceControlHistory } from "../lib/hooks";
+import { useSourceControlStatus, useSourceControlHistory, useSourceControlEnrichment } from "../lib/hooks";
 import { Loader2 } from "../lib/icons";
-import { refreshSourceControlStatus, type SourceControlRepo } from "../lib/api";
+import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment } from "../lib/api";
 import { useAnnounce } from "../primitives/LiveRegion";
 
 /**
@@ -244,6 +244,86 @@ export function RepoRefreshApproval({
   );
 }
 
+/** GitHub enrichment for the selected repo: remote facts local Git
+ *  cannot know, presented with per-field provenance. Optional by
+ *  contract — every degraded state renders as one quiet sentence and
+ *  never affects the native table above. */
+function RepoEnrichment({ repo }: { repo: string }) {
+  const enrichment = useSourceControlEnrichment(repo);
+  if (enrichment.isLoading) {
+    return (
+      <p data-pw-projects-enrichment="loading" className="text-sm text-[var(--pw-color-text-secondary)]">
+        Checking GitHub for remote activity…
+      </p>
+    );
+  }
+  if (enrichment.isError || !enrichment.data) {
+    return (
+      <p data-pw-projects-enrichment="absent" className="text-sm text-[var(--pw-color-text-secondary)]">
+        GitHub information is not available right now. Everything local still works.
+      </p>
+    );
+  }
+  const env = enrichment.data;
+  // A payload without enrichment fields (or an unexpected shape) is an
+  // honest absent — never a crash, never guessed fields.
+  const data =
+    env && env.ok && env.data && "slug" in env.data
+      ? (env.data as SourceControlEnrichment)
+      : null;
+  if (!env.ok || !data) {
+    const reason =
+      env.status === "not_github"
+        ? "This repository's remote is not on GitHub, so there is nothing to add from there."
+        : env.status === "not_configured"
+          ? "GitHub information needs the repository to be in your configured locations."
+          : "GitHub information is not available right now. Everything local still works.";
+    return (
+      <p data-pw-projects-enrichment="absent" className="text-sm text-[var(--pw-color-text-secondary)]">
+        {reason}
+      </p>
+    );
+  }
+  return (
+    <div data-pw-projects-enrichment="healthy" className="text-sm">
+      <p className="text-[var(--pw-color-text-secondary)]">
+        From GitHub{" "}
+        {data.url ? (
+          <a
+            href={data.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-[var(--pw-color-border-subtle)] underline-offset-4 hover:decoration-current focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2 rounded-sm"
+          >
+            {data.slug}
+          </a>
+        ) : (
+          data.slug
+        )}
+        :
+      </p>
+      <dl className="grid gap-2 mt-1 sm:grid-cols-2">
+        <div>
+          <dt className="text-[var(--pw-color-text-secondary)]">Open pull requests</dt>
+          <dd>{data.open_prs === null ? "unknown" : data.open_prs}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-secondary)]">Open issues</dt>
+          <dd>{data.open_issues === null ? "unknown" : data.open_issues}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-secondary)]">Remote default branch</dt>
+          <dd>{data.default_branch ?? "unknown"}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-secondary)]">Last remote push</dt>
+          <dd>{data.pushed_at ? relativeCommitDate(data.pushed_at) ?? data.pushed_at : "unknown"}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export default function ProjectsScreen() {
   const query = useSourceControlStatus();
   // Selected repo = ?repo=<name> (shareable, refresh-stable); no extra
@@ -413,6 +493,13 @@ export default function ProjectsScreen() {
             defaultOpen
           >
             <RepoHistory repo={openRepo} />
+          </Disclosure>
+          <Disclosure summary="GitHub activity" level={2} defaultOpen>
+            {/* Remote enrichment (optional): one quiet disclosure that
+                degrades to a single sentence when GitHub is absent.
+                Local Git stays canonical; nothing here can affect the
+                native rows above. */}
+            <RepoEnrichment repo={openRepo} />
           </Disclosure>
           {(() => {
             const repo = list.find((r) => r.name === openRepo);

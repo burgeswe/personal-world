@@ -31,8 +31,8 @@ class StatusContract(Contract):
 
 
 class SourceControlContract(StatusContract):
-    """The provider-substitution proof capability: gitea (real, HTTP)
-    and fake-reference both satisfy this same contract."""
+    """The provider-substitution proof capability: a real forge adapter
+    (HTTP API) and the fake-reference both satisfy this same contract."""
 
 
 class MemoryContract(Contract):

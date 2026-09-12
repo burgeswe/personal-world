@@ -332,3 +332,121 @@ describe("Projects approval workflow (propose → approve → act → audit)", (
     expect(refreshCalls.length).toBe(1);
   });
 });
+
+describe("Projects GitHub enrichment (optional remote facts, quiet degradation)", () => {
+  function enrichmentResponse(payload: unknown) {
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const healthyPayload = {
+    ok: true,
+    status: "healthy",
+    data: {
+      slug: "example/personal-world",
+      url: "https://github.com/example/personal-world",
+      default_branch: "main",
+      open_prs: 2,
+      open_issues: 3,
+      pushed_at: "2026-09-12T10:00:00Z",
+    },
+  };
+
+  async function openDetail() {
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() => expect(screen.getByText("personal-world")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "personal-world" }));
+    await waitFor(() =>
+      expect(screen.getByText("GitHub activity")).toBeTruthy()
+    );
+  }
+
+  it("shows remote facts with per-field labels when GitHub is healthy", async () => {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/enrichment")) {
+        return Promise.resolve(enrichmentResponse(healthyPayload));
+      }
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(statusEnvelope([repo()]));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: null }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+    await openDetail();
+    const panel = await screen.findByText(/From GitHub/);
+    expect(panel.closest("[data-pw-projects-enrichment]")?.getAttribute("data-pw-projects-enrichment")).toBe("healthy");
+    expect(screen.getByText("Open pull requests")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.getByText("Open issues")).toBeTruthy();
+    expect(screen.getByText("Remote default branch")).toBeTruthy();
+    expect(screen.getAllByText(/example\/personal-world/).length).toBeGreaterThan(0);
+  });
+
+  it("degrades quietly when gh is missing (unavailable)", async () => {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/enrichment")) {
+        return Promise.resolve(
+          enrichmentResponse({
+            ok: false,
+            status: "unavailable",
+            warnings: ["gh CLI not found on this host"],
+          })
+        );
+      }
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(statusEnvelope([repo()]));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: null }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+    await openDetail();
+    const panel = await screen.findByText(
+      /GitHub information is not available right now/
+    );
+    expect(panel.closest("[data-pw-projects-enrichment]")?.getAttribute("data-pw-projects-enrichment")).toBe("absent");
+    // The native table still answers — local truth survives the provider.
+    expect(screen.getByText("main")).toBeTruthy();
+    expect(screen.getAllByText(/feat: one small thing/).length).toBeGreaterThan(0);
+  });
+
+  it("names a non-GitHub remote honestly (not_github), without error styling", async () => {
+    fetchMock.mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/enrichment")) {
+        return Promise.resolve(
+          enrichmentResponse({
+            ok: false,
+            status: "not_github",
+            data: { remote: "https://gitlab.com/example/personal-world.git" },
+          })
+        );
+      }
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(statusEnvelope([repo({ remote: "https://gitlab.com/example/personal-world.git" })]));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: null }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+    await openDetail();
+    const panel = (await screen.findByText(/remote is not on GitHub/)).closest(
+      "[data-pw-projects-enrichment]"
+    );
+    expect(panel?.getAttribute("data-pw-projects-enrichment")).toBe("absent");
+    // Non-GitHub is a valid answer, not an error: no error vocabulary inside the panel.
+    expect(panel?.textContent).not.toMatch(/error/i);
+  });
+});

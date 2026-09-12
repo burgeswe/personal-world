@@ -33,9 +33,10 @@ STABLE CAPABILITY CONTRACT        (core-owned: source_control)
         ↓
 NATIVE / BASIC IMPLEMENTATION     (if any: repo metadata, links)
         ↓
-OPTIONAL ENRICHMENT PROVIDERS     (gitea, github, forgejo, fake)
+OPTIONAL ENRICHMENT PROVIDERS     (github, fake; forge adapters exist
+                                   as substitution-proof machinery)
         ↓
-SPECIALIST PROVIDER UI            (the Gitea web UI, for deep work)
+SPECIALIST PROVIDER UI            (the provider's own web UI, for deep work)
 ```
 
 The failure mode this forbids: `source_control == Gitea`, so removing
@@ -85,15 +86,19 @@ Each rule cites its enforcement path.
 
 ```json
 {
-  "type": "gitea",
-  "name": "gitea",
-  "capability": "source_control",
+  "type": "http_status",
+  "name": "example-probe",
+  "capability": "deployment",
   "mode": "enrichment",
   "required": false,
   "required_reason": null,
-  "base_url": "http://service.example.invalid:3000",
-  "token_env": "GITEA_TOKEN"
+  "url": "http://service.example.invalid"
 }
+
+GitHub source-control enrichment needs no connection entry at all:
+it rides the authenticated `gh` CLI session on the host
+(`providers/github.py`, read-only) and degrades to the native local-git
+baseline when gh is absent.
 ```
 
 - `type` maps to an adapter in `build_registry` (unknown types are
@@ -224,8 +229,8 @@ design provider / implementation tool
 - **D. Provider removed:** no corruption; baseline remains;
   provider-specific data does not masquerade as current
   (`test_provider_removed_no_corruption`).
-- **E. Substitution:** `gitea → fake` through one contract without
-  changing the user-facing capability model
+- **E. Substitution:** a real forge adapter → fake through one
+  contract without changing the user-facing capability model
   (`test_fake_provider_substitution_preserves_capability`).
 - **Init:** fresh init succeeds, zero-provider installs boot,
   bootstrap has no secrets, init is idempotent, providers can be

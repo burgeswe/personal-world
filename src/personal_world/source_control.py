@@ -3,9 +3,11 @@ status, and history.
 
 Capabilities are core-owned (framework Rule 2): with zero providers
 connected, this module gives the capability useful local meaning from
-the local `git` binary alone. A provider (e.g. Gitea) may enrich the
+the local `git` binary alone. This local baseline is canonical. A
+provider (e.g. the optional GitHub enrichment) may enrich the
 capability with remote-side richness, but the native canonical shape
-below is unchanged by enrichment.
+below is unchanged by enrichment — local truth survives the remote
+provider.
 
 Safety contract:
 

@@ -73,7 +73,7 @@ def _scan_secretish(value, path: str, out: ValidationResult) -> None:
                     "secret-rule",
                     f"connection field '{key_path}' looks like inline "
                     "secret material; use env indirection "
-                    "(e.g. token_env: GITEA_TOKEN) or secret_ref",
+                    "(e.g. token_env: GITHUB_TOKEN) or secret_ref",
                 )
                 continue
             _scan_secretish(v, key_path, out)
