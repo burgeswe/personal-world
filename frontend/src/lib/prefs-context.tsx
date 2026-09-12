@@ -52,8 +52,42 @@ export const PREFERENCES_DEFAULTS: PrefsState = {
  * tests assert documentElement carries the attrs before/without any
  * route content mounted.
  */
+/**
+ * Honest OS-override check (prefs.py line 14: "The OS
+ * prefers-reduced-motion setting always overrides any application
+ * preference" — non-negotiable per ACCESSIBILITY_CONTRACT.md).
+ *
+ * jsdom does not implement `matchMedia` unless a test stubs it, so
+ * this guards for that environment rather than throwing; the honest
+ * fallback there is "no OS signal available", which the CSS-level
+ * `@media (prefers-reduced-motion: reduce)` block in tokens.css still
+ * backstops independently of this JS check.
+ */
+function osReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export function applyPrefsToDocument(prefs: PrefsState): void {
   const root = document.documentElement;
+
+  // The OS setting is unconditional: it wins over the stored
+  // preference entirely, never just tie-breaks it. Fixed 2026-09-11
+  // (UI-convergence session) — the previous version applied
+  // `prefs.motion` as JS inline styles regardless of the OS query.
+  // Inline styles always beat a non-`!important` stylesheet rule
+  // (the tokens.css media-query block), so a person with "subtle"
+  // saved as their preference kept getting `data-pw-motion="subtle"`
+  // and the 200ms/ambient=1 tier even while their OS said reduce —
+  // silently defeating the one safety net a migraine/cluster-headache
+  // flare-up depends on. The legacy server-rendered CSS path
+  // (src/personal_world/prefs.py) already got this right by relying
+  // on matching CSS specificity + source order; the React port must
+  // enforce it explicitly in JS since it does not use that mechanism.
+  const effectiveMotion = osReducedMotion() ? "reduced" : prefs.motion;
 
   root.setAttribute("data-pw-theme", prefs.theme === "light" ? "light" : "dark");
   root.setAttribute(
@@ -63,9 +97,9 @@ export function applyPrefsToDocument(prefs: PrefsState): void {
   root.setAttribute("data-pw-density", prefs.density);
   root.setAttribute(
     "data-pw-motion",
-    prefs.motion === "off"
+    effectiveMotion === "off"
       ? "off"
-      : prefs.motion === "subtle"
+      : effectiveMotion === "subtle"
         ? "subtle"
         : "reduced"
   );
@@ -76,9 +110,9 @@ export function applyPrefsToDocument(prefs: PrefsState): void {
   // run at 0ms / no ambient; subtle gets 200ms and ambient allowed.
   root.style.setProperty(
     "--pw-motion-duration",
-    prefs.motion === "subtle" ? "200ms" : "0ms"
+    effectiveMotion === "subtle" ? "200ms" : "0ms"
   );
-  root.style.setProperty("--pw-motion-ambient", prefs.motion === "subtle" ? "1" : "0");
+  root.style.setProperty("--pw-motion-ambient", effectiveMotion === "subtle" ? "1" : "0");
 
   root.style.setProperty("--pw-density", prefs.density);
   root.style.setProperty("--pw-text-scale", String(prefs.textScale));
@@ -120,6 +154,20 @@ export function PrefsProvider({
   // Settings updates both land here).
   useEffect(() => {
     applyPrefsToDocument(prefs);
+  }, [prefs]);
+
+  // React immediately when the OS-level setting changes mid-session
+  // (someone may toggle it during a flare-up and expect the app to
+  // respond without touching Settings) — the unconditional-override
+  // rule applies live, not just at bootstrap.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => applyPrefsToDocument(prefs);
+    mql.addEventListener?.("change", onChange);
+    return () => mql.removeEventListener?.("change", onChange);
   }, [prefs]);
 
   const setPref = (key: string, value: string | number): void => {

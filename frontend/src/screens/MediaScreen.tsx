@@ -10,6 +10,7 @@ export default function MediaScreen() {
   return (
     <EmptyState
       title="Media"
+      headingLevel={1}
       capability="Media gathers your stories, bookmarks, and saved reading."
       knob="Add a media connection in Settings → Connections to enable this section."
       status="not_configured"

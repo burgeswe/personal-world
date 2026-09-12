@@ -16,6 +16,10 @@ export interface ErrorStateProps {
   detail?: string | null;
   /** Called to retry the failed request. */
   onRetry?: () => void;
+  /** Heading level for the state title: 2 (default) beside an existing
+   *  page h1; 1 when this state carries the page's only heading
+   *  (A11y §4.1: one h1 per page, no skipped levels). */
+  headingLevel?: 1 | 2;
   className?: string;
 }
 
@@ -24,15 +28,17 @@ export function ErrorState({
   failed,
   detail = null,
   onRetry,
+  headingLevel = 2,
   className,
 }: ErrorStateProps) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
     <section
       className={cn("pw-state", className)}
       data-pw-state="error"
       aria-labelledby="pw-state-title"
     >
-      <h2 id="pw-state-title">{title}</h2>
+      <Heading id="pw-state-title">{title}</Heading>
       <p className="pw-state-summary">
         {failed}
         {detail ? <> — <span className="pw-state-detail-inline">{detail}</span></> : null}

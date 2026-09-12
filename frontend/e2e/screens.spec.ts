@@ -51,14 +51,16 @@ test.describe("honest states", () => {
     expect(box?.width).toBeLessThanOrEqual(34 * 16 + 1);
     // What/Why/Next: heading → chip → capability → knob (DOM order)
     const order = await state.evaluate((el) => {
-      const h2 = el.querySelector("h2");
+      // the state heading is h1 when it is the page's only heading
+      // (headingLevel 1) and h2 beside a page h1 — match either level
+      const heading = el.querySelector("h1, h2");
       const chip = el.querySelector(".chip");
       const summary = el.querySelector(".pw-state-summary");
       const detail = el.querySelector(".pw-state-detail");
       const before = (a: Element | null, b: Element | null) =>
         a !== null && b !== null && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
       return {
-        chipAfterHeading: before(h2, chip),
+        chipAfterHeading: before(heading, chip),
         summaryAfterChip: before(chip, summary),
         detailAfterSummary: before(summary, detail),
       };

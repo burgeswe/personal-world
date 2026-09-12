@@ -295,7 +295,40 @@ describe("SetupWizard (T12, parity row 8)", () => {
       expect(screen.getByText(/Your world is ready/)).toBeTruthy();
     });
     const setup = wizardCalls.find((c) => c.path === "/api/setup");
-    expect(setup?.body.companion).toBe("squirrel");
+    expect(setup?.body.companion).toBe("world-tree-squirrel");
+    // …and into the bundled PUT /api/prefs — the all-or-nothing write
+    // that the old wrong slug ("squirrel") made fail silently, taking
+    // motion/contrast/density/text-scale/target-size down with it.
+    const prefsPut = wizardCalls.find(
+      (c) => c.path.startsWith("/api/prefs") && c.init?.method === "PUT"
+    );
+    expect(prefsPut?.body.companion).toBe("world-tree-squirrel");
+  });
+
+  it("Tacos & the Morning Paper sends the correct backend slug in BOTH the setup POST and the bundled prefs PUT", async () => {
+    mockHappyPath();
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const tacos = screen.getByRole("radio", { name: /Tacos/ }) as HTMLElement;
+    fireEvent.click(tacos);
+    expect(tacos.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const token = screen.getByLabelText("Login token") as HTMLInputElement;
+    fireEvent.change(token, { target: { value: "wizard-token-6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Your world is ready/)).toBeTruthy();
+    });
+    const setup = wizardCalls.find((c) => c.path === "/api/setup");
+    expect(setup?.body.companion).toBe("taco-news-truck");
+    const prefsPut = wizardCalls.find(
+      (c) => c.path.startsWith("/api/prefs") && c.init?.method === "PUT"
+    );
+    expect(prefsPut?.body.companion).toBe("taco-news-truck");
+    // The whole bundle applied: the wizard names the companion saved
+    // (the old wrong slug failed the entire PUT silently).
+    expect(screen.getByText(/Companion saved/)).toBeTruthy();
   });
 
   it("server 400 (setup rejected) is shown specifically, no fake success", async () => {

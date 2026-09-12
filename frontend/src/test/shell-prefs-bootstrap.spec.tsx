@@ -113,6 +113,35 @@ describe("prefs → documentElement (T9)", () => {
     ).toBe("44px");
   });
 
+  it("OS prefers-reduced-motion unconditionally overrides a stored 'subtle' preference (prefs.py line 14)", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })
+    );
+    applyPrefsToDocument({ ...PREFERENCES_DEFAULTS, motion: "subtle" });
+    const root = document.documentElement;
+    expect(root.getAttribute("data-pw-motion")).toBe("reduced");
+    expect(root.style.getPropertyValue("--pw-motion-duration")).toBe("0ms");
+    expect(root.style.getPropertyValue("--pw-motion-ambient")).toBe("0");
+  });
+
+  it("does not force reduced motion when the OS reports no preference", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })
+    );
+    applyPrefsToDocument({ ...PREFERENCES_DEFAULTS, motion: "subtle" });
+    expect(document.documentElement.getAttribute("data-pw-motion")).toBe("subtle");
+  });
+
   it("prefsFromServer maps the wire shape and falls back to defaults", () => {
     const mapped = prefsFromServer({
       motion: "off",

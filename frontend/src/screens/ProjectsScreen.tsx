@@ -11,6 +11,7 @@ export default function ProjectsScreen() {
   return (
     <EmptyState
       title="Projects"
+      headingLevel={1}
       capability="Projects follow your repositories and their recent activity."
       knob="List repository locations under Source Control in Settings to enable this section."
     />

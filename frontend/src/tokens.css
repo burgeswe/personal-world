@@ -50,8 +50,8 @@
   --pw-typography-line-height-body: 1.6;
 }
 
-:root { --pw-focus-ring: 2px solid accent.primary, offset 2px; }
-:root { --pw-focus-ring-high-contrast: 2px solid #FFFFFF, offset 2px; }
+:root { --pw-focus-ring: 2px solid #72b1b1; }
+:root { --pw-focus-ring-high-contrast: 2px solid #FFFFFF; }
 
 :root { --pw-motion-duration: 0ms; --pw-motion-ambient: 0; }
 

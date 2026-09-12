@@ -1,0 +1,24 @@
+schema: play-nice/project-v1
+
+id: personal-world
+name: Personal World
+
+purpose:
+  summary: >
+    A small personal control plane: stable truth, replaceable machinery.
+    A CLI, lightweight web dashboard and shared API describe what exists,
+    what matters, what is allowed, and what happened. Capabilities belong
+    to the core; integrations are optional providers.
+
+ownership:
+  type: human
+  role: owner
+
+contracts:
+  manifest: .project/contracts/adoption.yaml
+
+participants:
+  directory: participants
+
+status:
+  vocabulary: play-nice/status-v1
