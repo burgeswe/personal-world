@@ -1487,6 +1487,26 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         return {"ok": r.ok, "status": r.status, "data": r.data,
                 "warnings": r.warnings}
 
+    @app.get("/api/projects/status", dependencies=[Depends(require_auth)])
+    async def projects_status() -> dict:
+        """Project-estate status from the agent-sync sensor (read-only).
+
+        agent-sync (the pickle project's adapter layer) is
+        AUTHORITATIVE for repository publication state: it invokes
+        this one `agent-sync status --all --format json` observation
+        per call and normalizes the documented
+        `play-nice/repo-status-v1` records. Project Worlds adds no
+        Git-state computation of its own. Quiet degradation is the
+        contract: command absent / timeout / malformed output each
+        return an honest 'unavailable' envelope — Project Worlds
+        stays fully useful without the sensor. The observation carries
+        agent-sync's own `observed_at` so it stays visibly a dated
+        observation, never timeless truth."""
+        from .providers.agent_sync import AgentSyncProjectSensor
+        r = AgentSyncProjectSensor().observe_projects()
+        return {"ok": r.ok, "status": r.status, "data": r.data,
+                "warnings": r.warnings}
+
     @app.get("/api/identity/principal", dependencies=[Depends(require_auth)])
     async def identity_principal(request: Request) -> dict:
         """Read-only: who is calling. Useful for diagnostics and for a
