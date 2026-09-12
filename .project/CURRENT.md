@@ -106,6 +106,73 @@ linear (A→B→C; branching rejected). Backend tests (11) + frontend
 tests (6) + live 10-point browser walkthrough incl. keyboard, focus
 ring, 200% reflow, reduced motion.
 
+**Assistant-drafted journal correction proposals (2026-09-12,
+`b499a73` — assistant participation, suggestion is not authorization):**
+Personal World can now PREPARE a Journal correction without any
+authority to apply one. The chat system prompt teaches ONE tiny
+fenced `PW-PROPOSAL journal_correction` block (entry_ts,
+proposed_text, reason, evidence_summary) that the model MAY emit
+when later entries contradict an earlier one. `chat.py
+extract_proposal` validates it STRICTLY (exact header, all four
+fields, caps 2000/200/300, no unknown/duplicate/empty fields);
+anything malformed degrades to ordinary visible text, never a chat
+failure. `api.py` re-validates the target against the REAL journal
+(nonexistent or already-superseded targets yield no proposal) and
+serves it as typed `proposal` metadata alongside the human-readable
+reply. The ChatPanel suggestion card renders the draft labeled
+"A possible correction, drafted by Personal World" with
+proposed text/reason/evidence, the boundary sentence "Preparing is
+not approving — nothing changes until you approve it in the
+Journal", and two choices: **Prepare correction** (stash + navigate
+to `/journal?correct=<ts>` — pure navigation, ZERO mutation calls)
+or **Not now** (dismiss). JournalScreen pairs the stashed draft
+with the URL target (timestamps compared as instants — `Z` vs
+`+00:00` both valid), opens the EXISTING correction panel
+automatically for that entry, prefilled + labeled "Personal World
+drafted this proposal … review it, edit it freely, or close it",
+focus lands in the editable text. The person edits freely; the
+normal "Nothing has changed yet" boundary and explicit approval
+apply unchanged; on approval the supersede body carries
+`drafted_by: "Personal World (assistant draft)"` (allow-listed
+server-side; unknown values fall back to the default) and the
+APPROVAL audit event records the true story: "proposed by Personal
+World (assistant draft), approved by the owner via the Journal
+screen, reason: …". The assistant has NO access to the supersede
+endpoint; ordinary chat "yes" cannot mutate anything (tested);
+the step-up is unchanged. Live-verified end to end with the real
+local Qwen model producing a real server-validated proposal for a
+seeded out-of-date entry (porch light), full
+suggest → prepare → inspect → edit → keyboard-approve → corrected
+current → history chain → reload persistence → audit walkthrough;
+a11y: card understandable without color, keyboard activation,
+focus lands in the textarea, 2px focus-visible ring on all
+actions, 200% reflow clean, reduced motion fine, no modal.
+
+**GitHub count honesty fix (same commit):** open-PR and open-issue
+counts are now EXACT via GitHub search `total_count` (the old
+per_page=100 list length silently capped at 100 — octocat/
+Hello-World's 1203 open PRs proved it). Search failure yields
+honest unknown (null) counts, never zeros; issue count is searched
+directly instead of derived from open_issues_count. Chat context
+journal lines now show the exact ts key (both ISO spellings) so
+proposals can reference real entries.
+
+**Play-Nice product identity (2026-09-12, README + this pass):**
+"Project Worlds is a Play-Nice product" — README carries the
+owner-authored "A Play-Nice product" section (Play-Nice governs
+cooperation: Rylee, Personal World, agents, providers; Project
+Worlds stays authoritative for its architecture, data, UI, domain
+behavior) with the canonical link
+https://github.com/Rylee-Bee/play-nice-contracts and the
+adoption/current/decisions anchors. Wording adopts the contracts
+without any certification or endorsement claim — the repository
+is the evidence. `.project/DECISIONS.md` now exists as the durable
+decisions record the README references (append-only; dated
+entries). Rebase note: the owner's parallel chore(readme) commit
+was honored (their wording kept; my overlapping section dropped)
+and its broken `.project/DECISIONS.md` link fixed by creating the
+file.
+
 **Gitea retirement + GitHub enrichment + public README/screenshot
 pass (2026-09-12, slice complete):** Gitea is retired from the live
 architecture. `GiteaEnrichment` and `/api/source-control/rollups` are
