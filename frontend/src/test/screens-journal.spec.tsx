@@ -168,6 +168,47 @@ describe("JournalScreen (T10, parity row 4)", () => {
     expect(screen.getByText(/rest of your world still works/)).toBeTruthy();
   });
 
+  it("audit trail: collapsed by default (zero extra fetch), loads verbatim on request", async () => {
+    let auditCalls = 0;
+    // NOTE: more-specific prefix first — mockFetchByRoute matches in
+    // insertion order, and "/api/journal" would swallow the audit path.
+    mockFetchByRoute({
+      "/api/journal/audit": () => {
+        auditCalls += 1;
+        return jsonResponse(200, {
+          ok: true,
+          data: { text: "2026-09-12T00:00:00+00:00 observation [chat] (world) test entry" },
+        });
+      },
+      "/api/journal": (_path, init) => {
+        if (init?.method === "POST") {
+          return jsonResponse(200, { ok: true, data: { written: 5 } });
+        }
+        return jsonResponse(200, { ok: true, data: FIRST_PAGE });
+      },
+    });
+    screenProviders(<JournalScreen />);
+    await waitFor(() => {
+      expect(screen.queryByText(/Opening your journal…/)).toBeNull();
+    });
+    // Calm default: the audit disclosure exists but fetches nothing.
+    expect(
+      screen.getByText("Audit trail — every entry with full provenance")
+    ).toBeTruthy();
+    expect(auditCalls).toBe(0);
+    // Open the disclosure, then request the technical log.
+    fireEvent.click(
+      screen.getByText("Audit trail — every entry with full provenance")
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show the technical audit log" })
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/observation \[chat\] \(world\)/)).toBeTruthy();
+    });
+    expect(auditCalls).toBe(1);
+  });
+
   it("axe: 0 violations (color-contrast disabled)", async () => {
     const { utils } = await bootJournal();
     expect(await axeNoContrast(utils.container)).toHaveNoViolations();

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { saveJournalEntry, ApiError, type JournalEntry } from "../lib/api";
-import { useJournalPage, useJournalKey } from "../lib/hooks";
+import { useJournalPage, useJournalKey, useJournalAudit } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { Disclosure } from "../primitives/Disclosure";
 import { Button } from "../components/ui/button";
@@ -338,7 +338,73 @@ function JournalScreen() {
           </Button>
         </div>
       ) : null}
+
+      {/* Audit trail (Finish Line "understand exactly what happened"):
+          the backend's full technical log (AuditRenderer — provenance on
+          every line). Progressive disclosure: collapsed by default,
+          fetched only when opened (the hook behind TechnicalDetails
+          stays lazy so a calm default view costs nothing). */}
+      <JournalAudit />
     </div>
+  );
+}
+
+/** Full audit log behind a Level-4 disclosure: nerd mode on demand
+ * (Finish Line "Transparency and nerd mode"; A11y §4.6). The text
+ * arrives pre-rendered from the server (AuditRenderer) and is shown
+ * verbatim — never reinterpreted. */
+function JournalAudit() {
+  const [requested, setRequested] = useState(false);
+  // Lazy by structural position: the query hook mounts ONLY after the
+  // person asks for the audit — a calm default view costs zero
+  // requests (the /api/journal?n= test stays exact).
+  if (!requested) {
+    return (
+      <Disclosure
+        summary="Audit trail — every entry with full provenance"
+        level={4}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setRequested(true)}
+        >
+          Show the technical audit log
+        </Button>
+      </Disclosure>
+    );
+  }
+  return <JournalAuditBody />;
+}
+
+/** Requested state: fetch + render the audit text verbatim. */
+function JournalAuditBody() {
+  const audit = useJournalAudit();
+  return (
+    <Disclosure
+      summary="Audit trail — every entry with full provenance"
+      level={4}
+      defaultOpen
+    >
+      {audit.isLoading ? (
+        <p className="text-sm text-[var(--pw-color-text-muted)]">
+          Loading the audit log…
+        </p>
+      ) : audit.isError ? (
+        <p className="text-sm text-[var(--pw-color-text-secondary)]">
+          The audit log could not be loaded. Your journal entries above
+          still work.
+        </p>
+      ) : (audit.data?.text ?? "").trim() === "" ? (
+        <p className="text-sm text-[var(--pw-color-text-secondary)]">
+          The audit log is empty — nothing has been recorded yet.
+        </p>
+      ) : (
+        <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--pw-color-surface-panel)] p-3 text-xs leading-relaxed text-[var(--pw-color-text-primary)]">
+          {audit.data?.text}
+        </pre>
+      )}
+    </Disclosure>
   );
 }
 
