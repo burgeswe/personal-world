@@ -1,59 +1,184 @@
-# Current State
+# Current State — Project Worlds
 
-Verified 2026-09-12 by bcode/claude at the close of the T14 UI-convergence
-pass (evidence: `git status`/`git log`/`git rev-parse` on the actual
-branch, not memory). This file routes — canonical truth lives in the
-files it names. When this file and a canonical file disagree, the
-canonical file wins.
+**This is the canonical current-state pointer for this project**, per
+the Play-Nice `stable-truth-replaceable-machinery` rule ("one canonical
+current truth; other documents may point to it"). `STATUS.md` and
+`.agent/STATE.md` were retired to point here 2026-09-12 after being
+found stale and mutually inconsistent. This file routes — canonical
+truth lives in the files it names. When this file and a canonical file
+disagree, the canonical file wins.
 
-- **Product status:** 0.1, active development. Public repo; private runtime
-  config/personal data live outside tracked files (see `SECURITY.md`).
-- **What works today:** see README.md "What works today" (canonical).
-- **T14 UI-convergence pass: CLOSED, frozen completion point.**
-  Branch `uat/t14-warmth`, HEAD `5a0ff7119f1108d56eb79f9de13926955fe9d25c`
-  — confirmed clean working tree, local == remote, zero divergence, at
-  close. `main` and PR #22 (`p1/integration`) were never touched by this
-  pass. Do not reopen this composition/accessibility work; it is
-  accepted. All four task worktrees (today-composition,
-  journal-vault-composition, settings-fixes, heading-a11y) merged into
-  this branch and can be removed. Contents of the pass, in commit order
-  from `8963dda`: Today/Journal/Vault card-chrome removal + real
-  headings; Settings companion-key + live-refresh fixes; two
-  independently-discovered accessibility bugs (invisible keyboard focus
-  ring — `design/tokens.json` had unresolved-token/invalid-shorthand
-  CSS; OS `prefers-reduced-motion` silently overridden by a saved
-  "subtle" preference in the React port) fixed and test-covered; a
-  Figma-handoff composition-drift postmortem
-  (`docs/FIGMA-HANDOFF-LESSONS.md`); the Play-Nice project-context +
-  Figma participant pack imported and integrity-checked; the adoption
-  pin bumped to v0.5.0. Full verification evidence (291/291 frontend
-  tests, 510/510 backend tests, clean build/lint, live CDP-driven
-  browser confirmation of both a11y fixes) lives in the session
-  transcript this file cannot reproduce — treat the commit messages on
-  `uat/t14-warmth` (`aa14625`..`5a0ff71`) as the durable record.
-- **Design truth:** `design/tokens.json` (canonical tokens; repo-owned),
-  `docs/DESIGN-HANDOFF.md` (V0.1 baseline reference, partly superseded),
-  `docs/accessibility/` (non-negotiable floor). `design/handoff/` is an
-  archived Figma spec package — historical, never edit to change design.
-- **Play-Nice adoption:** pinned to v0.5.0 @
-  `805f58b46fb59adefd1dee85dd99178d9dbaa1d9` (`.project/contracts/adoption.yaml`)
-  — bumped from v0.3.0 during this pass; gate PASS, commitment ACTIVE
-  for the `contract-refresh-and-push` task (session artifact under the
-  gitignored `.contracts/`).
-- **Figma participant pack:** `.project/participants/figma/` — status:
-  **accepted** (contract gate PASS; commitment ACTIVE) for her original
-  bundle at revision `0c0ab7c5` (v0.3.0). Not yet re-attested against
-  the current v0.5.0 pin — see
-  `figma/contract-return/NEXT-REVISION-NOTE.md` for the exact, small,
-  non-blocking gap (2 new + 2 changed contracts need her own
-  task-impact sentences, not fabricated ones).
-- **Next focus is a different project ("Project Worlds") — see that
-  project's own `.project/CURRENT.md` once established.** This repo is
-  not superseded; it simply is not the active focus of the next
-  session. Nothing here should be carried into Project Worlds by
-  default — only what that project explicitly adopts.
-- **Untracked, not part of any pass:** `frontend-v2/` and `.bcode/` are
-  pre-existing local experiments, unrelated to T14, untouched by it.
+Verified 2026-09-12 by bcode/claude (evidence: `git log`/`git
+merge-base`/`git rev-parse` against the real GitHub repository, `gh pr`
+CI status, `contractctl` tool output, live CDP-driven browser checks —
+not memory, not narrative).
 
-UNKNOWN: none outstanding for this pass — branch state, gate, and
-commitment are all confirmed above, not inferred.
+## Identity
+
+- **Product name:** Project Worlds (renamed from "Personal World"
+  2026-09-12 — a product re-anchoring, not a new codebase; see
+  "Identity pass" below for exactly what did and didn't change).
+- **Repository / package / CLI identifiers:** unchanged
+  (`Rylee-Bee/personal-world`, `personal_world` Python package,
+  `personal-world` CLI command, `personal-world-frontend` npm package).
+  Renaming these is a separate, deliberately deferred migration — it
+  breaks remotes, automation, links, and external state, and nothing
+  about the product rename requires it yet.
+- **North Star:** "Project Worlds is a calm, accessible, slightly
+  whimsical personal environment where my information, tools,
+  assistant, history, and capabilities come together naturally — and
+  where sophisticated machinery stays out of my way until I actually
+  need it." Dual acceptance test: understandable at a glance when
+  barely able to focus; fully inspectable down to the technical guts on
+  demand. Calm does not mean shallow — complexity is available on
+  demand, not forced into the default experience.
+
+## Trunk
+
+**One canonical trunk: `main`.** Unified 2026-09-12 by merging, in
+order (preserving full commit ancestry, not squashed, not
+cherry-picked):
+
+1. PR #22 (`p1/integration`, T10–T13 screens/tests) → `main` at
+   `ba2ae6cae2cfb3919dce69b70f6bb9c9de07d9ea` (merge commit).
+2. PR #24 (`uat/t14-warmth`, T14 composition/a11y convergence +
+   Play-Nice context, itself built directly on PR #22's tip) → `main`
+   at `70ab495890b5ba73a429876a029134e8bed00615` (merge commit).
+
+Both merges were verified independently after landing, not assumed from
+green PR checks alone: `main` @ `70ab495` passes 511/511 backend tests,
+291/291 frontend tests, clean build, clean lint, `tokens:check` clean,
+`framework validate` healthy, and both accessibility fixes (see below)
+were re-confirmed live via CDP-driven headless Chrome against this exact
+merged state — not just via source inspection.
+
+`uat/t14-warmth` and `p1/integration` are now fully contained in `main`
+and can be deleted. No other branch needs to be reconciled into this
+trunk as of this pass.
+
+## What works today
+
+See `README.md` "What makes it different" / architecture docs for the
+durable description. As of this trunk: legacy server-rendered dashboard
++ full React frontend (Today, Interests, Media, Projects, Lab, Chat,
+Journal, Vault, World, Settings, Login, Setup) with real headings and
+no card-chrome composition drift on Today/Journal/Vault; the two
+previously-shipping accessibility bugs below are fixed everywhere, not
+just on the branch that found them.
+
+**Two accessibility bugs fixed and verified on this exact trunk**
+(both were live/shipping on old `main` before this unification — not
+hypothetical):
+- Invisible keyboard focus ring: `design/tokens.json`'s `focus.ring` was
+  an unresolved token reference plus invalid `outline` shorthand syntax;
+  browsers silently dropped the whole declaration. Fixed to a literal
+  resolved value; `tests/test_design_tokens.py` now checks real CSS
+  validity, not a placeholder string.
+- OS `prefers-reduced-motion` silently overridden by a saved "subtle"
+  motion preference in the React port (JS inline styles beat the
+  non-`!important` CSS media-query rule). Fixed in
+  `frontend/src/lib/prefs-context.tsx` to check `matchMedia` and force
+  the reduced tier unconditionally, with a live-change listener.
+
+## Design truth
+
+`design/tokens.json` (canonical tokens; repo-owned), `docs/DESIGN-HANDOFF.md`
+(V0.1 baseline reference, partly superseded), `docs/accessibility/`
+(non-negotiable floor). `design/handoff/` is an archived Figma spec
+package — historical, never edit to change design. `design/CURRENT.md`
+(top-level `.project/design/CURRENT.md`) answers "what is approved right
+now" in more detail, including frame-by-frame approval status.
+
+## Play-Nice adoption
+
+Pinned to **v0.6.0** @ `21b6841a50a1b0d459a760861385e99679852430`
+(`.project/contracts/adoption.yaml`) — bumped from v0.5.0 during this
+same pass (which itself had been bumped from v0.3.0). Delta at this
+bump: new `collaborative-good-faith` contract (always-applicable); four
+contracts already adopted changed version
+(`ask-for-help`→1.3.0, `mutual-contribution`→1.1.0,
+`participation-and-contribution`→1.2.0, `orchestration`→1.4.0). Gate
+**PASS**, commitment **ACTIVE** for task
+`project-worlds-trunk-unification` (session artifact under the
+gitignored `.contracts/`). Verified with the real `contractctl` tool
+(cloned at the pinned revision): `adopt`, `project validate`, and
+`participant validate` all pass.
+
+## Figma participant pack
+
+`.project/participants/figma/` — status: **accepted** (contract gate
+PASS; commitment ACTIVE), but her attestation is scoped to the bundle
+she actually read (revision `0c0ab7c5`, v0.3.0) — now three bumps
+behind the current v0.6.0 pin. Not fabricated forward on her behalf;
+see `figma/contract-return/NEXT-REVISION-NOTE.md` for the exact,
+non-blocking gap and the tiny re-pass needed if a live Figma session
+becomes available. This does not block anything: participant packs are
+enrichment, never canonical project truth.
+
+Her pack's **participant relationship** (design-service role,
+authoritative_for/not_authoritative_for boundaries, help routing) is
+unaffected by the product rename and was not touched. Her
+**project-specific references** (`references.yaml`: file
+`VATVojyJZT9HKx0CrDS0yr`, frame IDs) were reviewed during this identity
+pass and left as-is — they describe the same design file and the same
+screens; nothing about renaming the product invalidates them. If a
+future Figma session finds the file/frame identity itself has changed,
+mark the specific reference `unknown`/`stale` at that point rather than
+assuming now.
+
+## Identity pass (2026-09-12): what changed vs what intentionally didn't
+
+Audited references to "Personal World" / "personal-world" /
+"PERSONAL-WORLD" across the repo (~85 files matched a grep). Did **not**
+blindly rename all of them. Classification used:
+
+- **Updated (human-facing product identity):** `README.md` (title,
+  tagline, "Why it exists"), `.project/project.yaml` (`name` +
+  `purpose.summary`), `.project/README.md`, this file.
+- **Left unchanged — technical/repository identifiers** (renaming is a
+  separate, deliberately deferred migration per explicit instruction):
+  `pyproject.toml` (`name = "personal-world"`), the `personal_world`
+  Python package, the `personal-world` CLI command, `frontend/package.json`
+  (`personal-world-frontend`), `compose.yaml`, `config/`, CI workflow
+  files, the GitHub repo slug itself.
+- **Left unchanged — character identity, not product identity:**
+  "Personal World" is also the proper name of one of the five companion
+  residents (the default/generic mascot — see
+  `design/COMPANION_INTEGRATION.md`, `design/assets/companions/personal-world/`).
+  This is a deliberate, separate naming choice (the default companion
+  shares its name with the product by design) and was NOT renamed —
+  conflating a character's name with the product name would be a content
+  bug, not an identity update. Flagged here as a genuine open question
+  the product owner may want to resolve later (does the default
+  companion get renamed too, or does it keep its established identity
+  regardless of product branding?) — **not decided in this pass.**
+- **Left unchanged — historical documents:** `CHANGELOG.md` entries,
+  `design/handoff/*` (archived Figma spec package), `docs/p1/FOUNDATION-SPEC.md`,
+  ADRs, dated handoffs. These remain truthful to the period they
+  describe; rewriting them would falsify history for no benefit.
+- **Deliberately deferred, not yet touched:** the canonical policy docs
+  under `docs/` (`ACCESSIBILITY_CONTRACT.md`, `ARCHITECTURE.md`,
+  `HUMAN_RELIABILITY_CONTRACT.md`, `PERSONAL-WORLD-FINISH-LINE.md`,
+  `PERSONAL-WORLD-COMPLETION-PLAN.md`, etc.) still say "Personal World"
+  in prose throughout. Their *content* (the actual rules/architecture)
+  is unaffected by the rename and remains fully canonical and in force
+  — only the product-name prose is stale. Updating dozens of live
+  policy documents' flavor text was judged out of scope for a bounded
+  trunk-unification + identity-anchoring pass; a future bounded
+  documentation pass can do this without touching any rule content.
+
+## In-flight / untracked
+
+`frontend-v2/` and `.bcode/` are pre-existing local experiments,
+unrelated to any pass, still untouched.
+
+## UNKNOWN
+
+- Whether the default-companion-vs-product-name overlap
+  ("Personal World" the character) should be resolved by renaming the
+  companion, keeping it as-is, or something else — owner decision, not
+  inferred here.
+- Whether/when the repository slug, Python package, and CLI command
+  should follow the product rename — explicitly deferred, not decided.
+- Live production/deployment state of this trunk outside this checkout
+  — not verified this pass (local + CI evidence only).

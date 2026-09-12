@@ -1,14 +1,25 @@
 schema: play-nice/project-v1
 
+# id stays the technical/repository identifier (repo slug, package name,
+# CLI command, directory names) — unchanged per the 2026-09-12 identity
+# pass: renaming it is a separate, deliberately deferred migration
+# (breaks remotes, automation, links, package references). `name` is the
+# human-facing product identity, which the same pass DID re-anchor.
 id: personal-world
-name: Personal World
+name: Project Worlds   # renamed from "Personal World" 2026-09-12 (product
+                        # identity re-anchoring after trunk unification);
+                        # see .project/CURRENT.md for the full classification
+                        # of what changed vs what intentionally didn't.
 
 purpose:
   summary: >
-    A small personal control plane: stable truth, replaceable machinery.
-    A CLI, lightweight web dashboard and shared API describe what exists,
-    what matters, what is allowed, and what happened. Capabilities belong
-    to the core; integrations are optional providers.
+    A calm, accessible, slightly whimsical personal environment where a
+    person's information, tools, assistant, history, and capabilities come
+    together naturally — and where sophisticated machinery stays out of the
+    way until it's actually needed. Dual acceptance: understandable at a
+    glance when barely able to focus, and fully inspectable down to the
+    technical guts on demand. Capabilities belong to the core; integrations
+    are optional providers.
 
 ownership:
   type: human

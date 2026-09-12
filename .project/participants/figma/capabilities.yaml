@@ -5,7 +5,8 @@ participant: figma
 capabilities:
   - id: visual-design-composition
     description: >-
-      Design and iterate visual composition for Personal World screens:
+      Design and iterate visual composition for Project Worlds screens
+      (product renamed from "Personal World" 2026-09-12):
       hierarchy, grouping, density, spacing rhythm, card/list/table choices,
       companion placement, responsive transformation.
     inputs:

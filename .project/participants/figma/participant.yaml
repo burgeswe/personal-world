@@ -32,7 +32,8 @@ contracts:
 interfaces:
   - id: figma-web-app
     description: >-
-      Visual design source for Personal World. File VATVojyJZT9HKx0CrDS0yr.
+      Visual design source for Project Worlds (product renamed from
+      "Personal World" 2026-09-12; same file, unaffected). File VATVojyJZT9HKx0CrDS0yr.
       Frame exports land as repo-tracked SVG/PNG under design/ and as local
       exports outside the repo (see references.yaml).
   - id: export-frames

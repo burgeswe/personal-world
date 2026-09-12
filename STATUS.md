@@ -1,30 +1,33 @@
-# Personal World — current-state entry point
+# Project Worlds — current-state entry point
 
-This file answers one question: **where do I look to know what is
-happening right now?**
+**Retired as an independent authority 2026-09-12.** This file answered
+"where do I look to know what is happening right now?" by pointing at
+two competing places (this table, plus the external homelab CHECKOFF)
+that drifted out of sync with each other and with `.agent/STATE.md`.
+Per the Play-Nice `project-context-and-participant-packs` /
+`stable-truth-replaceable-machinery` contracts: **one canonical current
+truth; other documents may point to it.**
 
-## The canonical cross-repository current state
+## Canonical current-state pointer
 
-Live epoch state (what is in progress, what is blocked, what just
-landed across the homelab-family repos) is tracked in the **homelab
-repository's agent checkoff**:
+**`.project/CURRENT.md`** answers "what is true right now" — repo
+state, branch, Play-Nice adoption, Figma pack status, and what's next.
+Read that file first.
 
-```text
-burgeswe/homelab  →  docs/agent/CHECKOFF.md      (current epoch rows)
-burgeswe/homelab  →  docs/agent/handoffs/LATEST.md   (detailed deltas)
-```
+The external `homelab` repository's `docs/agent/CHECKOFF.md` may still
+track cross-repo epoch rows, but it is not treated as authoritative for
+this repo's current state anymore — it was found stale (still
+referencing a 2026-09-09 milestone, predating the entire P1 frontend
+build) during the 2026-09-12 trunk-unification pass, and this repo does
+not maintain a second hand-updated copy to keep it honest.
 
-Personal World work appears there as rows tagged with this repo. This
-repository intentionally does **not** maintain a second, hand-updated
-copy of that state — one fact should be maintained once.
-
-## What is true inside this repo (no external repo needed)
+## Where things live (durable, not "current state" — these don't drift the same way)
 
 | Question | Answer here |
 |---|---|
 | What does this product do today? | `README.md` ("What works today") |
-| What does “finished enough to live in every day” mean? | `docs/PERSONAL-WORLD-FINISH-LINE.md` |
-| How do we get there, in what order, and what is next? | `docs/PERSONAL-WORLD-COMPLETION-PLAN.md` (authoritative plan); `.agent/STATE.md` (current phase) |
+| What does "finished enough to live in every day" mean? | `docs/PERSONAL-WORLD-FINISH-LINE.md` (filename kept; content still applies — see `.project/CURRENT.md` for the identity-pass note) |
+| How do we get there, in what order? | `docs/PERSONAL-WORLD-COMPLETION-PLAN.md` (historical plan document — phase-tracker role now superseded by `.project/CURRENT.md`, see `.agent/STATE.md`) |
 | What is designed but not implemented? | `ROADMAP.md` (direction, not promises) |
 | What changed, when? | `CHANGELOG.md` (Keep-a-Changelog) |
 | What governs UI work? | `docs/accessibility/ACCESSIBILITY_CONTRACT.md` (non-negotiable) |
@@ -33,12 +36,3 @@ copy of that state — one fact should be maintained once.
 | First run on new hardware | `docs/OPERATIONS-FIRST-RUN.md` (daily-use runbook, 2026-09-09) |
 | How do I validate my work? | `uv run pytest --timeout=30`, `uv run personal-world framework validate --json` |
 | Security contract? | `SECURITY.md` |
-
-## Staleness rule
-
-This file is a pointer, not a source. If the rows above ever disagree
-with the homelab CHECKOFF, the CHECKOFF (plus live runtime evidence)
-wins for current operational state — repository and runtime evidence
-outrank any handoff. The Finish Line remains the product-intent source
-for the target experience; it does not claim unfinished features are
-already implemented.

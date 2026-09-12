@@ -1,7 +1,29 @@
-# Agent state — 2026-09-10 (Phase 0 complete)
+# Agent state — retired 2026-09-12 (superseded by `.project/CURRENT.md`)
 
-Authoritative plan: `docs/PERSONAL-WORLD-COMPLETION-PLAN.md`. This file
-records only where we are in that plan and the exact next action.
+**This file stopped being updated after the entry below and is now
+historical.** It was one of three competing/stale current-state
+narratives found during the 2026-09-12 trunk-unification pass (the
+others: `STATUS.md`'s homelab-CHECKOFF pointer, and the in-repo table
+it fronted). Per the Play-Nice `stable-truth-replaceable-machinery`
+contract's "one canonical current truth" rule, **`.project/CURRENT.md`
+is now the canonical current-state pointer** — read that file, not this
+one, for "where are we now."
+
+Left in place rather than deleted: the record below is accurate
+history of P0/P1 T1–T9, and its "NEXT" section correctly predicted the
+shape of what actually happened next (T10–T14, browser/Playwright
+gates) — it just never got a final update recording that those
+predictions came true and the pass closed. That closure is now recorded
+in `.project/CURRENT.md` instead.
+
+---
+
+## Historical record (accurate through 2026-09-12 overnight run; not maintained after)
+
+Authoritative plan at the time: `docs/PERSONAL-WORLD-COMPLETION-PLAN.md`.
+This file recorded only where the project was in that plan and the
+exact next action — see the superseding note above for what replaced
+that role.
 
 ## Current phase
 

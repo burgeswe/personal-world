@@ -1,4 +1,9 @@
-# Personal World — Design Context: CURRENT
+# Project Worlds — Design Context: CURRENT
+
+*(Renamed from "Personal World" 2026-09-12 — product identity only; the
+design file, frame IDs, and companion character names below are
+unaffected. See `.project/CURRENT.md` "Identity pass" for the full
+classification.)*
 
 Answers current design questions from repository evidence, verified
 2026-09-12 by the integration session. **This file routes; canonical files

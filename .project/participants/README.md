@@ -1,4 +1,6 @@
-# Personal World — Participant Packs
+# Project Worlds — Participant Packs
+
+*(Renamed from "Personal World" 2026-09-12 — product identity only.)*
 
 One directory per regular collaborator: a shared boundary document —
 "what does this participant and this project know about working together?"

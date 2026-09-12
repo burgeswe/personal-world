@@ -1,9 +1,16 @@
-# Personal World
+# Project Worlds
 
-A small personal control plane: **stable truth, replaceable machinery.**
-A CLI, lightweight web dashboard and shared API describe what exists, what matters,
-what is allowed, and what happened. Capabilities belong to the core; integrations
-are optional providers.
+*(Formerly "Personal World" — renamed 2026-09-12 after the T1–T14 trunk
+was unified; same codebase, same continuity line, no repository/package
+rename yet. See `.project/CURRENT.md` for what changed and what
+intentionally didn't.)*
+
+A calm, accessible, slightly whimsical personal environment where your
+information, tools, assistant, history, and capabilities come together
+naturally — and where sophisticated machinery stays out of your way
+until you actually need it. Understandable at a glance when you can
+barely focus; fully inspectable down to the technical guts when you want
+that instead.
 
 **Status:** 0.1, active development — [changelog](CHANGELOG.md) |
 [roadmap](ROADMAP.md) | [finish line](docs/PERSONAL-WORLD-FINISH-LINE.md).
@@ -14,7 +21,7 @@ personal data belong outside this repository.
 
 ## Why it exists
 
-Most dashboards list installed services. Personal World answers a
+Most dashboards list installed services. Project Worlds answers a
 person's actual questions — *what matters today, what changed, what
 needs attention, what is my world allowed to do* — with the AI agent as
 a first-class citizen that can observe and suggest, but never silently
