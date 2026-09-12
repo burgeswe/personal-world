@@ -17,10 +17,16 @@ Contract under test:
   NOT a provider failure (only agent_status.py exit-2/no-parse is)
 - read-only: `agent-sync status --all --format json` argv only, no
   shell, never a mutation verb
+- observation FRESHNESS is derived from agent-sync's observed_at
+  (threshold = the product-wide lab_state 30-minute convention);
+  state and freshness are separate dimensions — age never rewrites
+  publish_state, and missing/invalid timestamps stay honestly
+  'unknown'
 """
 
 import json
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -286,6 +292,80 @@ class TestNormalization:
         r = AgentSyncProjectSensor().observe_projects()
         assert r.data["projects"][0]["working_tree"] == {
             "staged": 0, "modified": 0, "untracked": 0, "conflicted": 0}
+
+
+class TestFreshness:
+    """State and freshness are SEPARATE dimensions: age is derived from
+    agent-sync's own observed_at and never rewrites publish_state.
+    Threshold mirrors lab_state.FRESHNESS (the product-wide 30-minute
+    freshness convention). Missing/invalid timestamps stay honestly
+    'unknown' — no age is fabricated from a bad clock reading."""
+
+    def _now(self):
+        return datetime(2026, 9, 12, 15, 0, 0, tzinfo=timezone.utc)
+
+    def test_fresh_under_threshold(self):
+        from personal_world.providers.agent_sync import freshness
+        now = self._now()
+        f = freshness("2026-09-12T14:48:38Z", now=now)
+        assert f == {"freshness": "fresh", "age_seconds": 682}
+
+    def test_stale_above_threshold(self):
+        from personal_world.providers.agent_sync import freshness
+        now = self._now()
+        f = freshness("2026-09-12T14:10:00Z", now=now)  # 50 min
+        assert f["freshness"] == "stale"
+        assert f["age_seconds"] == 3000
+
+    def test_exact_threshold_is_fresh(self):
+        from personal_world.providers.agent_sync import freshness, STALE_AFTER
+        now = self._now()
+        f = freshness("2026-09-12T14:30:00Z", now=now)  # exactly 30 min
+        # exactly-at-threshold is NOT stale (strictly greater than)
+        assert f["freshness"] == "fresh"
+        assert f["age_seconds"] == int(STALE_AFTER.total_seconds())
+
+    def test_missing_timestamp_is_unknown_not_stale(self):
+        from personal_world.providers.agent_sync import freshness
+        assert freshness(None) == {"freshness": "unknown", "age_seconds": None}
+        assert freshness("") == {"freshness": "unknown", "age_seconds": None}
+
+    def test_invalid_timestamp_is_unknown_not_stale(self):
+        from personal_world.providers.agent_sync import freshness
+        assert freshness("not-a-timestamp") == \
+            {"freshness": "unknown", "age_seconds": None}
+
+    def test_freshness_never_rewrites_state(self, monkeypatch):
+        # stale observation of 'diverged' still reports 'diverged' —
+        # the record's publish_state is untouched by the age math
+        fake, _ = _fake_run(stdout=json.dumps([
+            _record("split", publish_state="diverged",
+                    remote_head="bbbbb", local_head="ccccc",
+                    observed_at="2026-09-12T10:00:00Z"),
+        ]))
+        monkeypatch.setattr("personal_world.providers.agent_sync._sync_binary",
+                            lambda: "/usr/bin/agent-sync")
+        monkeypatch.setattr(subprocess, "run", fake)
+        result = AgentSyncProjectSensor().observe_projects()
+        assert result.ok
+        assert result.data["projects"][0]["publish_state"] == "diverged"
+        assert result.data["freshness"] == "stale"
+
+    def test_observe_projects_carries_freshness(self, monkeypatch):
+        fake, _ = _fake_run(stdout=json.dumps([_record()]))
+        monkeypatch.setattr("personal_world.providers.agent_sync._sync_binary",
+                            lambda: "/usr/bin/agent-sync")
+        monkeypatch.setattr(subprocess, "run", fake)
+        result = AgentSyncProjectSensor().observe_projects()
+        assert result.ok
+        assert result.data["observed_at"] == "2026-09-12T12:48:38Z"
+        assert result.data["freshness"] in ("fresh", "stale")
+        assert isinstance(result.data["age_seconds"], int)
+
+    def test_threshold_matches_lab_state_convention(self):
+        from personal_world.providers.agent_sync import STALE_AFTER
+        from personal_world.providers.lab_state import FRESHNESS
+        assert STALE_AFTER == FRESHNESS == timedelta(minutes=30)
 
 
 class TestReadOnlyStructure:

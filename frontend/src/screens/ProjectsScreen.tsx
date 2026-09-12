@@ -6,6 +6,7 @@ import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
 import { useSourceControlStatus, useSourceControlHistory, useSourceControlEnrichment, useAgentSyncProjects } from "../lib/hooks";
 import { Loader2 } from "../lib/icons";
 import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment } from "../lib/api";
+import { observedSentence, staleSuffix } from "../lib/observation-age";
 import { projectCategory, projectSentence, CATEGORY_ORDER, type ProjectCategory } from "../lib/project-status";
 import { useAnnounce } from "../primitives/LiveRegion";
 
@@ -408,6 +409,10 @@ function ProjectStatusPanel() {
   const quietCount = count("quiet");
   const glance =
     (quietCount > 0 ? `${quietCount} quiet — ` : "") + bits.join(" · ");
+  // One shared age sentence, calm words, stale = provenance not
+  // failure ("may be stale", never error vocabulary). Composed in a
+  // single expression so screen-reader tests see one string.
+  const ageLine = `${observedSentence(data.observed_at)}${staleSuffix(data.observed_at)} by agent-sync — a dated observation, not live truth.`;
   if (bits.length === 0) {
     return (
       <section data-pw-projects-status="quiet" className="mt-4" aria-label="Project status">
@@ -417,7 +422,7 @@ function ProjectStatusPanel() {
             : `All ${projects.length} projects are settled.`}
         </p>
         <p className="text-xs text-[var(--pw-color-text-secondary)]">
-          {`Observed ${data.observed_at ? `at ${data.observed_at}` : "just now"} by agent-sync — a dated observation, not live truth.`}
+          {ageLine}
         </p>
       </section>
     );
@@ -439,7 +444,7 @@ function ProjectStatusPanel() {
         </ul>
       ) : null}
       <p className="text-xs text-[var(--pw-color-text-secondary)]">
-        {`Observed ${data.observed_at ? `at ${data.observed_at}` : "just now"} by agent-sync — a dated observation, not live truth.`}
+        {ageLine}
       </p>
       {/* Technical guts: exactly where they belong — one disclosure
           below the calm summary, never on the first glance. */}
@@ -494,7 +499,12 @@ function ProjectStatusPanel() {
                     </div>
                     <div>
                       <dt className="text-[var(--pw-color-text-secondary)]">Observed</dt>
-                      <dd>{data.observed_at ?? "unknown"}</dd>
+                      <dd>
+                        {`${observedSentence(data.observed_at)}${staleSuffix(data.observed_at)}`}
+                        {data.observed_at
+                          ? ` (${data.observed_at})`
+                          : ""}
+                      </dd>
                     </div>
                   </dl>
                 </li>

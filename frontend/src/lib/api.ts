@@ -466,6 +466,11 @@ export interface AgentSyncProject {
 }
 export type AgentSyncProjectsData = {
   observed_at: string | null;
+  /** Derived from observed_at — a SEPARATE dimension from
+   * publish_state; age never rewrites state. "unknown" = missing or
+   * invalid timestamp (honestly unknown, not stale). */
+  freshness: "fresh" | "stale" | "unknown";
+  age_seconds: number | null;
   projects: AgentSyncProject[];
 };
 /** GET /api/projects/status keeps its honest {ok, status, data}

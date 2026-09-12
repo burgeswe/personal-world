@@ -19,6 +19,23 @@ SOURCE_CONTROL_REPOS_IN_CONTEXT = 12
 PROJECTS_IN_CONTEXT = 12
 
 
+def _age_words(age_seconds: int) -> str:
+    """Compact relative age for the assistant context — ONE wording
+    for the whole backend ("4 minutes", "1 hour", "just now").
+    The model gets the age as prose so it can answer "how fresh?"
+    without doing date math, and can honestly hedge when stale."""
+    if age_seconds < 60:
+        return "just now"
+    minutes = age_seconds // 60
+    if minutes < 60:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+    days = hours // 24
+    return f"{days} day{'s' if days != 1 else ''}"
+
+
 def _fmt_caps(statuses: dict) -> list[str]:
     lines = []
     for cap, s in sorted(statuses.items()):
@@ -190,8 +207,25 @@ def _projects_block() -> list[str]:
         )
     if quiet:
         lines.append(f"- {quiet} quiet")
-    if result.data.get("observed_at"):
-        lines.append(f"Observed: {result.data['observed_at']}")
+    # Observation age, in the assistant's own vocabulary: the model
+    # must know WHEN the estate was observed so it never presents an
+    # old observation as current certainty. Calm language — "may be
+    # stale", never error vocabulary. Invalid/missing timestamp ->
+    # no age line (never a fabricated age).
+    from .providers.agent_sync import freshness as observation_freshness
+    fresh = observation_freshness(result.data.get("observed_at"))
+    age_seconds = fresh.get("age_seconds")
+    if age_seconds is not None:
+        age_words = _age_words(age_seconds)
+        # "just now old" is not a sentence anyone should read; the
+        # sub-minute age is simply "just now"
+        age_line = ("Project observations: just now."
+                    if age_words == "just now"
+                    else f"Project observations: {age_words} old.")
+        if fresh.get("freshness") == "stale":
+            age_line = (f"Project observations: {age_words} old; "
+                        "may be stale.")
+        lines.append(age_line)
     return ["\n## Projects (agent-sync observation)"] + lines
 
 

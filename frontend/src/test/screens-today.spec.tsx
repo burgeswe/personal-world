@@ -528,15 +528,50 @@ function estateProject(overrides: Record<string, unknown> = {}) {
 
 describe("TodayScreen (agent-sync project status)", () => {
   it("all-quiet estate: one settled line, no alarm vocabulary", async () => {
+    // Fresh observation (now-2min): NO stale line — Today stays calm
+    // when evidence is current (quiet-when-healthy).
     await bootToday(defaultHandlers({
       projectsStatus: {
         ok: true, status: "healthy", warnings: [],
-        data: { observed_at: "2026-09-12T12:48:38Z", projects: [estateProject(), estateProject({ project: "second" })] },
+        data: { observed_at: new Date(Date.now() - 2 * 60_000).toISOString(), projects: [estateProject(), estateProject({ project: "second" })] },
       },
     }));
     const region = screen.getByRole("heading", { name: "Projects" }).closest("section");
     expect(region?.textContent).toMatch(/Projects are quiet\./);
     expect(region?.textContent).not.toMatch(/attention|diverged|unpublished/);
+    expect(region?.textContent).not.toMatch(/stale|out of date/);
+  });
+
+  it("stale quiet estate: ONE calm age line, no error vocabulary", async () => {
+    // 47 minutes old: Today says the status MAY be out of date —
+    // calm provenance, state itself (quiet) unchanged, no alarm words.
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: new Date(Date.now() - 47 * 60_000).toISOString(), projects: [estateProject()] },
+      },
+    }));
+    const region = screen.getByRole("heading", { name: "Projects" }).closest("section");
+    expect(region?.textContent).toMatch(/Projects are quiet\./);
+    expect(
+      screen.getByText(/Project status may be out of date — last observed 47 minutes ago\./)
+    ).toBeTruthy();
+    expect(region?.textContent).not.toMatch(/ERROR|OUTDATED|DANGER/);
+  });
+
+  it("stale attention estate: age line appears BELOW the state lines", async () => {
+    // State and freshness are separate dimensions: diverged stays
+    // diverged, the age line adds provenance without rewriting it.
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: new Date(Date.now() - 47 * 60_000).toISOString(), projects: [estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" })] },
+      },
+    }));
+    expect(screen.getByText(/split: local and remote histories have diverged/)).toBeTruthy();
+    expect(
+      screen.getByText(/Project status was last observed 47 minutes ago\./)
+    ).toBeTruthy();
   });
 
   it("a diverged project surfaces as attention with a human sentence + link", async () => {

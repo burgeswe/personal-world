@@ -117,7 +117,7 @@ function estateProject(overrides: Partial<AgentSyncProject> = {}): AgentSyncProj
 
 function estateEnvelope(
   projects: AgentSyncProject[],
-  observed_at = "2026-09-12T12:48:38Z",
+  observed_at: string | null = "2026-09-12T12:48:38Z",
   ok = true,
   status = "healthy"
 ) {
@@ -487,12 +487,16 @@ describe("Projects GitHub enrichment (optional remote facts, quiet degradation)"
 
 describe("ProjectsScreen (agent-sync project status panel)", () => {
   /** Route both endpoints: native table keeps answering, estate panel
-   *  renders from /api/projects/status. */
-  function stubBoth(projects: AgentSyncProject[]) {
+   *  renders from /api/projects/status. `observedAt` pins the
+   *  observation clock so age assertions stay deterministic. */
+  function stubBoth(
+    projects: AgentSyncProject[],
+    observedAt: string | null = "2026-09-12T12:48:38Z",
+  ) {
     fetchMock.mockImplementation((input: unknown) => {
       const path = typeof input === "string" ? input : String(input);
       if (path.includes("/api/projects/status")) {
-        return Promise.resolve(estateEnvelope(projects));
+        return Promise.resolve(estateEnvelope(projects, observedAt));
       }
       if (path.includes("/api/source-control/history")) {
         return Promise.resolve(historyEnvelope(""));
@@ -509,7 +513,10 @@ describe("ProjectsScreen (agent-sync project status panel)", () => {
   }
 
   it("all quiet: settled sentence, no manufactured attention", async () => {
-    stubBoth([estateProject(), estateProject({ project: "second" })]);
+    // Fresh observation (now-2min): the age line is plain provenance
+    // with NO stale marker — fresh ink stays minimal.
+    stubBoth([estateProject(), estateProject({ project: "second" })],
+      new Date(Date.now() - 2 * 60_000).toISOString());
     const { container } = stubProviders(<ProjectsScreen />);
     await waitFor(() =>
       expect(screen.getByText(/All 2 projects are settled\./)).toBeTruthy()
@@ -518,8 +525,9 @@ describe("ProjectsScreen (agent-sync project status panel)", () => {
       screen.queryByText(/needs attention|attention/)
     ).toBeNull();
     expect(
-      screen.getByText(/Observed at 2026-09-12T12:48:38Z by agent-sync/)
+      screen.getByText(/Observed 2 minutes ago by agent-sync/)
     ).toBeTruthy();
+    expect(screen.queryByText(/may be stale/)).toBeNull();
     expect(await axeNoContrast(container)).toHaveNoViolations();
   });
 
@@ -586,13 +594,41 @@ describe("ProjectsScreen (agent-sync project status panel)", () => {
     );
   });
 
-  it("observed time stays visible (dated observation, not timeless truth)", async () => {
-    stubBoth([estateProject()]);
+  it("observed age stays visible (dated observation, not timeless truth)", async () => {
+    stubBoth([estateProject()],
+      new Date(Date.now() - 4 * 60_000).toISOString());
     stubProviders(<ProjectsScreen />);
     await waitFor(() =>
-      expect(screen.getByText(/Observed at 2026-09-12T12:48:38Z/)).toBeTruthy()
+      expect(screen.getByText(/Observed 4 minutes ago by agent-sync/)).toBeTruthy()
     );
     expect(screen.getByText(/a dated observation, not live truth/)).toBeTruthy();
+    expect(screen.queryByText(/may be stale/)).toBeNull();
+  });
+
+  it("stale observation is marked calmly, state unchanged", async () => {
+    // 47 minutes old: the SAME state lines (diverged) plus a calm
+    // "may be stale" provenance suffix — staleness never rewrites
+    // state, never uses error vocabulary.
+    stubBoth(
+      [estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" })],
+      new Date(Date.now() - 47 * 60_000).toISOString()
+    );
+    const { container } = stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/Observed 47 minutes ago · may be stale by agent-sync/)).toBeTruthy()
+    );
+    expect(screen.getByText(/histories have diverged/)).toBeTruthy();
+    expect(screen.queryByText(/ERROR|OUTDATED|DANGER/)).toBeNull();
+    expect(await axeNoContrast(container)).toHaveNoViolations();
+  });
+
+  it("missing observed_at is honest, never a fabricated age", async () => {
+    stubBoth([estateProject()], null);
+    stubProviders(<ProjectsScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/Observed at an unknown time by agent-sync/)).toBeTruthy()
+    );
+    expect(screen.queryByText(/just now by agent-sync/)).toBeNull();
   });
 
   it("keyboard reachable and non-color: the panel is plain text", async () => {

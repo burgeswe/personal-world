@@ -60,6 +60,34 @@ dated entry superseding the old one (append-only, like the journal).
   separate layers — the seam stays closed until it can open with
   provenance.
 
+- **2026-09-12 — Project-state truth and project-state freshness are
+  separate dimensions.** WHAT agent-sync observed (publish_state,
+  safe_to_leave, tree counts) and WHEN it observed it
+  (`observed_at`, rendered as age) never collapse into each other:
+  a stale observation of "diverged" is still a diverged observation,
+  just not current evidence — staleness never converts state to
+  unknown, and state never hides age. The stale marker is calm
+  provenance ("may be stale"), never error vocabulary. Reason: old
+  evidence is not false evidence, but it must never impersonate
+  current evidence — and confusing the two dimensions would lie in
+  both directions at once.
+
+- **2026-09-12 — Project Worlds preserves the observation timestamp
+  from agent-sync instead of presenting cached/previous observations
+  as timeless current truth.** agent-sync's own `observed_at` is the
+  only freshness source (no second clock, no freshness database, no
+  polling); age is DERIVED at render time (backend
+  `agent_sync.freshness()`, ONE frontend helper
+  `lib/observation-age.ts`), the staleness threshold reuses the
+  product-wide lab_state 30-minute `FRESHNESS` convention
+  (asserted by test; no settings surface), and missing/invalid
+  timestamps render as honestly unknown rather than fabricating an
+  age. Every project-status surface (Projects glance + guts, Today,
+  the assistant context) shows WHEN the estate was observed so the
+  user never mistakes an old observation for current truth. Reason:
+  truth has a timestamp; the UI must carry it, not invent it.
+
+
 ## Container distribution
 
 - **2026-09-12 — Project Worlds is distributed as a versioned OCI

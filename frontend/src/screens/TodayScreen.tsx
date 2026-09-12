@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveApps, saveJournalEntry, ApiError, type JournalEntry, type ServiceApp, type LabEnvelope } from "../lib/api";
 import { useDaily, useApps, useLabState, useJournalPage, useJournalKey, useAgentSyncProjects } from "../lib/hooks";
+import { observationAge } from "../lib/observation-age";
 import { projectCategory, projectSentence, CATEGORY_ORDER, NEEDS_ATTENTION } from "../lib/project-status";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { useStepUp } from "../primitives/StepUpPrompt";
@@ -310,6 +311,11 @@ function ProjectsTodaySection() {
       CATEGORY_ORDER[projectCategory(a)] - CATEGORY_ORDER[projectCategory(b)]);
   const localWork = projects.filter((p) => projectCategory(p) === "local_work");
   const unknown = projects.filter((p) => projectCategory(p) === "unknown");
+  // Observation age — ONE quiet line, ONLY when stale. Fresh
+  // observations add no ink to Today (quiet-when-healthy); stale is
+  // provenance, never alarm vocabulary. Missing/invalid timestamp ->
+  // no line (an unknowable age is not a stale age).
+  const age = observationAge(data.observed_at);
 
   if (attention.length === 0 && localWork.length === 0 && unknown.length === 0) {
     return (
@@ -320,6 +326,11 @@ function ProjectsTodaySection() {
         <p className="text-[var(--pw-color-text-secondary)]">
           Projects are quiet.
         </p>
+        {age.stale ? (
+          <p className="text-[var(--pw-color-text-secondary)]" data-pw-today-projects="stale">
+            {`Project status may be out of date — last observed ${age.text} ago.`}
+          </p>
+        ) : null}
       </section>
     );
   }
@@ -368,6 +379,11 @@ function ProjectsTodaySection() {
       {attention.length > 3 ? (
         <p className="text-sm text-[var(--pw-color-text-secondary)]">
           and {attention.length - 3} more in Projects.
+        </p>
+      ) : null}
+      {age.stale ? (
+        <p className="text-[var(--pw-color-text-secondary)]" data-pw-today-projects="stale">
+          {`Project status was last observed ${age.text} ago.`}
         </p>
       ) : null}
     </section>

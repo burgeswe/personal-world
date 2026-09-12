@@ -42,12 +42,21 @@ an observation, never timeless truth.
 import json
 import shutil
 import subprocess
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ..envelope import Result, fail, ok
 from .registry import StatusContract
 
 SYNC_TIMEOUT_SECONDS = 60
+
+#: Observation staleness floor — the SAME product-wide freshness
+#: convention as providers/lab_state.py's FRESHNESS (30 minutes).
+#: Staleness is a claim about evidence AGE, never about state truth:
+#: a stale observation of "diverged" is still a diverged observation,
+#: it just isn't current evidence. Derived, not stored; state and
+#: freshness remain separate dimensions.
+STALE_AFTER = timedelta(minutes=30)
 
 #: closed vocabularies straight from agent_status.py — anything
 #: outside these sets is normalized to None (honest unknown), never
@@ -75,6 +84,47 @@ def _coerce_count(value: Any) -> int:
         return n if n > 0 else 0
     except (TypeError, ValueError):
         return 0
+
+
+def parse_observed_at(value: Any) -> datetime | None:
+    """agent-sync's observed_at -> aware datetime, or None.
+
+    Honest None for missing/invalid timestamps — an age line that
+    cannot be computed is simply not shown; no age is ever
+    fabricated from a bad clock reading."""
+    if not isinstance(value, str) or not value:
+        return None
+    text = value.strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def freshness(observed_at: Any, now: datetime | None = None) -> dict[str, Any]:
+    """Derive observation freshness from agent-sync's observed_at.
+
+    Returns {freshness: "fresh"|"stale"|"unknown", age_seconds: int|None}
+    — a SEPARATE dimension from publish_state/safe_to_leave, which are
+    never altered by age. "unknown" (missing or invalid timestamp)
+    stays unknown; it is not treated as stale or fresh."""
+    parsed = parse_observed_at(observed_at)
+    if parsed is None:
+        return {"freshness": "unknown", "age_seconds": None}
+    moment = now or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    age_seconds = max(0, int((moment - parsed).total_seconds()))
+    stale = age_seconds > STALE_AFTER.total_seconds()
+    return {
+        "freshness": "stale" if stale else "fresh",
+        "age_seconds": age_seconds,
+    }
 
 
 def _normalize(record: dict[str, Any]) -> dict[str, Any]:
@@ -154,6 +204,10 @@ class AgentSyncProjectSensor(StatusContract):
 
         data:
           observed_at   agent-sync's own observation timestamp
+          freshness     derived: fresh|stale|unknown (separate
+                        dimension from publish_state; age never
+                        rewrites state)
+          age_seconds   seconds since observed_at (None when unknown)
           projects      list of normalized project records
         Honest empty list when the registry is empty (that is an
         agent-sync configuration question, not a Project Worlds
@@ -175,8 +229,11 @@ class AgentSyncProjectSensor(StatusContract):
             if isinstance(raw, dict) and raw.get("observed_at"):
                 observed_at = raw.get("observed_at")
                 break
+        fresh = freshness(observed_at)
         return ok("healthy", data={
             "observed_at": observed_at,
+            "freshness": fresh["freshness"],
+            "age_seconds": fresh["age_seconds"],
             "projects": projects,
         })
 

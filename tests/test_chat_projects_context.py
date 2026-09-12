@@ -6,6 +6,10 @@ Contract under test:
   project, quiet projects as ONE count line, no SHAs ever
 - unknown is preserved honestly ("remote unreachable"), never
   healthy or unhealthy
+- the block carries the OBSERVATION AGE as calm prose so the
+  assistant can hedge honestly ("47 minutes old; may be stale"),
+  never presenting an old observation as current certainty; state
+  and freshness are separate dimensions
 - sensor absent / failed -> NO block at all (estate unknown, not
   empty)
 - the block carries no mutation authority: it is prose the
@@ -16,6 +20,7 @@ Contract under test:
 
 import json
 import subprocess
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -23,6 +28,10 @@ from personal_world.chat_context import build_world_context
 from personal_world.envelope import ok
 from personal_world.journal import Journal
 from personal_world.world import World
+
+
+def _iso(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _estate(projects, observed_at="2026-09-12T12:48:38Z"):
@@ -65,6 +74,7 @@ def _ctx(tmp_path, monkeypatch, result):
 
 class TestProjectsContextBlock:
     def test_compact_projection_with_quiet_count(self, tmp_path, monkeypatch):
+        now = datetime.now(timezone.utc)
         ctx = _ctx(tmp_path, monkeypatch, _estate([
             _proj("split", publish_state="diverged", safe="no"),
             _proj("unshared", publish_state="ahead", safe="no"),
@@ -72,14 +82,49 @@ class TestProjectsContextBlock:
             _proj("offline", publish_state=None, safe="unknown"),
             _proj("one", publish_state="match"),
             _proj("two", publish_state="match"),
-        ]))
+        ], observed_at=_iso(now - timedelta(minutes=4))))
         assert "## Projects (agent-sync observation)" in ctx
         assert "- split: diverged; clean tree" in ctx
         assert "- unshared: unpublished (local ahead); clean tree" in ctx
         assert "- wip: published; local work; 3 uncommitted file(s)" in ctx
         assert "- offline: unknown (remote unreachable); clean tree" in ctx
         assert "- 2 quiet" in ctx
-        assert "Observed: 2026-09-12T12:48:38Z" in ctx
+        assert "Project observations: 4 minutes old." in ctx
+        assert "may be stale" not in ctx  # 4 minutes is fresh
+
+    def test_age_line_says_stale_past_threshold(self, tmp_path, monkeypatch):
+        now = datetime.now(timezone.utc)
+        ctx = _ctx(tmp_path, monkeypatch, _estate(
+            [_proj("split", publish_state="diverged", safe="no")],
+            observed_at=_iso(now - timedelta(minutes=47)),
+        ))
+        assert "Project observations: 47 minutes old; may be stale." in ctx
+
+    def test_invalid_timestamp_means_no_age_line(self, tmp_path, monkeypatch):
+        ctx = _ctx(tmp_path, monkeypatch, _estate(
+            [_proj("split", publish_state="diverged", safe="no")],
+            observed_at="not-a-timestamp",
+        ))
+        assert "Project observations:" not in ctx
+        # the estate lines survive — age is a separate dimension
+        assert "- split: diverged" in ctx
+
+    def test_missing_timestamp_means_no_age_line(self, tmp_path, monkeypatch):
+        ctx = _ctx(tmp_path, monkeypatch, _estate(
+            [_proj("demo")], observed_at=None))
+        assert "Project observations:" not in ctx
+        assert "- demo:" in ctx or "- 1 quiet" in ctx
+
+    def test_state_not_rewritten_by_staleness(self, tmp_path, monkeypatch):
+        # stale + diverged is STILL diverged, observed some time ago —
+        # staleness never converts state to unknown
+        now = datetime.now(timezone.utc)
+        ctx = _ctx(tmp_path, monkeypatch, _estate(
+            [_proj("split", publish_state="diverged", safe="no")],
+            observed_at=_iso(now - timedelta(hours=3)),
+        ))
+        assert "- split: diverged; clean tree" in ctx
+        assert "Project observations: 3 hours old; may be stale." in ctx
 
     def test_no_shas_in_context(self, tmp_path, monkeypatch):
         ctx = _ctx(tmp_path, monkeypatch, _estate([_proj("demo")]))

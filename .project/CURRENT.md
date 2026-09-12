@@ -234,6 +234,60 @@ replaced with retrying `toBeVisible()` — same assertion, no race).
 presentation presents, the assistant explains; nothing in this
 slice can touch a repository.
 
+**Project-state trust pass (2026-09-12, rylee_lore remote truth +
+observation age):** Two sections. (1) The rylee_lore "diverged"
+finding was investigated deterministically and classified **A:
+STALE REMOTE CONFIG** — the configured remote still pointed at
+the pre-rename `burgeswe/rylee_lore` URL (GitHub account renamed
+to Rylee-Bee 2026-09-12; `gh api` shows burgeswe/rylee_lore
+redirects to Rylee-Bee/rylee_lore, `fork: false`, and the
+`burgeswe` user 404s), and the true local↔remote relationship was
+strictly BEHIND (local `d66ea6e` = merge-base, 0 local-only
+commits, 21 remote-only commits) — agent-sync's "diverged" was
+its honest fallback (it compares against `ls-remote` SHAs without
+fetching; rev-list against an unknown SHA fails → "diverged").
+The remote URL was corrected to
+`https://github.com/Rylee-Bee/rylee_lore.git` (config line only;
+NO reset/rebase/merge/pull — the checkout is still behind 21
+commits, an owner decision; tree clean before/after, nothing
+absorbed). The estate now truthfully reports rylee_lore `behind`.
+The pre-existing play-nice-contracts `diverged` (remote moved to
+`72d605b` past the pinned `21b6841a`) is REAL divergence —
+preserved and reported, an owner decision. (2) Observation AGE
+surfacing: every project-status surface now distinguishes WHAT
+was observed from WHEN it was observed. agent-sync's own
+`observed_at` stays the only freshness source (no second clock);
+freshness is DERIVED (`fresh|stale|unknown` + `age_seconds` in the
+API) and is a SEPARATE dimension from state — stale + diverged is
+still diverged, observed some time ago; staleness never converts
+state to unknown. Threshold = the product-wide lab_state 30-minute
+`FRESHNESS` convention (`STALE_AFTER` in the sensor mirrors
+`lab_state.FRESHNESS`, asserted by test; no settings system).
+Shared computation: backend `providers/agent_sync.freshness()` +
+ONE frontend helper `lib/observation-age.ts` (relative ages,
+pluralization, injectable now for deterministic tests) — no
+per-screen date math. Surfaces: Projects age line on the estate
+panel ("Observed 4 minutes ago by agent-sync — a dated
+observation, not live truth."; stale suffix " · may be stale",
+never ERROR/OUTDATED/DANGER vocabulary) and in the per-project
+guts ("Observed just now (2026-09-12T15:15:17Z)"); Today adds ONE
+quiet line only when stale ("Project status may be out of date —
+last observed 47 minutes ago." when quiet / "Project status was
+last observed 47 minutes ago." when attention exists; fresh → no
+extra ink); Personal World's context block carries calm age prose
+("Project observations: 47 minutes old; may be stale." / "just
+now") so the assistant hedges honestly — live-verified: it
+answers "how fresh is that information?" from the age line and
+never presents old observations as current. Missing/invalid
+observed_at → no age line anywhere (an unknowable age is not a
+stale age) and "Observed at an unknown time" on Projects (a
+fabricated "just now" from the prior slice was removed — a truth
+bug this pass fixed). No new polling, no cache, no refresh
+mechanism. Backend 634 (12 freshness tests), frontend 354 (13
+helper-unit + 4 screen age tests), e2e 43; live: 720px zero
+overflow, keyboard-reachable guts with 2px focus ring, no
+color-only meaning, reduced-motion fine.
+
 **Gitea retirement + GitHub enrichment + public README/screenshot
 pass (2026-09-12, slice complete):** Gitea is retired from the live
 architecture. `GiteaEnrichment` and `/api/source-control/rollups` are
@@ -444,7 +498,13 @@ blindly rename all of them. Classification used:
 ## In-flight / untracked
 
 `frontend-v2/` and `.bcode/` are pre-existing local experiments,
-unrelated to any pass, still untouched.
+unrelated to any pass, still untouched. **Tree-state honesty note
+(2026-09-12): the working tree is "clean of tracked changes", NOT
+"clean" in the absolute sense — `.bcode/`, `frontend-v2/`, and a
+root-level `node_modules/` sit UNTRACKED (not gitignored; only their
+inner `node_modules/`/`dist/` subtrees are). They are intentionally
+neither absorbed into commits nor deleted; every commit stages
+explicit paths only.**
 
 ## UNKNOWN
 
