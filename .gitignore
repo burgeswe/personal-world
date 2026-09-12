@@ -58,4 +58,9 @@ id_ed25519
 *.sqlite-*
 *.sqlite3-*
 .pytest_tmp/
+# Play-Nice contract session commitment artifacts (contractctl commit):
+# ephemeral, session/role/task-keyed, secret-free but not durable project
+# truth — never committed, per the library's own convention.
+.contracts/
+.contract-commitment.json
 # Design PNG/SVG/ZIP/dotLottie deliverables are intentional source assets.

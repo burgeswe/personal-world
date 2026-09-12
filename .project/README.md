@@ -1,7 +1,9 @@
 # Personal World — Durable Project Context
 
 This directory is Personal World's durable context under the Play-Nice
-`project-context-and-participant-packs` framework (library v0.3.0).
+`project-context-and-participant-packs` framework (framework introduced
+in library v0.3.0; adoption currently pinned to v0.5.0 — see
+`contracts/adoption.yaml`).
 
 ## The three layers
 
@@ -46,9 +48,11 @@ A new human/bot/agent session working on Personal World:
 
 ## Participants
 
-See `participants/README.md`. Current packs: `figma` (status: proposed —
-see its pack). Packs declare what the participant is authoritative for and
-NOT authoritative for, and route help questions to whoever owns the answer.
+See `participants/README.md`. Current packs: `figma` (status: accepted —
+see its pack; this line was stale until a 2026-09-12 cross-check, see
+`participants/README.md` for the correction). Packs declare what the
+participant is authoritative for and NOT authoritative for, and route
+help questions to whoever owns the answer.
 
 ## Provenance
 
@@ -57,3 +61,22 @@ Figma participant-pack integration pass, using
 `contractctl init-project` from play-nice-contracts v0.3.0 @
 `0c0ab7c5d03452fac1650260395b466305cdfa0a`. Session commitment bundle:
 `quay-sail-tundra`.
+
+Adoption pin bumped 2026-09-12 (contract-refresh pass, bcode/claude) to
+v0.5.0 @ `805f58b46fb59adefd1dee85dd99178d9dbaa1d9` — verified against
+the live repository (commit + `contracts.lock.json` fetched and diffed,
+not taken on assertion) before pinning. Delta from v0.3.0: two new
+always-applicable contracts (`participation-and-contribution`,
+`mutual-contribution`) and two version bumps within the existing bundle
+(`ask-for-help` 1.0.0→1.2.0, `human-reliability` 1.0.0→1.1.0); the other
+13 contracts already adopted are byte-identical at this revision. Both
+new/changed contracts read in full; no conflict found with how this
+project already operates (bounded worker delegation with independent
+verification, honest refusal states, Figma's pack already describing
+authoritative_for/not_authoritative_for boundaries, agreement never
+treated as authorization). The Figma pack's own attestation
+(`participants/figma/attestation.yaml`) is scoped to the prior revision
+(receipt `nectar-heather-heather`, bundle `0c0ab7c5`) and is left
+unedited — participant-supplied provenance is never rewritten on her
+behalf (see `participants/figma/contract-return/NEXT-REVISION-NOTE.md`
+for the honest gap this leaves and why it isn't blocking).

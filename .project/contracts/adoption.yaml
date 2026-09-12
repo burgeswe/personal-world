@@ -6,16 +6,22 @@ schema: play-nice/adoption-v1
 project: personal-world
 source:
   repository: burgeswe/play-nice-contracts
-  revision: 0c0ab7c5d03452fac1650260395b466305cdfa0a   # play-nice-contracts v0.3.0
+  revision: 805f58b46fb59adefd1dee85dd99178d9dbaa1d9   # play-nice-contracts v0.5.0
+  # Bumped 2026-09-12 (contract-refresh pass) from 0c0ab7c5 (v0.3.0).
+  # Verified against the live repository (GitHub API: commit exists,
+  # message matches, contracts.lock.json fetched and diffed against the
+  # previous pin) before pinning — never taken on assertion.
 
 always:
-  - ask-for-help
+  - ask-for-help                    # 1.0.0 -> 1.2.0 at this revision
   - truth-and-evidence
-  - human-reliability
+  - human-reliability                # 1.0.0 -> 1.1.0 at this revision
   - recovery-and-reversibility
   - provenance-and-audit
   - explicit-state
   - stable-truth-replaceable-machinery
+  - participation-and-contribution   # new in v0.4.0; always-applicable per its own frontmatter
+  - mutual-contribution              # new in v0.5.0; always-applicable per its own frontmatter
 
 triggers:
   human-facing:
