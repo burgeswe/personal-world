@@ -13,6 +13,33 @@ needs attention, what is my world allowed to do* — while the AI agent
 observes and suggests but never silently decides. Your data stays on
 your own hardware, portable and exportable.
 
+## A Play-Nice product
+
+This project adopts [Play-Nice Contracts](https://github.com/Rylee-Bee/play-nice-contracts)
+as its shared cooperation and engineering constitution.
+
+Here, Play-Nice governs how the four sides of Project Worlds cooperate
+without stepping on each other: **Rylee** (the owner), **Personal World**
+(the companion character inside the environment), the **agents and
+models** that assist her, and the **providers, APIs, automation, and
+interfaces** that orbit both of them. Truth and evidence, explicit
+state, asking instead of guessing, provenance on consequential
+decisions, recoverable mistakes, accessibility floors, bounded work,
+and collaborative good faith are the cooperation floor — not the
+product.
+
+Project Worlds itself stays authoritative for its own architecture,
+world data, UI and design language, domain behavior, Personal World's
+companion behavior, the [finish-line product rules](docs/PERSONAL-WORLD-FINISH-LINE.md),
+project-specific policies (cemented policies, journal correction with
+preserved history, step-up approvals), and its implementation details
+(Python package, CLI, web dashboard).
+
+The canonical adoption lives at
+[`.project/contracts/adoption.yaml`](.project/contracts/adoption.yaml);
+canonical current state at [`.project/CURRENT.md`](.project/CURRENT.md);
+durable decisions at [`.project/DECISIONS.md`](.project/DECISIONS.md).
+
 ## Screenshots
 
 The real running application, captured from a sanitized demo world

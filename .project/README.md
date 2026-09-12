@@ -13,7 +13,7 @@ in library v0.3.0; adoption currently pinned to v0.6.0 — see
 
 ```text
 PLAY-NICE CONTRACTS   — how everybody should behave together (universal)
-                       canonical library: burgeswe/play-nice-contracts
+                       canonical library: Rylee-Bee/play-nice-contracts   # renamed from burgeswe/play-nice-contracts (account rename 2026-09-11); old URL still redirects
                        adopted at: contracts/adoption.yaml (revision pinned)
         ↓
 PROJECT CONTEXT       — what this particular project is, wants, owns, uses
