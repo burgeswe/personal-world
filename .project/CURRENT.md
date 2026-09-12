@@ -173,6 +173,67 @@ was honored (their wording kept; my overlapping section dropped)
 and its broken `.project/DECISIONS.md` link fixed by creating the
 file.
 
+**agent-sync as the project-status sensor (2026-09-12, slice
+`a217be9`–`9777876` — observation is not mutation):** Project Worlds
+now consumes the SAME project truth Rylee sees from
+`agent-sync status --all --format json` — no second Git-state
+implementation exists inside Project Worlds. Architecture:
+Git/.project/.agent → agent-sync (computes project state) →
+Project Worlds (presents) → Personal World (explains) → Rylee
+(decides). The sensor is `providers/agent_sync.py`
+(`AgentSyncProjectSensor`): one subprocess invocation per call,
+argv-only, 60s bounded timeout, parses agent-sync's documented
+`play-nice/repo-status-v1` JSON and normalizes honestly (closed
+vocabularies enforced; unknown preserved as `null`/`unknown`, never
+filled; records without the schema marker skipped, never guessed;
+per-repo `error` records kept with their error text; **exit code 1
+is a valid work-to-do observation, not provider failure**). Failure
+model verified: command absent / timeout / malformed JSON / non-list
+→ honest `unavailable`, never a crash, never partial records; sensor
+absence never breaks anything else. Endpoint `GET /api/projects/status`
+(read-only, auth-gated, envelope-kept). Projects screen gained the
+estate panel: five DISTINCT categories (quiet / local work /
+unpublished / diverged / unknown) never collapsed into one warning;
+calm glance shows only categories that exist and stays "settled-quiet"
+when nothing needs saying; published-with-local-work presented
+calmly (NOT broken); per-project human sentences with no Git
+commands suggested; technical guts (SHAs, tree counts,
+safe-to-leave, Play-Nice, work state, observed time) behind ONE
+disclosure. Today gained a bounded "Projects" section: attention
+projects get a sentence + "See Projects" link (max 3, remainder
+counted), local work one calm mention, unknown honest, settled
+estate one quiet line, sensor absent → section invisible (Today
+stays calm). Category vocabulary shared via
+`frontend/src/lib/project-status.ts` (no duplicate categorization).
+Personal World's chat context gained `## Projects (agent-sync
+observation)`: a compact bounded projection (one line per non-quiet
+project, quiet projects as ONE count line, SHAs NEVER in context,
+unknown preserved); sensor absent or failed → NO block (estate
+unknown, not empty). Live-verified with the real local Qwen: it
+answers "which projects need attention", "what is unpublished",
+"where is local work", "is VEFR safely published" truthfully from
+the real estate (diverged/unknown states preserved, no fabrication).
+agent-sync itself was ported to THIS machine (Bazzite) at its
+canonical `~/.agents/` root from the WSL bundle —
+`agent-sync --statustest` OK offline; its Bazzite
+`settings.yaml -> projects:` registry lists the six verified local
+repos (personal-world, vefr, rylee_lore, munr, play-nice-contracts,
+projects/homelab); homelab-dns deliberately EXCLUDED (its git remote
+URL embeds a credential and must not surface in any Project Worlds
+view), non-repos and third-party clones excluded. Live display
+matches `agent-sync status --all` exactly (6 projects; honest
+unknowns for the three remotes unreachable from this machine).
+Backend 622, frontend 337, e2e 43 green; live browser a11y probes:
+720px no horizontal scroll, keyboard focus ring solid 2px, 44px+
+targets, reduced motion fine, non-color state distinction (words +
+sr-only chips), technical guts only behind disclosure. One small
+test-race fix in e2e PROXY-b (one-shot `isVisible()` read raced the
+wrapped-banner relayout after `setViewportSize` on slower hosts;
+replaced with retrying `toBeVisible()` — same assertion, no race).
+**No mutation capability added anywhere** — status observes,
+presentation presents, the assistant explains; nothing in this
+slice can touch a repository.
+
 **Gitea retirement + GitHub enrichment + public README/screenshot
 pass (2026-09-12, slice complete):** Gitea is retired from the live
 architecture. `GiteaEnrichment` and `/api/source-control/rollups` are

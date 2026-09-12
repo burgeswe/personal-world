@@ -72,3 +72,33 @@ dated entry superseding the old one (append-only, like the journal).
   `per_page`-bounded list length, which caps at 100); any search
   failure yields honest `null` counts, never zeros. Reason: an
   approximation that presents itself as exact is a lie.
+
+- **2026-09-12 — Project Worlds does not compute repository
+  publication state itself. It consumes the read-only agent-sync
+  project-state interface.** `agent-sync status --all --format json`
+  (the pickle project's adapter layer, schema
+  `play-nice/repo-status-v1`) is the single authoritative interpreter
+  of Rylee's project estate: Git owns Git truth; agent-sync computes
+  publication/safe-to-leave/work-state from it; Project Worlds'
+  `AgentSyncProjectSensor` only invokes, parses, and normalizes that
+  observation (unknown preserved, closed vocabularies enforced,
+  exit-1 treated as a valid work-to-do signal); Projects presents,
+  Today summarizes, Personal World explains. No second Git-state
+  implementation exists inside Project Worlds, and an agent-sync bug
+  is recorded + deferred to pickle, never worked around by
+  duplicating Git logic. Reason: one computation, one authority —
+  drift between tools showing "project state" is a truth failure
+  no UI can repair.
+
+- **2026-09-12 — Personal World may understand project state without
+  gaining repository mutation authority.** The chat context carries a
+  bounded read-only projection of the agent-sync observation; the
+  assistant may summarize, explain, compare, and point to Projects.
+  It may NOT push, commit, reset, rebase, stash, or clean, and no
+  conversational phrasing is interpreted as Git authorization. The
+  projects slice added understanding only, not capability; mutation-
+  oriented proposal objects are out of scope until a real,
+  owner-authorized Projects mutation workflow exists to prepare into.
+  Reason: helpful understanding and dangerous reach must be built as
+  separate layers — the seam stays closed until it can open with
+  provenance.
