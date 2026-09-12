@@ -20,7 +20,7 @@ from starlette.concurrency import run_in_threadpool
 from . import export, prefs
 from . import sections as sections_mod
 from .app import build_registry, load_world, save_world
-from .chat import chat_once, build_chat_messages
+from .chat import chat_once, build_chat_messages, extract_proposal
 from .chat_context import build_world_context, build_ui_context
 from .envelope import Result
 from .journal import AuditRenderer, Journal
@@ -529,6 +529,16 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         target_ts = str(body.get("supersedes") or "").strip()
         corrected = str(body.get("text") or "").strip()
         reason = str(body.get("reason") or "").strip()
+        # Provenance only: how this correction was DRAFTED. The value
+        # is rendered in the audit event; it never grants or widens
+        # authority (this endpoint stays step-up gated; the approval is
+        # always the explicit human action behind the step-up call).
+        drafted_by = str(body.get("drafted_by") or "").strip() or "the Journal screen"
+        if drafted_by not in (
+            "the Journal screen",
+            "Personal World (assistant draft)",
+        ):
+            drafted_by = "the Journal screen"
         if not target_ts or not corrected:
             raise HTTPException(
                 status_code=422,
@@ -564,7 +574,7 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         try:
             current, audit = target.supersede(
                 target_ts, corrected, reason or None,
-                proposed_by="the Journal screen",
+                proposed_by=drafted_by,
             )
         except ValueError as exc:
             return {
@@ -695,6 +705,30 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         result = await run_in_threadpool(chat_once, impl, messages)
         if not result.ok:
             return result.model_dump(mode="json")
+        # Assistant-drafted correction proposals (Play-Nice:
+        # participation, not authority): strictly validate the extracted
+        # block against the REAL journal — the entry must exist and not
+        # already be superseded. A stale/imagined/malformed proposal
+        # degrades to nothing; the visible reply always works.
+        reply_text = (result.data or {}).get("reply", "")
+        proposal_json, visible_reply = extract_proposal(reply_text)
+        if proposal_json is not None:
+            proposal = json.loads(proposal_json)
+            _, _, uj = _state_for(request)
+            target = journal if uj == journal.path else Journal(uj)
+            entry = target.by_ts(proposal["entry_ts"])
+            if entry is None or any(
+                later.supersedes == entry.ts for later in target.events()
+            ):
+                proposal = None
+        else:
+            proposal = None
+        if visible_reply != reply_text:
+            result = result.model_copy(update={
+                "data": {**(result.data or {}),
+                         "reply": visible_reply or reply_text,
+                         **({"proposal": proposal} if proposal else {})},
+            })
         journal.record(
             "recommendation",
             f"chat exchange with {provider.name} ({len(message)} chars in)",

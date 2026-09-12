@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   saveJournalEntry,
   supersedeJournalEntry,
@@ -6,6 +7,7 @@ import {
   ApiError,
   type JournalEntry,
 } from "../lib/api";
+import { takeCorrectionDraft, type CorrectionDraft } from "../lib/correction-draft";
 import { useJournalPage, useJournalKey, useJournalAudit } from "../lib/hooks";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { Disclosure } from "../primitives/Disclosure";
@@ -120,6 +122,16 @@ function groupEntriesByDay(entries: JournalEntry[], now: Date): DayGroup[] {
   return groups;
 }
 
+/** Entry identity is a timestamp: accept the same instant in either
+ *  ISO spelling (...Z or ...+00:00) — the proposal block may carry
+ *  either. Parse both sides; string equality is never the contract. */
+function sameEntryTs(a: string, b: string): boolean {
+  if (a === b) return true;
+  const ta = new Date(a).getTime();
+  const tb = new Date(b).getTime();
+  return Number.isFinite(ta) && Number.isFinite(tb) && ta === tb;
+}
+
 function JournalScreen() {
   const [pageSize, setPageSize] = useState(0); // index into PAGE_STEPS
   const journal = useJournalPage(PAGE_STEPS[pageSize]);
@@ -129,6 +141,28 @@ function JournalScreen() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [noteStatus, setNoteStatus] = useState("");
+
+  // Assistant-drafted correction handoff (?correct=<entry_ts> from the
+  // chat suggestion): the stashed draft seeds the existing panel for
+  // exactly this entry. Consumed once — a reload shows the calm view.
+  // The URL param mirrors the Projects ?repo= pattern: shareable
+  // navigation state, never authority.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const correctTarget = searchParams.get("correct");
+  const [draft, setDraft] = useState<CorrectionDraft | null>(() => {
+    if (!correctTarget) return null;
+    const stashed = takeCorrectionDraft();
+    // Pairing guard: the draft must be FOR the entry the URL names —
+    // a mismatched/stale stash degrades to the calm view (never
+    // applied to the wrong entry). Timestamps compare as instants.
+    return stashed && sameEntryTs(stashed.entry_ts, correctTarget)
+      ? stashed
+      : null;
+  });
+  const onDraftConsumed = () => {
+    setDraft(null);
+    if (searchParams.get("correct")) setSearchParams({}, { replace: true });
+  };
 
   const entries = journal.data ?? [];
   const filtered = useMemo(
@@ -340,7 +374,16 @@ function JournalScreen() {
                       </Disclosure>
                       <TechnicalProvenance entry={entry} />
                       <EntryHistory entry={entry} />
-                      <CorrectEntryButton entry={entry} onCorrected={onEntryCorrected} />
+                      <CorrectEntryButton
+                        entry={entry}
+                        onCorrected={onEntryCorrected}
+                        pendingDraft={
+                          correctTarget && sameEntryTs(entry.ts, correctTarget)
+                            ? draft
+                            : null
+                        }
+                        onDraftConsumed={onDraftConsumed}
+                      />
                     </div>
                   </li>
                 ))}
@@ -435,15 +478,39 @@ function JournalAuditBody() {
  * open at a time (entry timestamp in JournalScreen-level state is
  * unnecessary: each row owns its own toggle, and opening another
  * row's button simply leaves this one closed).
+ *
+ * Assistant-drafted drafts (assistant participation: drafting is not
+ * acting): when the route hands this entry a stashed draft (?correct=
+ * from the chat suggestion), the panel opens prefilled and labeled as
+ * Personal World's draft — the person edits freely, and the normal
+ * "Nothing has changed yet" boundary + explicit approval apply
+ * unchanged. The draft is consumed once (take-one handoff).
  */
 function CorrectEntryButton({
   entry,
   onCorrected,
+  pendingDraft,
+  onDraftConsumed,
 }: {
   entry: JournalEntry;
   onCorrected: () => void;
+  pendingDraft: CorrectionDraft | null;
+  onDraftConsumed: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const openDraftRef = useRef(pendingDraft);
+  openDraftRef.current = pendingDraft;
+
+  // A stashed draft for THIS entry opens the panel automatically —
+  // once; the draft is consumed so a reload never re-opens it.
+  const requested = useRef(false);
+  useEffect(() => {
+    if (openDraftRef.current && !requested.current) {
+      requested.current = true;
+      setOpen(true);
+    }
+  }, [pendingDraft]);
+
   return (
     <>
       <button
@@ -456,7 +523,12 @@ function CorrectEntryButton({
         {open ? "Close correction" : "Correct this entry"}
       </button>
       {open ? (
-        <EntryCorrectionPanelInner entry={entry} onCorrected={onCorrected} />
+        <EntryCorrectionPanelInner
+          entry={entry}
+          onCorrected={onCorrected}
+          draft={pendingDraft}
+          onDraftConsumed={onDraftConsumed}
+        />
       ) : null}
     </>
   );
@@ -472,16 +544,37 @@ function CorrectEntryButton({
 function EntryCorrectionPanelInner({
   entry,
   onCorrected,
+  draft,
+  onDraftConsumed,
 }: {
   entry: JournalEntry;
   onCorrected: () => void;
+  draft: CorrectionDraft | null;
+  onDraftConsumed: () => void;
 }) {
   const { announce } = useAnnounce();
-  const [text, setText] = useState(entry.summary);
-  const [reason, setReason] = useState("");
+  // Prefill: an assistant-drafted proposal seeds text + reason and is
+  // labeled as Personal World's; the person edits freely before any
+  // approval. Captured ONCE at mount: the draft is consumed
+  // immediately (so a reload never re-opens), but the label and the
+  // honest drafted_by provenance survive until the approval attempt —
+  // what gets approved is whatever the person left in the boxes.
+  const [fromAssistant] = useState(draft !== null);
+  const [text, setText] = useState(draft?.proposed_text ?? entry.summary);
+  const [reason, setReason] = useState(draft?.reason ?? "");
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const [state, setState] = useState<
     { phase: "proposed" } | { phase: "running" } | { phase: "done" } | { phase: "failed"; detail: string }
   >({ phase: "proposed" });
+
+  // Sensible focus: land in the editable text when the panel opens
+  // from an assistant draft (keyboard users arrive ready to review).
+  useEffect(() => {
+    if (fromAssistant) textRef.current?.focus();
+    // the draft is consumed as soon as the panel owns its content
+    onDraftConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const approve = async () => {
     if (state.phase === "running") return;
@@ -489,7 +582,15 @@ function EntryCorrectionPanelInner({
     if (!corrected || corrected === entry.summary) return;
     setState({ phase: "running" });
     try {
-      const env = await supersedeJournalEntry(entry.ts, corrected, reason.trim() || undefined);
+      const env = await supersedeJournalEntry(
+        entry.ts,
+        corrected,
+        reason.trim() || undefined,
+        // Honest provenance: the server records who DRAFTED vs who
+        // approved; this changes nothing about the authority (the
+        // step-up approval is still the only act).
+        fromAssistant ? "Personal World (assistant draft)" : "the Journal screen"
+      );
       if (env.ok && env.data) {
         setState({ phase: "done" });
         announce(
@@ -534,6 +635,15 @@ function EntryCorrectionPanelInner({
       <h3 id={`correct-heading-${entry.ts}`} className="text-base font-semibold">
         Correct this entry
       </h3>
+      {fromAssistant ? (
+        <p
+          className="mt-1 text-sm text-[var(--pw-color-text-secondary)]"
+          data-pw-draft-label
+        >
+          Personal World drafted this proposal from your journal. Review it,
+          edit it freely, or close it — nothing changes until you approve.
+        </p>
+      ) : null}
       {state.phase === "proposed" ? (
         <>
           <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
@@ -548,6 +658,7 @@ function EntryCorrectionPanelInner({
                   Corrected entry text
                 </label>
                 <textarea
+                  ref={textRef}
                   id={`correct-text-${entry.ts}`}
                   value={text}
                   onChange={(e) => setText(e.target.value)}

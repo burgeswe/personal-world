@@ -165,6 +165,7 @@ target — those items are not completed by the current foundations.
 | Explore the design | [Handoff index](design/handoff/README.md) and [frame index](design/handoff/FRAME_INDEX.md) |
 | Companions and animation | [Asset index](design/assets/README.md) |
 | Everything, one page | [Documentation index](docs/INDEX.md) |
+| Engineering constitution | [Play-Nice Contracts](https://github.com/Rylee-Bee/play-nice-contracts) |
 | Run or configure it | [Operations](docs/OPERATIONS.md) and [providers](docs/PROVIDERS.md) |
 | Contribute or get help | [Contributing and support](CONTRIBUTING.md) |
 | Report a security concern | [Private security reporting](SECURITY.md) |

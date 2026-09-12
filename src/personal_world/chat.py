@@ -258,6 +258,14 @@ def build_chat_messages(
     the trimmed world-context block, and forbids the model from
     inventing state it was not shown. History is capped to the last six
     turns to stay inside small local-model context windows.
+
+    SUGGESTIONS, not authority: the prompt teaches ONE tiny fenced
+    proposal block the assistant MAY use when it notices a Journal
+    entry that may need correcting (assistant-drafted correction
+    proposals). The block is a CONTRIBUTION the human reviews — it is
+    never executed, and ordinary chat confirmation is never
+    authorization. Everything about the block is validated after the
+    round-trip; anything malformed degrades to ordinary text.
     """
     system = (
         "You are the Personal World assistant: a calm, factual companion "
@@ -268,6 +276,23 @@ def build_chat_messages(
         "is fixed: healthy, warning, unknown, needs_attention, unavailable, "
         "stale, disabled, not_configured. Keep replies short, warm, and "
         "structured; prefer lists over prose paragraphs when listing.\n\n"
+        "You may notice a recent Journal entry that looks wrong compared "
+        "to later entries. If — and only if — the context clearly "
+        "supports it, offer to prepare a correction: explain why in one "
+        "sentence in your reply, then append a proposal block in "
+        "EXACTLY this shape (one line per field, no extra fields):\n"
+        "```\n"
+        "PW-PROPOSAL journal_correction\n"
+        "entry_ts: <the entry's exact timestamp from the context>\n"
+        "proposed_text: <one corrected sentence>\n"
+        "reason: <short reason>\n"
+        "evidence_summary: <one sentence citing which later entries "
+        "support this>\n"
+        "```\n"
+        "The proposal is a DRAFT for Rylee to review — never a change. "
+        "If evidence is weak or ambiguous, phrase the suggestion "
+        "accordingly or do not propose. Never invent timestamps or "
+        "evidence.\n\n"
         "--- Personal World context (observed, read-only) ---\n"
         f"{trim_context(world_context)}\n"
         "--- end context ---"
@@ -279,6 +304,72 @@ def build_chat_messages(
                 messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": user_message})
     return messages
+
+
+#: The fenced proposal header the system prompt teaches.
+PROPOSAL_HEADER = "PW-PROPOSAL journal_correction"
+#: Hard caps mirroring the Journal write path (supersede: 2000/200).
+PROPOSAL_TEXT_MAX = 2000
+PROPOSAL_REASON_MAX = 200
+PROPOSAL_EVIDENCE_MAX = 300
+PROPOSAL_FIELDS = ("entry_ts", "proposed_text", "reason", "evidence_summary")
+
+
+def extract_proposal(reply: str) -> tuple[str | None, str]:
+    """Split a reply into (proposal dict as JSON string or None,
+    visible reply text).
+
+    Strict and fail-closed: a block is accepted ONLY when the header
+    is exact and all four fields are present, non-empty, and within
+    their caps — otherwise the whole block degrades to ordinary text
+    (it stays visible in the reply; no proposal is surfaced). The
+    returned JSON is a flat object with the validated fields.
+    """
+    import json as _json
+
+    fence_start = reply.find("```")
+    while fence_start != -1:
+        fence_end = reply.find("```", fence_start + 3)
+        if fence_end == -1:
+            break
+        block = reply[fence_start + 3:fence_end].strip("\n")
+        lines = [ln.rstrip() for ln in block.split("\n") if ln.strip()]
+        if lines and lines[0].strip() == PROPOSAL_HEADER:
+            fields: dict[str, str] = {}
+            for ln in lines[1:]:
+                if ":" not in ln:
+                    fields = None  # type: ignore[assignment]
+                    break
+                key, _, value = ln.partition(":")
+                key = key.strip()
+                if key not in PROPOSAL_FIELDS or key in fields:
+                    fields = None  # type: ignore[assignment]
+                    break
+                fields[key] = value.strip()
+            if (
+                fields
+                and all(f in fields and fields[f] for f in PROPOSAL_FIELDS)
+                and len(fields["proposed_text"]) <= PROPOSAL_TEXT_MAX
+                and len(fields["reason"]) <= PROPOSAL_REASON_MAX
+                and len(fields["evidence_summary"]) <= PROPOSAL_EVIDENCE_MAX
+            ):
+                proposal = {
+                    "kind": "journal_correction",
+                    **fields,
+                }
+                # The visible reply drops the machine block; the
+                # suggestion sentence stays.
+                visible = (
+                    reply[:fence_start].rstrip()
+                    + ("\n\n" if reply[fence_end + 3:].lstrip() else "")
+                    + reply[fence_end + 3:].lstrip()
+                ).strip()
+                return _json.dumps(proposal), visible
+            # Malformed proposal block: degrade to ordinary text (the
+            # block simply remains part of the reply; no proposal).
+            return None, reply
+        fence_start = reply.find("```", fence_end + 3)
+    return None, reply
 
 
 def chat_once(

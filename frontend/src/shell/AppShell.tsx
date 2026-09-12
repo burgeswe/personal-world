@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SectionNav } from "./SectionNav";
 import { Drawer } from "../primitives/Drawer";
 import { CompanionSlot } from "../primitives/CompanionSlot";
 import { ChatPanel } from "../components/ChatPanel";
+import { stashCorrectionDraft } from "../lib/correction-draft";
+import type { ChatJournalCorrectionProposal } from "../lib/api";
 import { useSections } from "../lib/hooks";
 
 /**
@@ -89,11 +91,22 @@ export interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const bucket = useViewportBucket();
+  const navigate = useNavigate();
   // Local state only (T14 human gate 5): open/closed for the World
   // Assistant Drawer. No new context or global machinery.
   const [assistantOpen, setAssistantOpen] = useState(false);
   const openAssistant = () => setAssistantOpen(true);
   const closeAssistant = () => setAssistantOpen(false);
+
+  // Assistant-drafted correction proposals (assistant participation:
+  // drafting is not acting): "Prepare correction" stashes the draft
+  // and navigates to the EXISTING Journal workflow. Pure navigation +
+  // UI state; the mutation path stays where it has always been.
+  const onPrepareCorrection = (proposal: ChatJournalCorrectionProposal) => {
+    stashCorrectionDraft(proposal);
+    setAssistantOpen(false);
+    navigate(`/journal?correct=${encodeURIComponent(proposal.entry_ts)}`);
+  };
 
   // Contextual chat (Finish Line "Contextual chat"): the shell is
   // router-hosted, so IT derives the observed section and hands it to
@@ -198,7 +211,7 @@ export function AppShell({ children }: AppShellProps) {
         onClose={closeAssistant}
         side={bucket === "bottom" ? "bottom" : "right"}
       >
-        <ChatPanel sectionContext={sectionContext} />
+        <ChatPanel sectionContext={sectionContext} onPrepareCorrection={onPrepareCorrection} />
       </Drawer>
     </div>
   );

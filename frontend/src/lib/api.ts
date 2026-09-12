@@ -803,12 +803,18 @@ export interface SupersedeResult {
 export async function supersedeJournalEntry(
   supersedes: string,
   text: string,
-  reason?: string
+  reason?: string,
+  draftedBy?: "the Journal screen" | "Personal World (assistant draft)"
 ): Promise<SupersedeResult> {
   return apiFetchEnvelope<SupersedeResult>("/api/journal/supersede", {
     method: "POST",
     headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
-    body: JSON.stringify({ supersedes, text, ...(reason ? { reason } : {}) }),
+    body: JSON.stringify({
+      supersedes,
+      text,
+      ...(reason ? { reason } : {}),
+      ...(draftedBy ? { drafted_by: draftedBy } : {}),
+    }),
   });
 }
 
@@ -889,6 +895,25 @@ export interface ChatResult {
   thinking?: string | null;
   /** Model identifier the provider reported (Result.data.model). */
   model?: string | null;
+  /**
+   * Assistant-drafted journal correction proposal (chat.py
+   * extract_proposal + api.py server-side validation). A CONTRIBUTION
+   * the human reviews — never authority, never executed. Absent on
+   * ordinary replies and on any malformed/stale proposal (which
+   * degrade to plain text server-side).
+   */
+  proposal?: ChatJournalCorrectionProposal | null;
+}
+
+/** The one typed proposal kind: a journal correction the assistant
+ * drafted from observed evidence. All fields validated server-side
+ * against the real journal before this reaches the client. */
+export interface ChatJournalCorrectionProposal {
+  kind: "journal_correction";
+  entry_ts: string;
+  proposed_text: string;
+  reason: string;
+  evidence_summary: string;
 }
 
 /**

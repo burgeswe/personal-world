@@ -10,6 +10,7 @@ import {
   getAuthToken,
   type ChatResult,
   type ChatProvidersData,
+  type ChatJournalCorrectionProposal,
 } from "../lib/api";
 import { Loader2, Send, Sparkles } from "../lib/icons";
 
@@ -45,6 +46,10 @@ export interface ChatTurn {
   model?: string | null;
   /** Provider reasoning text (progressive disclosure only). */
   thinking?: string | null;
+  /** Server-validated journal-correction proposal, when the reply
+   * carried one (assistant draft; non-mutating until the human
+   * approves it in the Journal workflow). */
+  proposal?: ChatJournalCorrectionProposal | null;
 }
 
 export interface ChatPanelProps {
@@ -66,6 +71,17 @@ export interface ChatPanelProps {
     /** Selected object within the section, if any (e.g. ?repo=). */
     entity?: string | null;
   };
+  /**
+   * Host-provided handler for "Prepare correction" on an
+   * assistant-drafted journal-correction proposal (assistant
+   * participation: drafting is not acting). The panel never mutates;
+   * the host decides what "prepare" means (typically navigate to the
+   * Journal with the draft stashed for the existing correction panel).
+   * Omitted = the suggestion renders read-only with the entry
+   * timestamp named (never a silent dead button: the card explains
+   * where to find the entry).
+   */
+  onPrepareCorrection?: (proposal: ChatJournalCorrectionProposal) => void;
 }
 
 const HISTORY_STORAGE_PREFIX = "pw_chat_history_";
@@ -145,6 +161,87 @@ function persistHistory(turns: ChatTurn[]): void {
   }
 }
 
+/**
+ * Assistant-drafted correction suggestion (assistant participation:
+ * suggestion is not authorization). Renders the draft visibly —
+ * labeled as Personal World's, distinguishable from the original
+ * without color — with two choices: "Prepare correction" (the host
+ * opens the EXISTING Journal correction workflow; no mutation here)
+ * and "Not now" (dismisses the card). Everything stays keyboard-
+ * reachable; the card is plain text + labels, no modal.
+ */
+function SuggestionCard({
+  proposal,
+  onPrepare,
+}: {
+  proposal: ChatJournalCorrectionProposal;
+  onPrepare?: (proposal: ChatJournalCorrectionProposal) => void;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  const prepareRef = useRef<HTMLButtonElement>(null);
+
+  if (dismissed) return null;
+
+  return (
+    <div
+      data-pw-suggestion="journal_correction"
+      className="pw-chat-suggestion mt-2 rounded-xl border border-[var(--pw-color-border-subtle)] bg-[var(--pw-color-surface-panel)] p-3"
+    >
+      <p className="text-sm font-semibold text-[var(--pw-color-text-primary)]">
+        A possible correction, drafted by Personal World
+      </p>
+      <dl className="mt-1 grid gap-1 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-[var(--pw-color-text-muted)]">Current entry (stays in history)</dt>
+          <dd className="text-[var(--pw-color-text-secondary)]">
+            Entry of {proposal.entry_ts}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-muted)]">Proposed correction</dt>
+          <dd className="text-[var(--pw-color-text-primary)]">{proposal.proposed_text}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-muted)]">Suggested reason</dt>
+          <dd className="text-[var(--pw-color-text-secondary)]">{proposal.reason}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--pw-color-text-muted)]">Why this was suggested</dt>
+          <dd className="text-[var(--pw-color-text-secondary)]">{proposal.evidence_summary}</dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs text-[var(--pw-color-text-muted)]" data-pw-suggestion-notice>
+        Preparing is not approving — nothing changes until you approve it in the Journal.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {onPrepare ? (
+          <button
+            ref={prepareRef}
+            type="button"
+            data-pw-suggestion-prepare
+            onClick={() => onPrepare(proposal)}
+            className="inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg border border-[var(--pw-color-border-subtle)] px-4 text-sm font-medium text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+          >
+            Prepare correction
+          </button>
+        ) : (
+          <p className="text-sm text-[var(--pw-color-text-secondary)]">
+            You can find this entry in the Journal under its timestamp above.
+          </p>
+        )}
+        <button
+          type="button"
+          data-pw-suggestion-dismiss
+          onClick={() => setDismissed(true)}
+          className="inline-flex min-h-[var(--pw-target-minimum)] items-center rounded-lg px-4 text-sm text-[var(--pw-color-text-secondary)] hover:text-[var(--pw-color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function statusWord(status: string | null | undefined): string {
   if (status == null) return "unknown";
   const t = String(status).toLowerCase();
@@ -170,6 +267,7 @@ export function ChatPanel({
   companionIcon = null,
   heading = "Talk with your world",
   sectionContext,
+  onPrepareCorrection,
 }: ChatPanelProps) {
   const { announce } = useAnnounce();
   const [turns, setTurns] = useState<ChatTurn[]>(() => loadStoredHistory());
@@ -266,6 +364,7 @@ export function ChatPanel({
             content: reply || "I did not receive a readable reply.",
             model: data.model ?? null,
             thinking: data.thinking ?? null,
+            proposal: data.proposal ?? null,
           },
         ]);
         announce("Reply received.", { kind: "action_completed", key: "chat-reply" });
@@ -414,6 +513,12 @@ export function ChatPanel({
           ) : (
             <div key={`a${i}`} className="pw-chat-msg pw-chat-msg-assistant">
               <p>{turn.content}</p>
+              {turn.proposal ? (
+                <SuggestionCard
+                  proposal={turn.proposal}
+                  onPrepare={onPrepareCorrection}
+                />
+              ) : null}
               <Disclosure summary="Sources" level={3}>
                 <p>Read-only Project Worlds snapshot</p>
                 {turn.model ? <p>Conversation model: {turn.model}</p> : null}
@@ -488,7 +593,8 @@ export function ChatPanel({
         </button>
       </form>
       <p className="pw-chat-footnote">
-        <Sparkles size={12} aria-hidden={true} /> Powered by your Project Worlds
+        <Sparkles size={12} aria-hidden={true} /> Powered by your Project
+        Worlds — built as a Play-Nice product
       </p>
     </div>
   );

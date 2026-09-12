@@ -413,3 +413,154 @@ describe("ChatPanel (T12, parity row 7)", () => {
     expect(await axeNoContrast(container)).toHaveNoViolations();
   });
 });
+describe("ChatPanel assistant-drafted correction suggestions (suggestion is not authorization)", () => {
+  let fetchMock: FetchMock;
+
+  const PROPOSAL = {
+    kind: "journal_correction",
+    entry_ts: "2026-09-12T10:00:00Z",
+    proposed_text: "The deployment finished at noon",
+    reason: "later entries show completion",
+    evidence_summary: "Two later entries record successful deployment",
+  };
+
+  function renderPanelWithProposal(
+    onPrepareCorrection?: (p: typeof PROPOSAL) => void
+  ) {
+    return render(
+      <LiveRegionProvider>
+        <ChatPanel
+          onPrepareCorrection={
+            onPrepareCorrection as ChatPanelProps["onPrepareCorrection"]
+          }
+        />
+      </LiveRegionProvider>
+    );
+  }
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.setItem("pw_token", "chat-test-token");
+    fetchMock = vi.fn().mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String((input as Request).url ?? input);
+      if (path.startsWith("/api/chat/providers")) {
+        return Promise.resolve(providersEnvelope());
+      }
+      if (path.startsWith("/api/chat")) {
+        return Promise.resolve(
+          chatReply("This entry may need a fix — later entries disagree.", {
+            model: "m",
+            proposal: PROPOSAL,
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse(200, { ok: true, data: null }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  async function sendOne() {
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "check my journal" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    await waitFor(() =>
+      expect(screen.getByText(/later entries disagree/)).toBeTruthy()
+    );
+  }
+
+  it("renders the suggestion with label, draft fields, and boundary text", async () => {
+    renderPanelWithProposal();
+    await sendOne();
+    const card = screen.getByText(/drafted by Personal World/);
+    expect(card.closest("[data-pw-suggestion]")?.getAttribute("data-pw-suggestion")).toBe(
+      "journal_correction"
+    );
+    expect(screen.getByText("The deployment finished at noon")).toBeTruthy();
+    expect(
+      screen.getByText(/Two later entries record successful deployment/)
+    ).toBeTruthy();
+    // Non-color, explicit boundary + who drafted it
+    expect(
+      screen.getByText(/Preparing is not approving/)
+    ).toBeTruthy();
+  });
+
+  it("Prepare correction calls the host handler with the proposal — no fetches beyond the chat", async () => {
+    const onPrepare = vi.fn();
+    renderPanelWithProposal(onPrepare);
+    await sendOne();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare correction" }));
+    expect(onPrepare).toHaveBeenCalledTimes(1);
+    expect(onPrepare).toHaveBeenCalledWith(PROPOSAL);
+    // Preparing performed zero mutation calls (no supersede anywhere)
+    const allCalls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(allCalls.some((p) => p.includes("supersede"))).toBe(false);
+  });
+
+  it("Not now dismisses the suggestion; the reply text stays", async () => {
+    renderPanelWithProposal();
+    await sendOne();
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(screen.queryByText(/drafted by Personal World/)).toBeNull();
+    expect(screen.getByText(/may need a fix/)).toBeTruthy();
+  });
+
+  it("without a host handler the card degrades to guidance (no dead button)", async () => {
+    renderPanelWithProposal();
+    await sendOne();
+    expect(
+      screen.getByText(/find this entry in the Journal/)
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Prepare correction" })
+    ).toBeNull();
+  });
+
+  it("ordinary replies still render with no suggestion card", async () => {
+    fetchMock = vi.fn().mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String((input as Request).url ?? input);
+      if (path.startsWith("/api/chat/providers")) {
+        return Promise.resolve(providersEnvelope());
+      }
+      if (path.startsWith("/api/chat")) {
+        return Promise.resolve(chatReply("All clear.", { model: "m" }));
+      }
+      return Promise.resolve(jsonResponse(200, { ok: true, data: null }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanelWithProposal();
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "status?" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    await waitFor(() => expect(screen.getByText("All clear.")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "Prepare correction" })).toBeNull();
+  });
+
+  it("malformed proposal (wrong kind) renders as ordinary text with no card", async () => {
+    fetchMock = vi.fn().mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String((input as Request).url ?? input);
+      if (path.startsWith("/api/chat/providers")) {
+        return Promise.resolve(providersEnvelope());
+      }
+      if (path.startsWith("/api/chat")) {
+        return Promise.resolve(
+          chatReply("Hmm.", { model: "m", proposal: { kind: "delete_everything" } })
+        );
+      }
+      return Promise.resolve(jsonResponse(200, { ok: true, data: null }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanelWithProposal();
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    await waitFor(() => expect(screen.getByText("Hmm.")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "Prepare correction" })).toBeNull();
+  });
+});

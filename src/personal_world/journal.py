@@ -64,7 +64,7 @@ class Journal:
         target_ts,
         corrected_text: str,
         reason: str | None,
-        proposed_by: str = "journal",
+        proposed_by: str = "the Journal screen",
     ) -> tuple[JournalEvent, JournalEvent]:
         """Append-only correction: the record is never rewritten.
 

@@ -111,6 +111,69 @@ class TestEnrichRepoHonestStates:
         assert r.status == "unavailable"
 
 
+class TestExactCountSemantics:
+    """The PR/issue counts are exact or unknown — never page-bounded
+    approximations, never zeros-that-mean-failure."""
+
+    @staticmethod
+    def _fake_gh(monkeypatch, payloads: dict[str, object]):
+        """Route each gh api call to a canned payload by path prefix."""
+        def fake_run(argv, **kwargs):
+            path = argv[2] if len(argv) > 2 else ""
+            class P:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+            for prefix, payload in payloads.items():
+                if path.startswith(prefix):
+                    import json as _json
+                    P.stdout = _json.dumps(payload)
+                    break
+            return P()
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        monkeypatch.setattr(
+            "personal_world.providers.github._gh_binary", lambda: "/usr/bin/gh")
+
+    def _repo_payload(self) -> dict:
+        return {"html_url": "https://github.com/acme/widgets",
+                "default_branch": "main", "pushed_at": "2026-09-12T00:00:00Z"}
+
+    def test_counts_come_from_search_totals(self, monkeypatch):
+        self._fake_gh(monkeypatch, {
+            "repos/": self._repo_payload(),
+            "search/issues": {"total_count": 257},
+        })
+        r = GitHubEnrichment().enrich_repo("https://github.com/acme/widgets.git")
+        assert r.ok
+        # >100 proves no per_page list is being counted
+        assert r.data["open_prs"] == 257
+        assert r.data["open_issues"] == 257
+
+    def test_search_failure_means_unknown_not_zero(self, monkeypatch):
+        """If search cannot answer (rate limit / shape change), counts
+        are honest unknowns (None), never fabricated zeros."""
+        self._fake_gh(monkeypatch, {
+            "repos/": self._repo_payload(),
+            "search/issues": {"unexpected": "shape"},
+        })
+        r = GitHubEnrichment().enrich_repo("https://github.com/acme/widgets.git")
+        assert r.ok
+        assert r.data["open_prs"] is None
+        assert r.data["open_issues"] is None
+
+    def test_search_error_still_healthy_repo_fields(self, monkeypatch):
+        """A total search outage must not fail the whole enrichment:
+        identity/branch/push still answer; counts stay unknown."""
+        self._fake_gh(monkeypatch, {
+            "repos/": self._repo_payload(),
+        })
+        r = GitHubEnrichment().enrich_repo("https://github.com/acme/widgets.git")
+        assert r.ok
+        assert r.data["slug"] == "acme/widgets"
+        assert r.data["default_branch"] == "main"
+        assert r.data["open_prs"] is None
+
+
 class TestEnrichRepoLive:
     """Against a REAL authenticated gh session only (skipped when gh is
     absent or the session cannot reach GitHub — e.g. CI containers).
@@ -134,6 +197,18 @@ class TestEnrichRepoLive:
         assert isinstance(r.data["open_prs"], int)
         assert isinstance(r.data["open_issues"], int)
         assert r.data["pushed_at"]
+
+    def test_pr_count_is_exact_not_page_bounded(self):
+        """Honesty regression: octocat/Hello-World has >100 open PRs.
+        A per_page-bounded list would cap at 100; the exact count from
+        search total_count must exceed the page bound."""
+        if not self._session_works():
+            pytest.skip("gh session unavailable")
+        r = GitHubEnrichment().enrich_repo("https://github.com/octocat/Hello-World.git")
+        assert r.ok, r.warnings
+        assert r.data["open_prs"] > 100
+        # exact issue count is searched independently, never derived
+        assert r.data["open_issues"] > 100
 
     def test_observe_reports_healthy_session(self):
         if not self._session_works():

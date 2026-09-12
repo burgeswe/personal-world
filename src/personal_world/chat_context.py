@@ -90,8 +90,13 @@ def build_world_context(
         if events:
             parts.append("\n## Recent journal (newest last)")
             for e in events:
-                ts = e.provenance.observed_at.strftime("%Y-%m-%d %H:%M")
-                parts.append(f"- {ts} {e.kind.value}: {e.summary}")
+                # The exact ts key (what /api/journal serves and what a
+                # correction proposal must reference) — not a display
+                # truncation. The assistant may quote it in a
+                # PW-PROPOSAL block; readers (human and code) resolve
+                # the same identifier.
+                ts = e.ts.isoformat()
+                parts.append(f"- [{ts}] {e.kind.value}: {e.summary}")
 
     if config_dir is not None:
         parts.extend(

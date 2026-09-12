@@ -15,11 +15,12 @@ import { LiveRegionProvider } from "../primitives/LiveRegion";
 
 export function screenProviders(
   ui: ReactElement,
-  options: Omit<RenderOptions, "wrapper"> = {}
+  options: Omit<RenderOptions, "wrapper"> & { routerEntry?: string } = {}
 ) {
+  const { routerEntry = "/", ...renderOptions } = options;
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={[routerEntry]}>
         <CompanionProvider>
           <PrefsProvider>
             <LiveRegionProvider>{children}</LiveRegionProvider>
@@ -28,7 +29,7 @@ export function screenProviders(
       </MemoryRouter>
     );
   }
-  return render(ui, { wrapper: Wrapper, ...options });
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
 type FetchHandler = (path: string, init?: RequestInit) => Response | Promise<Response>;

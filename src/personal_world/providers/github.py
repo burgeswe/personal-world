@@ -26,6 +26,7 @@ import json
 import shutil
 import subprocess
 from typing import Any
+from urllib.parse import quote as _quote
 
 from ..envelope import Result, fail, ok
 from .registry import StatusContract
@@ -96,9 +97,11 @@ class GitHubEnrichment(StatusContract):
           slug            canonical "owner/repo" identity on GitHub
           url             canonical browser URL
           default_branch  remote default branch (may differ locally)
-          open_prs        count of open pull requests
-          open_issues     count of open issues (GitHub's number minus
-                          PRs — the API field counts both)
+          open_prs        exact count of open pull requests (from
+                          search total_count, not a page length)
+          open_issues     exact count of open issues (search total_count;
+                          NOT derived from open_issues_count, which
+                          counts PRs too)
           pushed_at       last remote push timestamp (ISO 8601)
 
         The result never contains commit text, file paths, or tokens.
@@ -119,29 +122,40 @@ class GitHubEnrichment(StatusContract):
             return fail("unavailable",
                         warnings=[f"GitHub unreachable or repository "
                                   f"'{slug}' not visible to this gh session"])
-        pulls = self._api(f"repos/{slug}/pulls?state=open&per_page=1")
+        # Exact counts: search total_count is the true total (a plain
+        # list endpoint is bounded by per_page and would only prove
+        # "at least N"). Search needs a qualifier; in: is required by
+        # GitHub to keep search in scope. None -> honest 'unknown'
+        # counts, never a guessed number.
         open_prs: int | None = None
-        if isinstance(pulls, list):
-            open_prs = len(pulls)
-            # per_page=1: one page returned means "1+ open"; use the
-            # honest minimum unless the Link header told us exact —
-            # gh api --paginate is heavier; count pages only when cheap.
-            if open_prs:
-                full = self._api(f"repos/{slug}/pulls?state=open&per_page=100")
-                if isinstance(full, list):
-                    open_prs = len(full)
-        try:
-            gh_issues = int(repo.get("open_issues_count", 0))
-        except (TypeError, ValueError):
-            gh_issues = 0
+        open_issues: int | None = None
+        prs = self._search_total(f"type:pr state:open", slug)
+        if prs is not None:
+            open_prs = prs
+        issues = self._search_total(f"type:issue state:open", slug)
+        if issues is not None:
+            open_issues = issues
         return ok("healthy", data={
             "slug": slug,
             "url": repo.get("html_url"),
             "default_branch": repo.get("default_branch"),
             "open_prs": open_prs,
-            "open_issues": max(gh_issues - (open_prs or 0), 0),
+            "open_issues": open_issues,
             "pushed_at": repo.get("pushed_at"),
         })
+
+    def _search_total(self, qualifier: str, slug: str) -> int | None:
+        """EXACT count via GitHub search total_count. None on any
+        failure (unavailable search -> unknown counts, not zeros)."""
+        payload = self._api(
+            "search/issues?q=" + _quote(f"repo:{slug} {qualifier}")
+            + "&per_page=1")
+        if not isinstance(payload, dict):
+            return None
+        try:
+            return int(payload["total_count"])
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def observe(self) -> Result:
         """StatusContract: is the gh session usable at all? Proves

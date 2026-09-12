@@ -307,6 +307,8 @@ describe("Journal correction workflow (propose → approve → act; original pre
       supersedes: "2026-09-11T09:30:00Z",
       text: "Server migrated to node 4",
       reason: "typo — wrong rack number",
+      // honest provenance: hand-written corrections say who drafted
+      drafted_by: "the Journal screen",
     });
   });
 
@@ -385,5 +387,143 @@ describe("Journal correction workflow (propose → approve → act; original pre
     // The button's onClick is what tests use; assert panel appears via the heading.
     fireEvent.click(btn);
     expect(screen.getByRole("heading", { name: "Correct this entry" })).toBeTruthy();
+  });
+});
+
+describe("Journal assistant-drafted correction handoff (drafting is not acting)", () => {
+  let supersedePosts: Array<Record<string, unknown>> = [];
+  const TARGET_TS = "2026-09-11T09:30:00Z"; // the correctable fixture entry
+
+  function stashDraft() {
+    sessionStorage.setItem(
+      "pw_correction_draft",
+      JSON.stringify({
+        entry_ts: TARGET_TS,
+        proposed_text: "Server migrated to node 4 (assistant draft)",
+        reason: "later entries disagree",
+      })
+    );
+  }
+
+  async function bootWithDraft() {
+    supersedePosts = [];
+    const one = entry({
+      ts: TARGET_TS,
+      summary: "Server migrated to node 3 (wrong rack)",
+      provenance: { ...entry().provenance, source: "user" },
+    });
+    const corrected = entry({
+      ts: "2026-09-11T10:00:00Z",
+      summary: "Server migrated to node 4 (edited)",
+      supersedes: TARGET_TS,
+      supersede_reason: "later entries disagree",
+      provenance: { ...entry().provenance, source: "user" },
+    });
+    mockFetchByRoute({
+      "/api/journal/supersede": (_path, init) => {
+        supersedePosts.push(JSON.parse(String(init?.body ?? "{}")));
+        return jsonResponse(200, {
+          ok: true,
+          status: "healthy",
+          data: {
+            current: corrected,
+            superseded: one,
+            audit: entry({ ts: "2026-09-11T10:00:01Z", kind: "approval",
+              summary: "journal correction approved" }),
+            already_applied: false,
+          },
+        });
+      },
+      "/api/journal": (_path, init) => {
+        if (init?.method === "POST") {
+          return jsonResponse(200, { ok: true, data: { written: 5 } });
+        }
+        return jsonResponse(200, { ok: true, data: [one] });
+      },
+    });
+    screenProviders(<JournalScreen />, {
+      routerEntry: `/journal?correct=${encodeURIComponent(TARGET_TS)}`,
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(/Opening your journal…/)).toBeNull();
+    });
+  }
+
+  it("opens the existing panel for the targeted entry, prefilled and labeled", async () => {
+    stashDraft();
+    await bootWithDraft();
+    const label = await screen.findByText(/Personal World drafted this proposal/);
+    expect(label.getAttribute("data-pw-draft-label")).not.toBeNull();
+    expect(
+      screen.getByDisplayValue("Server migrated to node 4 (assistant draft)")
+    ).toBeTruthy();
+    expect(screen.getByDisplayValue("later entries disagree")).toBeTruthy();
+    // The normal boundary still applies, and nothing was sent anywhere
+    expect(screen.getByText(/Nothing has changed yet/)).toBeTruthy();
+    expect(supersedePosts).toEqual([]);
+  });
+
+  it("the person edits the draft freely, then approves through the existing path", async () => {
+    stashDraft();
+    await bootWithDraft();
+    await screen.findByText(/Personal World drafted this proposal/);
+    fireEvent.change(
+      screen.getByDisplayValue("Server migrated to node 4 (assistant draft)"),
+      { target: { value: "Server migrated to node 4 (edited)" } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Approve and correct" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Done — the corrected entry/)).toBeTruthy();
+    });
+    expect(supersedePosts.length).toBe(1);
+    const body = supersedePosts[0] as Record<string, string>;
+    expect(body.text).toBe("Server migrated to node 4 (edited)");
+    // Honest provenance: the server records who drafted vs who approved
+    expect(body.drafted_by).toBe("Personal World (assistant draft)");
+    expect(body.supersedes).toBe(TARGET_TS);
+  });
+
+  it("closing the correction discards the draft with zero mutation calls", async () => {
+    stashDraft();
+    await bootWithDraft();
+    await screen.findByText(/Personal World drafted this proposal/);
+    fireEvent.click(screen.getByRole("button", { name: "Close correction" }));
+    expect(screen.queryByText(/Nothing has changed yet/)).toBeNull();
+    expect(supersedePosts).toEqual([]);
+  });
+
+  it("a stale ?correct= target degrades to the calm view (no panel, no error)", async () => {
+    sessionStorage.setItem(
+      "pw_correction_draft",
+      JSON.stringify({
+        entry_ts: "2001-01-01T00:00:00Z",
+        proposed_text: "x",
+        reason: "y",
+      })
+    );
+    await bootWithDraft();
+    await waitFor(() => {
+      expect(screen.getByText("Server migrated to node 3 (wrong rack)")).toBeTruthy();
+    });
+    expect(screen.queryByText(/Personal World drafted/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Approve and correct" })).toBeNull();
+    expect(supersedePosts).toEqual([]);
+  });
+
+  it("an ordinary correction (no draft) still says the Journal screen drafted it", async () => {
+    await bootWithDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Correct this entry" }));
+    const textarea = await screen.findByLabelText("Corrected entry text");
+    fireEvent.change(textarea, {
+      target: { value: "Server migrated to node 4 (hand-written)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve and correct" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Done — the corrected entry/)).toBeTruthy();
+    });
+    expect(supersedePosts.length).toBe(1);
+    expect((supersedePosts[0] as Record<string, string>).drafted_by).toBe(
+      "the Journal screen"
+    );
   });
 });
