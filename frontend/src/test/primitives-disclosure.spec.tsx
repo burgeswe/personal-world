@@ -148,7 +148,7 @@ describe("Disclosure (T8)", () => {
   it("TechnicalDetails renders provider, model, latency and raw at level 4", async () => {
     const { container } = render(
       <TechnicalDetails
-        provider="gitea-adapter"
+        provider="forge-adapter"
         model="glm-5.3-flash"
         latency="180ms"
         raw={"{\"commits\":3}"}
@@ -159,7 +159,7 @@ describe("Disclosure (T8)", () => {
     expect(details.getAttribute("data-pw-disclosure-level")).toBe("4");
     expect(details.getAttribute("open")).not.toBeNull();
     expect(screen.getByText("Technical details")).toBeTruthy();
-    expect(screen.getByText("gitea-adapter")).toBeTruthy();
+    expect(screen.getByText("forge-adapter")).toBeTruthy();
     expect(screen.getByText("glm-5.3-flash")).toBeTruthy();
     expect(screen.getByText("180ms")).toBeTruthy();
     expect(screen.getByText('{"commits":3}')).toBeTruthy();
