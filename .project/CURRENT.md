@@ -66,6 +66,18 @@ no card-chrome composition drift on Today/Journal/Vault; the two
 previously-shipping accessibility bugs below are fixed everywhere, not
 just on the branch that found them.
 
+**Context-aware World Assistant (2026-09-12, implementation run
+`ac9c18d`):** the Drawer-hosted assistant now knows which section it
+was opened from. The shell derives route/section (GET /api/sections
+registry supplies the label) and POST /api/chat accepts an optional
+`context` envelope rendered into the system prompt as observed UI
+location — provenance, never authority: unknown sections degrade to
+honest "unknown", malformed context never breaks conversation, and
+the standalone /chat route stays the global surface. The panel shows
+"You opened this from <section>" and swaps in section-local
+conversation starters. Backend 517 tests, frontend 293, e2e 42/42
+incl. axe; live-browser verified on /journal, /vault, /chat.
+
 **Two accessibility bugs fixed and verified on this exact trunk**
 (both were live/shipping on old `main` before this unification — not
 hypothetical):
