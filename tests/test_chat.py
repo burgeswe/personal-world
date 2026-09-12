@@ -229,3 +229,98 @@ class TestChatEndpoint:
         # The exchange is journaled
         events = Journal(tmp_path / "journal.ndjson").recent(5)
         assert any("chat exchange" in e.summary for e in events)
+
+class TestChatUiContext:
+    """Contextual chat (Finish Line): the UI may describe where the
+    person is. Provenance, never authority: unknown sections degrade
+    to honest `unknown`; absent context means global chat (no block)."""
+
+    @pytest.fixture
+    def client(self, tmp_path, monkeypatch):
+        from fastapi.testclient import TestClient
+
+        from personal_world.api import create_app
+        import personal_world.api as api_mod
+
+        monkeypatch.setenv("PW_API_TOKEN", "t")
+        fake = FakeChat(reply="ctx ok")
+
+        real_build_registry = api_mod.build_registry
+
+        def patched_build_registry(world, registry, config_dir):
+            reg = real_build_registry(world, registry, config_dir)
+            reg.register("reasoning", "fake-chat", fake,
+                         health_check=lambda: True, writes="none")
+            return reg
+
+        monkeypatch.setattr(api_mod, "build_registry", patched_build_registry)
+        app = create_app(tmp_path, tmp_path)
+        return TestClient(app), fake
+
+    def _headers(self):
+        return {"Authorization": "Bearer t"}
+
+    def test_known_section_injected(self, client):
+        c, fake = client
+        r = c.post(
+            "/api/chat",
+            json={
+                "message": "what needs attention here?",
+                "context": {"route": "/journal", "section_id": "journal"},
+            },
+            headers=self._headers(),
+        )
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "Where the person is" in system
+        assert "route: /journal" in system
+        assert "section: journal (Journal & Memory)" in system
+        # The system still forbids inventing state
+        assert "ONLY the context" in system
+
+    def test_unknown_section_degrades_to_honest_unknown(self, client):
+        c, fake = client
+        r = c.post(
+            "/api/chat",
+            json={
+                "message": "here?",
+                "context": {"route": "/wat", "section_id": "not-a-section"},
+            },
+            headers=self._headers(),
+        )
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "section: not-a-section (unknown section)" in system
+        assert "section status: unknown" in system
+
+    def test_no_context_means_global_chat(self, client):
+        c, fake = client
+        r = c.post("/api/chat", json={"message": "hi"},
+                    headers=self._headers())
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "Where the person is" not in system
+
+    def test_malformed_context_never_rejected(self, client):
+        c, fake = client
+        r = c.post("/api/chat",
+                    json={"message": "hi", "context": "nonsense"},
+                    headers=self._headers())
+        assert r.status_code == 200 and r.json()["ok"] is True
+        system = fake.seen[-1][0]["content"]
+        assert "Where the person is" not in system
+
+
+class TestBuildUiContext:
+    def test_full_shape(self):
+        from personal_world.chat_context import build_ui_context
+        out = build_ui_context("/vault", "vault", "Vault", "healthy",
+                               ["secrets"])
+        assert "route: /vault" in out
+        assert "section: vault (Vault)" in out
+        assert "section status: healthy" in out
+        assert "secrets" in out
+
+    def test_empty_is_none(self):
+        from personal_world.chat_context import build_ui_context
+        assert build_ui_context(None, None, None, None, None) is None

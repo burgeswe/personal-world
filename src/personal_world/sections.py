@@ -91,7 +91,9 @@ def _stored_lists(layout: dict | None) -> tuple[list[str], list[str]]:
     return order, hidden
 
 
-def _section_status(spec: SectionSpec, status_map: dict[str, dict]) -> str | None:
+def section_status(spec: SectionSpec, status_map: dict[str, dict]) -> str | None:
+    """Public alias of the per-section worst-of status (kept for the
+    chat path; the historical _section_status name remains below)."""
     if not spec.capabilities:
         return None
     statuses: list[str] = []
@@ -100,6 +102,9 @@ def _section_status(spec: SectionSpec, status_map: dict[str, dict]) -> str | Non
         raw = entry.get("status") if isinstance(entry, dict) else None
         statuses.append(str(raw) if raw else Status.NOT_CONFIGURED.value)
     return worst(statuses)
+
+
+_section_status = section_status
 
 
 def resolve_sections(layout: dict | None, status_map: dict[str, dict]) -> list[dict]:

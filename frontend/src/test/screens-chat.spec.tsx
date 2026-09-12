@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { ChatPanel } from "../components/ChatPanel";
+import type { ChatPanelProps } from "../components/ChatPanel";
 import { LiveRegionProvider } from "../primitives/LiveRegion";
 
 /**
@@ -60,10 +61,10 @@ function chatReply(reply: string, extra: Record<string, unknown> = {}) {
   });
 }
 
-function renderPanel() {
+function renderPanel(props: Record<string, unknown> = {}) {
   return render(
     <LiveRegionProvider>
-      <ChatPanel />
+      <ChatPanel {...(props as ChatPanelProps)} />
     </LiveRegionProvider>
   );
 }
@@ -320,6 +321,49 @@ describe("ChatPanel (T12, parity row 7)", () => {
       { role: "user", content: "first" },
       { role: "assistant", content: "All clear." },
     ]);
+  });
+
+  it("sectionContext → context block sent as provenance, location line visible", async () => {
+    renderPanel({
+      sectionContext: { route: "/journal", sectionId: "journal", label: "Journal & Memory" },
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/Conversation provider/)).toBeTruthy()
+    );
+    // Provenance is visible before any message is sent.
+    expect(screen.getByText(/You opened this from/)).toBeTruthy();
+    expect(screen.getByText("Journal & Memory")).toBeTruthy();
+    // Section-aware starters replaced the global ones (checked in the
+    // empty state — they disappear after the first send).
+    expect(screen.getByRole("button", { name: "What needs attention here?" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "How is my world today?" })).toBeNull();
+    const input = composerInput() as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "What needs attention here?" } });
+      fireEvent.submit(input.closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(chatCalls.length).toBe(1));
+    expect(chatCalls[0].body.context).toEqual({
+      route: "/journal",
+      section_id: "journal",
+    });
+  });
+
+  it("no sectionContext → no context field in the body, global starters", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByText(/Conversation provider/)).toBeTruthy()
+    );
+    expect(screen.queryByText(/You opened this from/)).toBeNull();
+    // Global starters in the empty state.
+    expect(screen.getByRole("button", { name: "How is my world today?" })).toBeTruthy();
+    const input = composerInput() as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "global hello" } });
+      fireEvent.submit(input.closest("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(chatCalls.length).toBe(1));
+    expect(chatCalls[0].body.context).toBeUndefined();
   });
 
   it("keyboard: Enter sends, Shift+Enter inserts a newline, targets ≥44px", async () => {

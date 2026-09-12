@@ -47,11 +47,19 @@ export interface ChatTurn {
   thinking?: string | null;
 }
 
-interface ChatPanelProps {
+export interface ChatPanelProps {
   /** Decorative companion icon + name from the host (default: none). */
   companionIcon?: string | null;
   /** Accessible heading level override for drawer hosting. */
   heading?: string;
+  /**
+   * Where this panel was opened (Finish Line "Contextual chat"): the
+   * observed route/section, provided BY THE HOST as a prop — the
+   * panel stays context-free (no router imports). Omitted = global
+   * chat. Sent as provenance; shown so the person can see what the
+   * assistant was told about their location.
+   */
+  sectionContext?: { route: string; sectionId: string; label: string };
 }
 
 const HISTORY_STORAGE_PREFIX = "pw_chat_history_";
@@ -60,6 +68,13 @@ const SUGGESTIONS = [
   "How is my world today?",
   "What changed today?",
   "Does anything need me?",
+] as const;
+/** Context-aware starters replace the global ones when the host says
+ * where the panel is: "here" questions must make sense section-locally. */
+const SECTION_SUGGESTIONS = [
+  "What needs attention here?",
+  "What is this page about?",
+  "What changed here recently?",
 ] as const;
 
 /** FNV-1a pair scope of the token — the legacy storage-key derivation
@@ -148,6 +163,7 @@ const CANONICAL = new Set([
 export function ChatPanel({
   companionIcon = null,
   heading = "Talk with your world",
+  sectionContext,
 }: ChatPanelProps) {
   const { announce } = useAnnounce();
   const [turns, setTurns] = useState<ChatTurn[]>(() => loadStoredHistory());
@@ -207,7 +223,13 @@ export function ChatPanel({
         const history = turns
           .slice(-HISTORY_MAX_TURNS)
           .map((t) => ({ role: t.role, content: t.content }));
-        const data: ChatResult = await sendChatMessage(text, history);
+        const data: ChatResult = await sendChatMessage(
+          text,
+          history,
+          sectionContext
+            ? { route: sectionContext.route, section_id: sectionContext.sectionId }
+            : undefined
+        );
         if (data.ok === false) {
           // Result-shaped honest failure (not_configured / unavailable).
           const word = statusWord(data.status);
@@ -258,7 +280,7 @@ export function ChatPanel({
         inputRef.current?.focus();
       }
     },
-    [announce, busy, turns]
+    [announce, busy, turns, sectionContext]
   );
 
   const retry = useCallback(() => {
@@ -288,6 +310,13 @@ export function ChatPanel({
   return (
     <div className="pw-chat" data-pw-chat="">
       <h2>{heading}</h2>
+      {sectionContext ? (
+        <p className="pw-chat-context-line">
+          You opened this from{" "}
+          <strong>{sectionContext.label}</strong> — questions about
+          “here” mean that page.
+        </p>
+      ) : null}
       <Disclosure summary="Conversation details" level={2}>
         <p>
           Chat is read-only conversation over a snapshot of your world.
@@ -338,10 +367,12 @@ export function ChatPanel({
               <img src={companionIcon} alt="" aria-hidden="true" />
             ) : null}
             <p>
-              Ask about your world — health, changes, what needs attention.
+              {sectionContext
+                ? `Ask about ${sectionContext.label.toLowerCase()} — health, changes, what needs attention here.`
+                : "Ask about your world — health, changes, what needs attention."}
             </p>
             <div className="pw-chat-starters" role="group" aria-label="Conversation starters">
-              {SUGGESTIONS.map((s) => (
+              {(sectionContext ? SECTION_SUGGESTIONS : SUGGESTIONS).map((s) => (
                 <button
                   key={s}
                   type="button"

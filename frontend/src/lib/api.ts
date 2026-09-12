@@ -750,14 +750,28 @@ export interface ChatResult {
   model?: string | null;
 }
 
+/**
+ * UI location the World Assistant is invoked from (Finish Line
+ * "Contextual chat"): observed route/section, sent as provenance —
+ * the server renders it as a "where the person is" hint and never
+ * treats it as world state. Omitted entirely = global chat.
+ */
+export interface ChatUiContext {
+  route: string;
+  section_id: string;
+}
+
 export async function sendChatMessage(
   message: string,
-  history: Array<{ role: string; content: string }>
+  history: Array<{ role: string; content: string }>,
+  uiContext?: ChatUiContext
 ): Promise<ChatResult> {
   return apiFetch<ChatResult>("/api/chat", {
     method: "POST",
     headers: withStepUp(new Headers({ "Content-Type": "application/json" })),
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify(
+      uiContext ? { message, history, context: uiContext } : { message, history }
+    ),
   });
 }
 

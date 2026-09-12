@@ -21,7 +21,7 @@ from . import export, prefs
 from . import sections as sections_mod
 from .app import build_registry, load_world, save_world
 from .chat import chat_once, build_chat_messages
-from .chat_context import build_world_context
+from .chat_context import build_world_context, build_ui_context
 from .envelope import Result
 from .journal import AuditRenderer, Journal
 from .loop import daily
@@ -565,6 +565,30 @@ def create_app(data_dir: Path | None = None, config_dir: Path | None = None) -> 
         context = await run_in_threadpool(
             build_world_context, world, registry, journal, True, config_dir
         )
+        # Contextual chat (Finish Line "Contextual chat and model
+        # routing"): the caller may describe WHERE in the UI the person
+        # is. Provenance, not truth: an unknown section_id degrades to
+        # an honest "unknown" block rather than being trusted or
+        # rejected — a stale tab must not break conversation.
+        ui = body.get("context") if isinstance(body, dict) else None
+        ui_block = None
+        if isinstance(ui, dict):
+            route = str(ui.get("route") or "") or None
+            sid = str(ui.get("section_id") or "") or None
+            spec = sections_mod.BY_ID.get(sid) if sid else None
+            ui_block = build_ui_context(
+                route=route,
+                section_id=sid,
+                section_label=(spec.label if spec else str(ui.get("label") or "") or None),
+                section_status=(
+                    sections_mod.section_status(
+                        spec, registry.status_map()
+                    ) if spec else None
+                ),
+                section_capabilities=(list(spec.capabilities) if spec else None),
+            )
+        if ui_block:
+            context = context + "\n\n" + ui_block
         messages = build_chat_messages(message, context, history)
         result = await run_in_threadpool(chat_once, impl, messages)
         if not result.ok:

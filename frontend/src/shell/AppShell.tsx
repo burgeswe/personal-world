@@ -1,8 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { SectionNav } from "./SectionNav";
 import { Drawer } from "../primitives/Drawer";
 import { CompanionSlot } from "../primitives/CompanionSlot";
 import { ChatPanel } from "../components/ChatPanel";
+import { useSections } from "../lib/hooks";
 
 /**
  * AppShell (P1 T9, FOUNDATION-SPEC §5 shell components, A11y §2.6/§4.2/
@@ -93,6 +95,32 @@ export function AppShell({ children }: AppShellProps) {
   const openAssistant = () => setAssistantOpen(true);
   const closeAssistant = () => setAssistantOpen(false);
 
+  // Contextual chat (Finish Line "Contextual chat"): the shell is
+  // router-hosted, so IT derives the observed section and hands it to
+  // ChatPanel as a plain prop — the panel stays hostable anywhere
+  // (no router imports, no context consumers). The section registry
+  // (GET /api/sections) supplies the human label; an unloaded registry
+  // or an unknown route yields sectionId "unknown", which the backend
+  // renders honestly rather than guessing.
+  const location = useLocation();
+  const sectionsQuery = useSections();
+  const routeSectionId =
+    location.pathname === "/" ? "today" : location.pathname.replace(/^\//, "").split("/")[0];
+  // The standalone /chat route is the GLOBAL conversation surface
+  // (Finish Line: global chat "capable of crossing the entire"
+  // product): the shell gives it no section context, matching the
+  // ChatRoute host which passes none either.
+  const isGlobalChatRoute = routeSectionId === "chat";
+  const routeSection =
+    (sectionsQuery.data ?? []).find((s) => s.id === routeSectionId) ?? null;
+  const sectionContext = isGlobalChatRoute
+    ? undefined
+    : {
+        route: location.pathname,
+        sectionId: routeSectionId,
+        label: routeSection?.label ?? "your world",
+      };
+
   return (
     <div className="pw-shell" data-pw-nav={bucket}>
       {/* A11y §2.6: skip link is the first focusable element. */}
@@ -161,7 +189,7 @@ export function AppShell({ children }: AppShellProps) {
         onClose={closeAssistant}
         side={bucket === "bottom" ? "bottom" : "right"}
       >
-        <ChatPanel />
+        <ChatPanel sectionContext={sectionContext} />
       </Drawer>
     </div>
   );

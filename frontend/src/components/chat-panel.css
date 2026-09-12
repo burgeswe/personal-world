@@ -63,6 +63,18 @@
   text-align: center;
   color: var(--pw-color-text-secondary);
 }
+
+/* Context line (Finish Line "Contextual chat"): one quiet sentence of
+   provenance under the heading — visible, brief, not a control. */
+.pw-chat-context-line {
+  margin: 0;
+  color: var(--pw-color-text-secondary);
+  font-size: 0.875rem;
+}
+.pw-chat-context-line strong {
+  color: var(--pw-color-text-primary);
+  font-weight: 600;
+}
 .pw-chat-empty img {
   width: 3.5rem;
   height: 3.5rem;

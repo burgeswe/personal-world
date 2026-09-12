@@ -101,6 +101,41 @@ def build_world_context(
     return "\n".join(parts)
 
 
+def build_ui_context(
+    route: str | None,
+    section_id: str | None,
+    section_label: str | None,
+    section_status: str | None,
+    section_capabilities: tuple[str, ...] | list[str] | None,
+) -> str | None:
+    """Render the caller's observed UI location for the system prompt.
+
+    This is provenance, NOT canonical truth: the client says where in
+    the interface the person is; the server trusts it only as a hint
+    ("observed from the UI") and never as world state. Anything missing
+    or unrecognized renders as honest `unknown` rather than being
+    dropped silently — a stale tab must not produce a confident lie.
+    Returns None when the caller sends nothing (global chat), in which
+    case no UI-location block is injected at all.
+    """
+    if not route and not section_id:
+        return None
+    label = section_label or "unknown section"
+    status = section_status or "unknown"
+    caps = ", ".join(section_capabilities or ()) or "none declared"
+    lines = [
+        "## Where the person is (observed from the UI, not world state)",
+        f"- route: {route or 'unknown'}",
+        f"- section: {section_id or 'unknown'} ({label})",
+        f"- section status: {status}",
+        f"- section capabilities: {caps}",
+        "If the person asks about 'here' or 'this page', they mean this "
+        "section. Answer from the canonical context block; if the answer "
+        "is not there, say so plainly.",
+    ]
+    return "\n".join(lines)
+
+
 def _source_control_block(config_dir) -> list[str]:
     paths = configured_search_paths(Path(config_dir))
     if not paths:
