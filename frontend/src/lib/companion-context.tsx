@@ -23,8 +23,15 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
     setCompanionState(id);
   };
 
-  // Sync with API on mount
+  // Sync with API on mount — but never on the standalone auth routes
+  // (T14): a pre-sign-in companion fetch is an unauthenticated /api
+  // call (401 noise, half-signed-in appearance). /login and /setup
+  // do not render companion artwork; the default id is inert there.
   useEffect(() => {
+    const onAuthRoute =
+      window.location.pathname === "/login" ||
+      window.location.pathname === "/setup";
+    if (onAuthRoute) return;
     fetchPrefs()
       .then((d) => {
         if (d?.companion) setCompanionState(d.companion);

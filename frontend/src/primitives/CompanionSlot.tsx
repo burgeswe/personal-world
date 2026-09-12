@@ -4,13 +4,20 @@ import { useCompanion, COMPANIONS } from "../lib/companion-context";
 /**
  * CompanionSlot (P1 T8, FOUNDATION-SPEC §5 owner correction 3, A11y §7):
  *
- * Two SIBLING parts, never nested:
- *   (a) artwork <span aria-hidden="true"><img alt="" …></span> — present
- *       only when the companion pref is on;
- *   (b) when `asAssistantTrigger`, a separate <button> whose ONLY
- *       accessible name is "Open World assistant" — never inside any
- *       aria-hidden subtree, so a companion-off setting removes the
- *       artwork but leaves the assistant fully reachable (A11y §7.4).
+ * Without the trigger, the slot is one sibling part: artwork
+ * <span aria-hidden="true"><img alt="" …></span> — present only when
+ * the companion pref is on.
+ *
+ * With `asAssistantTrigger`, the trigger is a labeled affordance
+ * (finding C, T14 human-gate polish): the companion artwork + the
+ * visible "Ask your world" label both live INSIDE the button as
+ * aria-hidden decoration (A11y §7.2 allows the artwork to accompany or
+ * contain the trigger while artwork stays hidden; the trigger itself
+ * is never inside an aria-hidden subtree and its ONLY accessible name
+ * is "Open World assistant"). No sibling artwork is rendered beside a
+ * trigger, so the shell shows exactly ONE companion (finding D). A
+ * companion-off setting removes the artwork but leaves the visible
+ * label and full reachability (A11y §7.4).
  *
  * The slot carries no information, is not focusable itself, and never
  * announces (no live region, no role=status). Poses (P13) stay
@@ -40,6 +47,14 @@ export const COMPANION_SIZES: Record<CompanionSize, { px: number; label: string 
 };
 
 export const ASSISTANT_TRIGGER_LABEL = "Open World assistant";
+
+/** Visible affordance text (finding C): a bare "+" was too ambiguous
+ * for the PRIMARY interaction model. The label is decorative under the
+ * §7.2 sibling contract — aria-hidden so the accessible name stays
+ * EXACTLY "Open World assistant"; the artwork beside it is the same
+ * aria-hidden pattern. Calm styling: secondary text, primary on hover,
+ * no motion. */
+export const ASSISTANT_TRIGGER_VISIBLE_LABEL = "Ask your world";
 
 export interface CompanionSlotProps {
   size: CompanionSize;
@@ -77,9 +92,12 @@ export function CompanionSlot({
       data-pw-companion={artworkVisible ? baseName : "off"}
       className="inline-flex items-center"
     >
-      {/* Part (a): decorative artwork. aria-hidden subtree — the img is
-          inside it with alt=""; removed entirely when companion is off. */}
-      {artworkVisible ? (
+      {/* Part (a): decorative artwork, ONLY when the slot is not the
+          assistant trigger (the trigger carries its own artwork inside
+          the button — finding C; one companion in the shell — finding
+          D). aria-hidden subtree, img alt=""; removed when companion
+          is off. */}
+      {artworkVisible && !asAssistantTrigger ? (
         <span aria-hidden="true" className="inline-flex">
           <img
             src={src}
@@ -90,9 +108,11 @@ export function CompanionSlot({
           />
         </span>
       ) : null}
-      {/* Part (b): the assistant trigger — a SIBLING of the artwork,
-          never inside the aria-hidden subtree. Its ONLY accessible name
-          is "Open World assistant" (A11y §7.2/7.3). */}
+      {/* Part (b): the assistant trigger — a labeled affordance whose
+          artwork + visible label are aria-hidden decoration INSIDE the
+          button. The button itself is never inside an aria-hidden
+          subtree and its ONLY accessible name is "Open World
+          assistant" (A11y §7.2/7.3). */}
       {asAssistantTrigger ? (
         <button
           type="button"
@@ -100,14 +120,25 @@ export function CompanionSlot({
           onClick={onOpenAssistant}
           className={cn(
             "inline-flex min-h-[var(--pw-target-minimum)] min-w-[var(--pw-target-minimum)]",
-            "items-center justify-center rounded-xl border border-transparent",
-            "text-transparent",
-            "focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2",
-            artworkVisible && "ml-[var(--pw-spacing-compact)]"
+            "items-center justify-center gap-[var(--pw-spacing-compact)] rounded-xl border border-transparent",
+            "px-[var(--pw-spacing-normal)]",
+            "text-[var(--pw-color-text-secondary)] hover:text-[var(--pw-color-text-primary)]",
+            "focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-2 focus-visible:outline-offset-2"
           )}
         >
-          <span aria-hidden="true" className="text-[var(--pw-color-text-secondary)]">
-            ✚
+          {artworkVisible ? (
+            <span aria-hidden="true" className="inline-flex">
+              <img
+                src={src}
+                alt=""
+                width={dimensions.px}
+                height={dimensions.px}
+                className="block"
+              />
+            </span>
+          ) : null}
+          <span aria-hidden="true" className="text-[0.8rem] leading-tight whitespace-nowrap">
+            {ASSISTANT_TRIGGER_VISIBLE_LABEL}
           </span>
         </button>
       ) : null}

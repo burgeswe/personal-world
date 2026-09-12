@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TodayScreen from "./screens/TodayScreen";
-import ChatScreen from "./screens/ChatScreen";
+import ChatRoute from "./screens/ChatRoute";
+import LoginScreen from "./screens/LoginScreen";
 import JournalScreen from "./screens/JournalScreen";
+import VaultScreen from "./screens/VaultScreen";
 import WorldScreen from "./screens/WorldScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import SetupWizard from "./screens/SetupWizard";
+import InterestsScreen from "./screens/InterestsScreen";
+import MediaScreen from "./screens/MediaScreen";
+import ProjectsScreen from "./screens/ProjectsScreen";
+import LabScreen from "./screens/LabScreen";
 import { CompanionProvider } from "./lib/companion-context";
 import {
   PrefsProvider,
@@ -14,9 +20,9 @@ import {
   PREFERENCES_DEFAULTS,
 } from "./lib/prefs-context";
 import { LiveRegionProvider } from "./primitives/LiveRegion";
-import { fetchPrefs } from "./lib/api";
+import { fetchPrefs, setLoginNavigation } from "./lib/api";
 import { AppShell } from "./shell/AppShell";
-import { EmptyState } from "./shell/EmptyState";
+import { AuthLayout } from "./shell/AuthLayout";
 
 /**
  * Bootstrap (T9, FOUNDATION-SPEC §1.2 + §10 row 10): preferences are
@@ -29,8 +35,20 @@ import { EmptyState } from "./shell/EmptyState";
  */
 function AppRoutes() {
   const [booted, setBooted] = useState(false);
+  const location = useLocation();
+  // T14: on /login and /setup the ShellGate keeps this subtree
+  // unmounted, so this effect never runs there — no unauthenticated
+  // /api/prefs fetch, no 401 noise on the auth pages (the AuthRoutes
+  // frame renders without prefs-dependent content; attrs come from
+  // the PrefsProvider defaults already applied at the document root).
+  const isAuthRoute =
+    location.pathname === "/login" || location.pathname === "/setup";
 
   useEffect(() => {
+    if (isAuthRoute) {
+      setBooted(true);
+      return;
+    }
     let cancelled = false;
     fetchPrefs()
       .then((d) => {
@@ -54,14 +72,14 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/setup" element={<SetupWizard />} />
       <Route path="/" element={<TodayScreen />} />
-      <Route path="/interests" element={<InterestsRoute />} />
-      <Route path="/media" element={<MediaRoute />} />
-      <Route path="/projects" element={<ProjectsRoute />} />
-      <Route path="/lab" element={<LabRoute />} />
-      <Route path="/chat" element={<ChatScreen />} />
+      <Route path="/interests" element={<InterestsScreen />} />
+      <Route path="/media" element={<MediaScreen />} />
+      <Route path="/projects" element={<ProjectsScreen />} />
+      <Route path="/lab" element={<LabScreen />} />
+      <Route path="/chat" element={<ChatRoute />} />
       <Route path="/journal" element={<JournalScreen />} />
+      <Route path="/vault" element={<VaultScreen />} />
       <Route path="/world" element={<WorldScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
     </Routes>
@@ -69,55 +87,67 @@ function AppRoutes() {
 }
 
 /**
- * Route wrappers (T9): the four stub sections render honest
- * EmptyStates naming the capability and the knob (T13 replaces these;
- * Lab's real table comes with T13 too). The shell owns
- * `<main id="main-content">` (AppShell), so routes render bare inside
- * it — the prototype screens keep their markup but no longer declare
- * the main landmark (T10–T12 redesigns them). Hidden sections are
- * omitted from the nav but their routes still resolve (§5/§10).
+ * Standalone auth routes (T14 owner decision): /login and /setup
+ * render in the AuthLayout wrapper, OUTSIDE the AppShell — no section
+ * nav, no rail/banner/bottom bar, no app controls. A person who is
+ * not signed in never sees (half of) the app. Same bootstrap pattern
+ * as AppRoutes: prefs land on <html data-pw-*> before any route
+ * content appears.
  */
-function InterestsRoute() {
+function AuthRoutes() {
   return (
-    <EmptyState
-      title="Interests"
-      capability="Interests collect things you care about and find more like them."
-      knob="Turn on a discovery connection in Settings → Connections to populate this section."
-      status="not_configured"
-    />
+    <Routes>
+      <Route
+        path="/setup"
+        element={
+          <AuthLayout>
+            <SetupWizard />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <AuthLayout>
+            <LoginScreen />
+          </AuthLayout>
+        }
+      />
+    </Routes>
   );
 }
 
-function MediaRoute() {
-  return (
-    <EmptyState
-      title="Media"
-      capability="Media gathers your stories, bookmarks, and saved reading."
-      knob="Add a media connection in Settings → Connections to enable this section."
-      status="not_configured"
-    />
-  );
+/**
+ * ShellGate (T14 owner decision): the authenticated AppShell mounts
+ * ONLY on non-auth routes. On /login and /setup it renders nothing
+ * at all — the standalone AuthLayout owns the page. This is a
+ * structural absence, not a CSS hide: a display:none shell would
+ * still boot its data hooks and fire unauthenticated /api requests
+ * (401 console noise, half-signed-in appearance).
+ */
+function ShellGate({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const isAuthRoute =
+    location.pathname === "/login" || location.pathname === "/setup";
+  if (isAuthRoute) return null;
+  return <>{children}</>;
 }
 
-function ProjectsRoute() {
-  return (
-    <EmptyState
-      title="Projects"
-      capability="Projects follow your repositories and their recent activity."
-      knob="List repository locations under Source Control in Settings to enable this section."
-    />
-  );
-}
-
-function LabRoute() {
-  return (
-    <EmptyState
-      title="Lab"
-      capability="Lab watches the health of your homelab services."
-      knob="Set the lab command-line path in your server settings to enable this section."
-      status="not_configured"
-    />
-  );
+/**
+ * Login navigation (T12, FOUNDATION-SPEC §1.5): the T6 api boundary
+ * owns the 401→/login contract; this wires its settable hook to the
+ * router (SPA navigation instead of a hard reload). Lives inside the
+ * BrowserRouter so useNavigate resolves. Any 401 from any screen
+ * routes here; the token was already cleared by the api boundary.
+ */
+function LoginNavigationWiring() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setLoginNavigation((path) => navigate(path, { replace: true }));
+    return () =>
+      setLoginNavigation((path) => window.location.assign(path));
+  }, [navigate]);
+  return null;
 }
 
 function App() {
@@ -130,10 +160,21 @@ function App() {
               AppShell (T9): skip link, nav "Main", main#main-content,
               Drawer mount. LiveRegionProvider stays app-level (one
               region). The router wraps the shell so NavLinks resolve.
+              LoginNavigationWiring (T12): SPA 401→/login for the whole
+              tree, no chat/auth logic in routes.
             */}
-            <AppShell>
-              <AppRoutes />
-            </AppShell>
+            <LoginNavigationWiring />
+            {/* Standalone auth routes (T14): /login + /setup never
+                mount inside the authenticated AppShell — and the
+                AppShell never mounts on them (no nav, no 401-fetch
+                storm from a hidden shell: the shell is ABSENT, not
+                display:none'd — see ShellGate). */}
+            <ShellGate>
+              <AppShell>
+                <AppRoutes />
+              </AppShell>
+            </ShellGate>
+            <AuthRoutes />
           </BrowserRouter>
         </LiveRegionProvider>
       </PrefsProvider>
