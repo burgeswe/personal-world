@@ -12,6 +12,9 @@ import {
   fetchVaultStatus,
   fetchVaultNames,
   fetchSourceControlStatus,
+  fetchSourceControlHistory,
+  type SourceControlHistoryData,
+  type SourceControlStatusEnvelope,
   fetchSections,
   fetchActors,
   fetchBackup,
@@ -39,7 +42,6 @@ import {
   type DailyResult,
   type DailyData,
   type ServiceApp,
-  type SourceControlStatusData,
   type SectionData,
   type ChatProvidersData,
 } from "./api";
@@ -219,7 +221,18 @@ export function useVaultStatus() {
 
 // ── Source Control hooks ──
 export function useSourceControlStatus() {
-  return useApiQuery<SourceControlStatusData>(() => fetchSourceControlStatus());
+  return useApiQuery<SourceControlStatusEnvelope>(
+    () => fetchSourceControlStatus()
+  );
+}
+/** GET /api/source-control/history?repo=<name>: the selected repo's
+ * recent commits (Projects drill-in; presentation-only). */
+export function useSourceControlHistory(repo: string, limit = 5) {
+  return useApiQuery<SourceControlHistoryData>(
+    () => fetchSourceControlHistory(repo, limit),
+    [repo, limit],
+    ["source-control-history", repo]
+  );
 }
 
 // ── Actors hook ──

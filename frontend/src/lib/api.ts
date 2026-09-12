@@ -390,15 +390,45 @@ export interface ServiceApp {
 export async function fetchApps(): Promise<ServiceApp[]> {
   return apiFetch<ServiceApp[]>("/api/apps");
 }
-export type SourceControlRepo = {
+/**
+ * One repository from GET /api/source-control/status — mirrors
+ * repository_status() exactly (path, revision, ahead/behind, remote,
+ * last commit, structured error); every field is optional-or-null
+ * because git itself answers per-repo (an unreadable repo is a row
+ * with error, never a missing row).
+ */
+export interface SourceControlRepo {
   name: string;
+  path: string;
   branch: string | null;
+  revision: string | null;
   dirty: boolean | null;
-};
+  ahead: number | null;
+  behind: number | null;
+  remote: string | null;
+  last_commit_date: string | null;
+  last_commit_subject: string | null;
+  error: string | null;
+}
 export type SourceControlStatusData = { repos: SourceControlRepo[] };
+/** GET /api/source-control/status keeps its honest {ok, status, data}
+ * envelope (ok:false not_configured = no search paths configured). */
+export type SourceControlStatusEnvelope = {
+  ok: boolean;
+  status: string;
+  warnings?: string[];
+  data: SourceControlStatusData | null;
+};
+/** One commit from GET /api/source-control/history (repository_history). */
+export interface SourceControlCommit {
+  revision: string;
+  date: string;
+  author: string;
+  subject: string;
+}
 export type SourceControlHistoryData = {
   repo: string;
-  commits: unknown[];
+  commits: SourceControlCommit[];
 };
 /** One entry of GET /api/chat/providers (api.py `chat_providers`). */
 export interface ChatProviderInfo {
@@ -481,8 +511,12 @@ export async function fetchVaultNames(): Promise<VaultNamesData> {
   }
 }
 
-export async function fetchSourceControlStatus(): Promise<SourceControlStatusData> {
-  return apiFetch<SourceControlStatusData>("/api/source-control/status");
+export async function fetchSourceControlStatus(): Promise<
+  SourceControlStatusEnvelope
+> {
+  return apiFetchEnvelope<SourceControlStatusEnvelope>(
+    "/api/source-control/status"
+  );
 }
 
 export async function fetchSourceControlHistory(

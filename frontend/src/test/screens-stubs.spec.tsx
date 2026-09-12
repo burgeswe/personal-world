@@ -14,8 +14,10 @@ import ProjectsScreen from "../screens/ProjectsScreen";
  * configuration knob — no fabricated content, no demo lists, and never
  * a mount path (plan C-2; EmptyState contract in shell/EmptyState.tsx).
  *
- * These screens fetch nothing, so no fetch mock is needed; providers are
- * mounted to mirror the real tree shape (companion sync is harmless).
+ * Interests/Media fetch nothing. Projects now fetches real repo
+ * status (Projects workspace v1); its test mocks the honest
+ * not_configured envelope a zero-provider deployment answers.
+ * Providers are mounted to mirror the real tree shape.
  */
 
 const axeNoContrast = (el: Element) =>
@@ -65,11 +67,27 @@ describe("section stubs: honest EmptyStates (T13)", () => {
     expect(screen.getByText("not configured")).toBeTruthy();
   });
 
-  it("Projects names the source_control capability and its knob", () => {
+  it("Projects names the source_control capability and its knob", async () => {
+    // The screen fetches real repo status now (Projects workspace v1);
+    // a zero-provider deployment answers the honest not_configured
+    // envelope, which must render the same EmptyState + knob as before.
+    const fetchMock = vi.fn().mockImplementation((input: unknown) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.includes("/api/source-control/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            ok: false,
+            status: "not_configured",
+            warnings: ["no source_control search paths configured"],
+          }), { status: 200, headers: { "Content-Type": "application/json" } })
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, data: null }), { headers: { "Content-Type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
     render(stubProviders(<ProjectsScreen />));
-    expect(screen.getByRole("heading", { name: "Projects" })).toBeTruthy();
     expect(
-      screen.getByText("Projects follow your repositories and their recent activity.")
+      await screen.findByText("Projects follow your repositories and their recent activity.")
     ).toBeTruthy();
     expect(
       screen.getByText(/repository locations under Source Control in Settings/)
@@ -82,7 +100,6 @@ describe("section stubs: honest EmptyStates (T13)", () => {
     for (const ui of [
       <InterestsScreen key="i" />,
       <MediaScreen key="m" />,
-      <ProjectsScreen key="p" />,
     ]) {
       const { container, unmount } = render(stubProviders(ui));
       expect(container.querySelectorAll("ul, ol, table")).toHaveLength(0);

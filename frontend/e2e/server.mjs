@@ -57,6 +57,16 @@ writeFileSync(
 );
 writeFileSync(join(dataDir, "setup-complete"), "ok");
 
+// Projects workspace fixture (real native baseline): point the REAL
+// source_control search_paths at the repo's own worktree so the
+// Projects screen e2e exercises the real /api/source-control/status
+// against a real git repository — no fabricated rows, and the repo
+// under test is always present.
+writeFileSync(
+  join(configDir, "connections.json"),
+  JSON.stringify({ source_control: { search_paths: [REPO] } })
+);
+
 const env = {
   ...process.env,
   PW_API_TOKEN: TOKEN,

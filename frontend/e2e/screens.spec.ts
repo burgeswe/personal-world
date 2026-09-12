@@ -28,16 +28,36 @@ test.describe("honest states", () => {
     expect(text).not.toMatch(/\/home\/|\/var\/|\/Users\//);
   });
 
-  test("Media + Projects stubs stay honest empty states", async ({ page }) => {
+  test("Media stub stays an honest empty state", async ({ page }) => {
     await login(page);
-    for (const route of ["/media", "/projects"]) {
-      const errors = collectErrors(page);
-      await page.goto(route);
-      await bootWait(page);
-      const text = await page.locator("#main-content").innerText();
-      expect(text).not.toMatch(/Coming soon|demo|sample data/i);
-      expect(errors).toEqual([]);
-    }
+    const errors = collectErrors(page);
+    await page.goto("/media");
+    await bootWait(page);
+    const text = await page.locator("#main-content").innerText();
+    expect(text).not.toMatch(/Coming soon|demo|sample data/i);
+    expect(errors).toEqual([]);
+  });
+
+  test("Projects (configured via real search_paths) shows the real repository table", async ({ page }) => {
+    await login(page);
+    const errors = collectErrors(page);
+    await page.goto("/projects");
+    await bootWait(page);
+    // The e2e fixture points the native source_control baseline at the
+    // repo itself: the real table must render with the repo's own name.
+    await expect(
+      page.getByRole("button", { name: "personal-world" })
+    ).toBeVisible();
+    const glance = await page.locator("#main-content p").first().innerText();
+    expect(glance).toMatch(/repositor(y|ies) watched/);
+    // Provenance disclosure opens and carries the real fields.
+    await page.getByRole("button", { name: "personal-world" }).click();
+    await expect(page.locator("[data-pw-projects-detail]")).toBeVisible();
+    // History loads from the real /api/source-control/history.
+    await expect(
+      page.locator("[data-pw-projects-history]")
+    ).toBeVisible();
+    expect(errors).toEqual([]);
   });
 
   test("empty states are proportionate: 34rem card, What/Why/Next order (finding E)", async ({ page }) => {
