@@ -87,7 +87,7 @@ Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/getting-started
 Use a private local configuration directory for the zero-provider starting point:
 
 ```bash
-git clone https://github.com/burgeswe/personal-world.git
+git clone https://github.com/Rylee-Bee/personal-world.git
 cd personal-world
 uv sync --frozen --extra test
 uv run personal-world --config-dir config.local init

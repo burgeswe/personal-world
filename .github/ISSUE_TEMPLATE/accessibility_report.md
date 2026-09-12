@@ -8,7 +8,7 @@ body:
         Accessibility is a core contract of this project, not an
         afterthought — reports like this one are how it stays true.
         The contract lives in
-        [ACCESSIBILITY_CONTRACT.md](https://github.com/burgeswe/personal-world/blob/main/docs/accessibility/ACCESSIBILITY_CONTRACT.md).
+        [ACCESSIBILITY_CONTRACT.md](https://github.com/Rylee-Bee/personal-world/blob/main/docs/accessibility/ACCESSIBILITY_CONTRACT.md).
         Do not include secrets or personal data.
   - type: textarea
     id: barrier

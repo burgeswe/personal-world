@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for taking the time. Do **not** include secrets, tokens,
         personal data, private endpoints or logs from a live deployment.
-        Security issues go to [private reporting](https://github.com/burgeswe/personal-world/security/advisories/new) instead.
+        Security issues go to [private reporting](https://github.com/Rylee-Bee/personal-world/security/advisories/new) instead.
   - type: textarea
     id: what-happened
     attributes:
