@@ -106,6 +106,38 @@ linear (A→B→C; branching rejected). Backend tests (11) + frontend
 tests (6) + live 10-point browser walkthrough incl. keyboard, focus
 ring, 200% reflow, reduced motion.
 
+**Gitea retirement + GitHub enrichment + public README/screenshot
+pass (2026-09-12, slice complete):** Gitea is retired from the live
+architecture. `GiteaEnrichment` and `/api/source-control/rollups` are
+removed (the endpoint 404s); the generic forge adapter in `adapters.py`
+remains as substitution-proof registry machinery, no longer a
+supported live provider; `GITEA_TOKEN` is gone from compose and
+examples; GitHub is the supported remote enrichment provider.
+Model: LOCAL GIT TRUTH (canonical: existence, branch, dirty,
+ahead/behind, local history) + OPTIONAL GitHub enrichment
+(`providers/github.py` — read-only `gh api` argv calls over the host's
+existing authenticated gh session; NO credential management in the
+app; structured `unavailable`/`not_github`/`not_configured` states;
+`not_github` answered from the local remote URL without needing gh).
+Surface: `GET /api/source-control/enrichment?repo=<name>` + the
+Projects drill-in "GitHub activity" disclosure (open PRs, open
+issues, remote default branch, last remote push, canonical slug/url
+with per-field provenance). Quiet degradation verified live WITH and
+WITHOUT gh: absent → one sentence, native table untouched.
+README rewritten for public landing (screenshots at top, honest
+what-works-today, quick start with real clone URL Rylee-Bee/personal-world,
+deeper-docs table); five sanitized screenshots under
+`docs/screenshots/` captured from the real running app on a fixture
+demo world (`demo-world` repo + seeded garden/fig-tree journal entries
+with one corrected entry showing the history chain). Safety audited:
+no tokens, no hostnames/IPs, no private repos (octocat/Hello-World is
+intentionally public), no browser chrome leaks, demo commits re-
+authored to "Demo Person". Historical Gitea references preserved in
+CHANGELOG/ADR/DESIGN-HANDOFF/completion-plan; current-architecture
+docs (ARCHITECTURE, NATIVE-BASELINE, PROVIDERS, ROADMAP, AGENT_POLICY
+context) updated; NATIVE-BASELINE anti-pattern illustrations kept
+(conceptual, still truthful).
+
 **First propose→approve→act workflow (2026-09-12, `1152301`):**
 from a selected repository on Projects, the screen proposes a
 read-only status re-check and explains WHAT/WHY/TOOL/RISK/EXPECTED;
