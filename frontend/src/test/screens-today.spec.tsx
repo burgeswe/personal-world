@@ -96,6 +96,15 @@ const NOTE_ENTRY = {
 function defaultHandlers(overrides: Record<string, unknown> = {}) {
   return {
     "/api/daily": () => jsonResponse(200, overrides.daily ?? DAILY_BUSY),
+    "/api/projects/status": () =>
+      overrides.projectsStatus !== undefined
+        ? jsonResponse(200, overrides.projectsStatus)
+        : jsonResponse(200, {
+            ok: true,
+            status: "healthy",
+            warnings: [],
+            data: { observed_at: "2026-09-12T12:48:38Z", projects: [] },
+          }),
     "/api/journal": (path: string, init?: RequestInit) => {
       const n = Number(new URL(path, "http://x").searchParams.get("n") ?? "20");
       const entries = (overrides.journal as JournalEntry[] | undefined) ?? [
@@ -494,5 +503,98 @@ describe("TodayScreen (T10, parity rows 1–3)", () => {
         .find((el) => el.tagName === "SPAN") as HTMLElement
     );
     expect(await axeNoContrast(container)).toHaveNoViolations();
+  });
+});
+/** One agent-sync project record (mirrors the sensor's model). */
+function estateProject(overrides: Record<string, unknown> = {}) {
+  return {
+    project: "demo",
+    path: "/repos/demo",
+    is_git_repo: true,
+    branch: "main",
+    local_head: "aaaaaaa",
+    remote_name: "origin",
+    remote_url: "https://example.com/acme/demo.git",
+    remote_head: "aaaaaaa",
+    publish_state: "match",
+    working_tree: { staged: 0, modified: 0, untracked: 0, conflicted: 0 },
+    play_nice: { present: false, revision: null, source_repository: null },
+    work_state: "unknown",
+    safe_to_leave: "yes",
+    error: null,
+    ...overrides,
+  };
+}
+
+describe("TodayScreen (agent-sync project status)", () => {
+  it("all-quiet estate: one settled line, no alarm vocabulary", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: "2026-09-12T12:48:38Z", projects: [estateProject(), estateProject({ project: "second" })] },
+      },
+    }));
+    const region = screen.getByRole("heading", { name: "Projects" }).closest("section");
+    expect(region?.textContent).toMatch(/Projects are quiet\./);
+    expect(region?.textContent).not.toMatch(/attention|diverged|unpublished/);
+  });
+
+  it("a diverged project surfaces as attention with a human sentence + link", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: "2026-09-12T12:48:38Z", projects: [estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" })] },
+      },
+    }));
+    expect(screen.getByText(/1 needs attention/)).toBeTruthy();
+    expect(screen.getByText(/split: local and remote histories have diverged/)).toBeTruthy();
+    expect(screen.getByText("See Projects")).toBeTruthy();
+  });
+
+  it("local work is mentioned but does NOT over-alarm (no attention vocabulary)", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: "2026-09-12T12:48:38Z", projects: [estateProject({ project: "vefr", working_tree: { staged: 0, modified: 3, untracked: 1, conflicted: 0 }, safe_to_leave: "published-with-local-work" })] },
+      },
+    }));
+    expect(screen.getByText(/1 has local work/)).toBeTruthy();
+    expect(screen.queryByText(/attention/)).toBeNull();
+    expect(screen.queryByText(/diverged/)).toBeNull();
+  });
+
+  it("unknown stays honest without stealing attention priority", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: "2026-09-12T12:48:38Z", projects: [estateProject({ project: "offline", remote_head: null, publish_state: null, safe_to_leave: "unknown" })] },
+      },
+    }));
+    expect(screen.getByText(/1 could not reach its remote/)).toBeTruthy();
+    // unknown is a mention, not an attention sentence
+    expect(screen.queryByText(/could not be reached, so publication/)).toBeNull();
+  });
+
+  it("multiple categories compose in priority order", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: {
+        ok: true, status: "healthy", warnings: [],
+        data: { observed_at: "2026-09-12T12:48:38Z", projects: [
+          estateProject(),
+          estateProject({ project: "wip", working_tree: { staged: 1, modified: 0, untracked: 0, conflicted: 0 }, safe_to_leave: "published-with-local-work" }),
+          estateProject({ project: "split", publish_state: "diverged", safe_to_leave: "no" }),
+        ] },
+      },
+    }));
+    expect(screen.getByText(/1 needs attention · 1 has local work/)).toBeTruthy();
+  });
+
+  it("sensor unavailable: Today stays calm (no projects section at all)", async () => {
+    await bootToday(defaultHandlers({
+      projectsStatus: { ok: false, status: "unavailable", warnings: ["agent-sync observation unavailable"], data: null },
+    }));
+    expect(screen.queryByText(/Projects are quiet/)).toBeNull();
+    expect(screen.queryByText(/needs attention/)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Projects" })).toBeNull();
   });
 });

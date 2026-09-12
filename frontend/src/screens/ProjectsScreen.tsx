@@ -5,7 +5,8 @@ import { ErrorState } from "../shell/ErrorState";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
 import { useSourceControlStatus, useSourceControlHistory, useSourceControlEnrichment, useAgentSyncProjects } from "../lib/hooks";
 import { Loader2 } from "../lib/icons";
-import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment, type AgentSyncProject } from "../lib/api";
+import { refreshSourceControlStatus, type SourceControlRepo, type SourceControlEnrichment } from "../lib/api";
+import { projectCategory, projectSentence, CATEGORY_ORDER, type ProjectCategory } from "../lib/project-status";
 import { useAnnounce } from "../primitives/LiveRegion";
 
 /**
@@ -326,67 +327,10 @@ function RepoEnrichment({ repo }: { repo: string }) {
 
 /* ────────────────────────────────────────────────────────────────
  * Project status (agent-sync estate sensor): the five summary
- * categories, deliberately NOT collapsed into one warning.
- *   quiet          published and clean — nothing to say
- *   local work     published but the tree has uncommitted work
- *                  (NOT broken; presented calmly)
- *   unpublished    local commits not on the remote (ahead), or
- *                  behind / diverged — needs attention
- *   unknown        the remote could not be reached; honest
- *                  unknown, never healthy or unhealthy
- *   attention       the plain-language sentence for a repo that
- *                  needs the person (diverged/unpublished)
+ * categories live in lib/project-status.ts (shared with Today);
+ * the panel below is the Projects presentation — calm glance,
+ * per-project sentences, technical guts behind a disclosure.
  */
-
-type ProjectCategory =
-  | "quiet"
-  | "local_work"
-  | "unpublished"
-  | "diverged"
-  | "unknown";
-
-function projectCategory(p: AgentSyncProject): ProjectCategory {
-  if (p.publish_state === "diverged") return "diverged";
-  if (p.publish_state === "ahead" || p.publish_state === "behind") {
-    return "unpublished";
-  }
-  if (p.publish_state === null) return "unknown";
-  // published (match): is there local work?
-  const tree = p.working_tree;
-  const dirty =
-    tree.staged + tree.modified + tree.untracked + tree.conflicted;
-  return dirty > 0 ? "local_work" : "quiet";
-}
-
-/** One plain-language sentence per repo that is NOT quiet. Never a
- *  raw Git term without its human meaning; never a suggested
- *  command (explaining is not authorizing). */
-function projectSentence(p: AgentSyncProject): string | null {
-  const cat = projectCategory(p);
-  switch (cat) {
-    case "diverged":
-      return `${p.project}: local and remote histories have diverged — both sides have work the other doesn't have.`;
-    case "unpublished":
-      if (p.publish_state === "ahead") {
-        return `${p.project}: local work is not published yet — the remote hasn't seen your latest commits.`;
-      }
-      return `${p.project}: the remote has newer history than this copy.`;
-    case "local_work":
-      return `${p.project}: published state is safe; local work is still in progress.`;
-    case "unknown":
-      return `${p.project}: the remote could not be reached, so publication state is unknown.`;
-    default:
-      return null; // quiet projects get no sentence (calm summary)
-  }
-}
-
-const CATEGORY_ORDER: Record<ProjectCategory, number> = {
-  diverged: 0,
-  unpublished: 1,
-  unknown: 2,
-  local_work: 3,
-  quiet: 4,
-};
 
 /** The estate panel: agent-sync's own summary level — one calm
  *  glance line (only categories that exist), then per-project

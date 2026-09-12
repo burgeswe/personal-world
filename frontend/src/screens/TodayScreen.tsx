@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveApps, saveJournalEntry, ApiError, type JournalEntry, type ServiceApp, type LabEnvelope } from "../lib/api";
-import { useDaily, useApps, useLabState, useJournalPage, useJournalKey } from "../lib/hooks";
+import { useDaily, useApps, useLabState, useJournalPage, useJournalKey, useAgentSyncProjects } from "../lib/hooks";
+import { projectCategory, projectSentence, CATEGORY_ORDER, NEEDS_ATTENTION } from "../lib/project-status";
 import { useAnnounce } from "../primitives/LiveRegion";
 import { useStepUp } from "../primitives/StepUpPrompt";
 import { Disclosure, TechnicalDetails } from "../primitives/Disclosure";
@@ -139,6 +140,7 @@ function TodayScreen() {
       <div className="space-y-6">
         <HealthSection daily={daily} />
         <AttentionSection daily={daily} />
+        <ProjectsTodaySection />
         <WhatChangedSection daily={daily} />
         <JournalSection journal={journal} onSaved={() => { bumpJournal(); announce("Note saved to your journal.", { kind: "action_completed", key: "today-journal-note" }); }} />
         <MoreFromWorld daily={daily} apps={apps} lab={lab} stepUp={stepUp} announce={announce} />
@@ -284,6 +286,92 @@ function humanizeAttention(value: string): string {
 function humanizeWhatChanged(value: string): string {
   const text = String(value || "");
   return AVAILABLE_NOT_ENABLED_FOR_WRITES.test(text) ? humanizeAttention(text) : text;
+}
+
+// ── Projects (agent-sync estate; only meaningful state) ──
+
+/** Today tells Rylee what matters, not every repository: attention
+ *  projects get a sentence; local work gets one calm mention; a
+ *  settled estate gets one settled line; an unavailable sensor is
+ *  one quiet sentence (Today must not become a status board). */
+function ProjectsTodaySection() {
+  const query = useAgentSyncProjects();
+  if (query.isLoading && !query.data) return null; // no flash of empty state
+  if (query.isError || query.data?.ok !== true || !query.data.data) {
+    return null; // Today stays calm; Projects owns the detail + degradation copy
+  }
+  const data = query.data.data;
+  const projects = data.projects ?? [];
+  if (projects.length === 0) return null;
+
+  const attention = projects
+    .filter((p) => NEEDS_ATTENTION.includes(projectCategory(p)))
+    .sort((a, b) =>
+      CATEGORY_ORDER[projectCategory(a)] - CATEGORY_ORDER[projectCategory(b)]);
+  const localWork = projects.filter((p) => projectCategory(p) === "local_work");
+  const unknown = projects.filter((p) => projectCategory(p) === "unknown");
+
+  if (attention.length === 0 && localWork.length === 0 && unknown.length === 0) {
+    return (
+      <section aria-labelledby="today-projects-heading" className="space-y-1 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]">
+        <h2 id="today-projects-heading" className="text-lg font-semibold" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>
+          Projects
+        </h2>
+        <p className="text-[var(--pw-color-text-secondary)]">
+          Projects are quiet.
+        </p>
+      </section>
+    );
+  }
+
+  const bits: string[] = [];
+  if (attention.length > 0) {
+    bits.push(
+      attention.length === 1
+        ? "1 needs attention"
+        : `${attention.length} need attention`
+    );
+  }
+  if (localWork.length > 0) {
+    bits.push(
+      localWork.length === 1
+        ? "1 has local work"
+        : `${localWork.length} have local work`
+    );
+  }
+  if (unknown.length > 0) {
+    bits.push(
+      unknown.length === 1
+        ? "1 could not reach its remote"
+        : `${unknown.length} could not reach their remotes`
+    );
+  }
+
+  return (
+    <section aria-labelledby="today-projects-heading" className="space-y-1 border-t border-[var(--pw-color-border-subtle)] pt-[var(--pw-spacing-section)]">
+      <h2 id="today-projects-heading" className="text-lg font-semibold" style={{ fontFamily: "var(--pw-typography-font-expressive)" }}>
+        Projects
+      </h2>
+      <p className="text-[var(--pw-color-text-primary)]">{bits.join(" · ")}</p>
+      {attention.length > 0 ? (
+        <ul className="space-y-1 text-sm" role="list" data-pw-today-projects="attention">
+          {attention.slice(0, 3).map((p) => (
+            <li key={p.project}>
+              {projectSentence(p)}{" "}
+              <Link to="/projects" className="underline decoration-[var(--pw-color-border-subtle)] underline-offset-4 hover:decoration-current focus-visible:outline-2 focus-visible:outline-[var(--pw-focus-ring)] focus-visible:outline-offset-2 rounded-sm">
+                See Projects
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {attention.length > 3 ? (
+        <p className="text-sm text-[var(--pw-color-text-secondary)]">
+          and {attention.length - 3} more in Projects.
+        </p>
+      ) : null}
+    </section>
+  );
 }
 
 // ── What changed (/api/daily actions; ABSENT on a quiet day) ──
